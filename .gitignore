@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 开发备份（.bak* 不入库）
+*.bak*
+
+# 密钥（绝不入库）
+.env
+
+# 运行时用户数据（学习者图谱，每人不同）
+data/graph_*.json
+
+# 大体积生成物与第三方原始语料（可由工具脚本重新生成 / 按来源自行下载）
+# 注意：datasets/HSK1-4_字表词表_GF0025-2021.xlsx（官方词表）随源码入库，不入本忽略列表
+datasets/eval/_raw_corpus/
+datasets/eval/cged_recognition.json
+datasets/_yaclc_valid.jsonl
+
+# 系统
+.DS_Store
+Thumbs.db

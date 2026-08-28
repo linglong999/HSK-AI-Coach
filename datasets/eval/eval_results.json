@@ -1,0 +1,338 @@
+{
+  "version": "golden_v1_4_v0.2",
+  "metrics": {
+    "precision": 1.0,
+    "recall": 0.9411764705882353,
+    "f1": 0.9696969696969697,
+    "type_accuracy": 0.9375,
+    "clean_fp_rate": 0.0,
+    "adversarial_overcorrection_rate": 0.0,
+    "uncertain_count": 0
+  },
+  "rows": [
+    {
+      "id": "HSK1-ERR-001",
+      "level": 1,
+      "golden_span": "一个猫",
+      "golden_type": "语法",
+      "status": "TP",
+      "det": "一个猫(语法)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK1-ERR-002",
+      "level": 1,
+      "golden_span": "苹果很多",
+      "golden_type": "语法",
+      "status": "TP",
+      "det": "苹果很多(语法)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK1-ERR-003",
+      "level": 1,
+      "golden_span": "吧",
+      "golden_type": "语法",
+      "status": "TP",
+      "det": "吧(语用)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK1-CLN-004",
+      "level": 1,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK2-ERR-005",
+      "level": 2,
+      "golden_span": "书在桌子上放",
+      "golden_type": "语法",
+      "status": "TP",
+      "det": "我把书在桌子上放了(语法)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK2-ERR-006",
+      "level": 2,
+      "golden_span": "比我很高",
+      "golden_type": "语法",
+      "status": "TP",
+      "det": "比我很高(语法)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK2-CLN-007",
+      "level": 2,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK2-ERR-008",
+      "level": 2,
+      "golden_span": "不能说中文很好",
+      "golden_type": "语法",
+      "status": "TP",
+      "det": "我不能说中文很好(语法)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK3-CLN-010",
+      "level": 3,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK3-CLN-011",
+      "level": 3,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK3-ERR-012",
+      "level": 3,
+      "golden_span": "他去上班",
+      "golden_type": "语法",
+      "status": "TP",
+      "det": "但是他去上班(语法)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK4-CLN-013",
+      "level": 4,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK4-CLN-014",
+      "level": 4,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK4-CLN-015",
+      "level": 4,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK4-CLN-016",
+      "level": 4,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK2-ERR-017",
+      "level": 2,
+      "golden_span": "一个电影",
+      "golden_type": "语法",
+      "status": "TP",
+      "det": "一个电影(语法)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK3-ERR-018",
+      "level": 3,
+      "golden_span": "常常迟到了",
+      "golden_type": "语法",
+      "status": "TP",
+      "det": "常常迟到了(语法)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK3-CLN-019",
+      "level": 3,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK2-CLN-020",
+      "level": 2,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK1-CLN-021",
+      "level": 1,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK2-CLN-022",
+      "level": 2,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK1-ERR-023",
+      "level": 1,
+      "golden_span": "来了",
+      "golden_type": "语法",
+      "status": "TP",
+      "det": "我是昨天来了(语法)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK3-CLN-024",
+      "level": 3,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK2-ERR-025",
+      "level": 2,
+      "golden_span": "做中文",
+      "golden_type": "词汇",
+      "status": "TP",
+      "det": "做中文(词汇)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK1-ERR-026",
+      "level": 1,
+      "golden_span": "很好得",
+      "golden_type": "汉字",
+      "status": "TP",
+      "det": "很好得人(汉字)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK2-CLN-027",
+      "level": 2,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK1-ERR-028",
+      "level": 1,
+      "golden_span": "好吃的",
+      "golden_type": "语法",
+      "status": "TP",
+      "det": "好吃的(语法)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK3-CLN-029",
+      "level": 3,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK2-ERR-030",
+      "level": 2,
+      "golden_span": "开汽车",
+      "golden_type": "语法",
+      "status": "TP",
+      "det": "开汽车很大(语法)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK2-ERR-031",
+      "level": 2,
+      "golden_span": "几岁",
+      "golden_type": "语用",
+      "status": "FN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK3-CLN-032",
+      "level": 3,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK3-CLN-009",
+      "level": 3,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK2-ADV-001",
+      "level": 2,
+      "golden_span": "我他",
+      "golden_type": "语法",
+      "status": "TP",
+      "det": "今天我他一起吃饭(语法)",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK3-ADV-002",
+      "level": 3,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK2-ADV-003",
+      "level": 2,
+      "golden_span": null,
+      "golden_type": null,
+      "status": "TN",
+      "det": "—",
+      "uncertain": 0
+    },
+    {
+      "id": "HSK1-ADV-004",
+      "level": 1,
+      "golden_span": "水了水",
+      "golden_type": "语法",
+      "status": "TP",
+      "det": "喝水了水(语法)",
+      "uncertain": 0
+    }
+  ]
+}

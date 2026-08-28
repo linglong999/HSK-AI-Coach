@@ -1,0 +1,169 @@
+{
+  "$note": "HSK 1-4 级高频语法点 MVP 清单（骨架验证版 v0.1）。用途：跑通 2.1 识别 candidate → 2.4 建节点 → 2.2 读历史的 schema 挂接。来源=人工整理高频常考点，等级为经验判断，待接入权威 HSK 词表/大纲后校对替换（届时 bump version）。每点键 = knowledge_point_id，供 2.1 合并层校验与 2.4 建节点。",
+  "version": "0.1",
+  "level_range": [1, 4],
+  "source": "manual-curated (pending authoritative HSK lexicon alignment)",
+  "knowledge_points": {
+    "kp-ba-sentence": {
+      "id": "kp-ba-sentence",
+      "knowledge_point": "“把”字句",
+      "level": 3,
+      "error_types": ["语法"],
+      "note": "重点：结构‘把 + 宾语 + 动词 + 补语’，处置义"
+    },
+    "kp-bei-sentence": {
+      "id": "kp-bei-sentence",
+      "knowledge_point": "“被”字句",
+      "level": 4,
+      "error_types": ["语法"],
+      "note": "被动义，常与‘把’字句并学"
+    },
+    "kp-liangci": {
+      "id": "kp-liangci",
+      "knowledge_point": "量词（个/本/张/件…）",
+      "level": 1,
+      "error_types": ["语法", "词汇"],
+      "note": "数词+量词+名词；量词误用/缺失是低级别高频偏误"
+    },
+    "kp-nengyuan-dongci": {
+      "id": "kp-nengyuan-dongci",
+      "knowledge_point": "能愿动词（能/会/可以/要/想）",
+      "level": 2,
+      "error_types": ["语法"],
+      "note": "情态动词位置与语义区分"
+    },
+    "kp-bi-sentence": {
+      "id": "kp-bi-sentence",
+      "knowledge_point": "比较句（比/A比B…）",
+      "level": 2,
+      "error_types": ["语法"],
+      "note": "掌握‘比’字句与‘和…一样’"
+    },
+    "kp-he-yiyang": {
+      "id": "kp-he-yiyang",
+      "knowledge_point": "“和…一样”比较",
+      "level": 2,
+      "error_types": ["语法"],
+      "note": "等同比较"
+    },
+    "kp-le-dynamic": {
+      "id": "kp-le-dynamic",
+      "knowledge_point": "动态助词“了”（完成态）",
+      "level": 2,
+      "error_types": ["语法"],
+      "note": "‘了’放动后表完成；误用/缺失常见"
+    },
+    "kp-zhe": {
+      "id": "kp-zhe",
+      "knowledge_point": "动态助词“着”（进行/持续态）",
+      "level": 2,
+      "error_types": ["语法"]
+    },
+    "kp-guo": {
+      "id": "kp-guo",
+      "knowledge_point": "动态助词“过”（经历态）",
+      "level": 2,
+      "error_types": ["语法"]
+    },
+    "kp-jiuguo-jiegou": {
+      "id": "kp-jiuguo-jiegou",
+      "knowledge_point": "结果补语（做完/听懂/学会）",
+      "level": 2,
+      "error_types": ["语法"],
+      "note": "动词+结果补语"
+    },
+    "kp-quxiang-buyu": {
+      "id": "kp-quxiang-buyu",
+      "knowledge_point": "趋向补语（回来/上去/下去）",
+      "level": 3,
+      "error_types": ["语法"]
+    },
+    "kp-de-di-de": {
+      "id": "kp-de-di-de",
+      "knowledge_point": "结构助词的地得（定语/状语/补语）",
+      "level": 3,
+      "error_types": ["汉字", "语法"],
+      "note": "书面偏误高频：的地得混用"
+    },
+    "kp-cunxian-ju": {
+      "id": "kp-cunxian-ju",
+      "knowledge_point": "存现句（有/在/是处所主语）",
+      "level": 2,
+      "error_types": ["语法"]
+    },
+    "kp-liandong-ju": {
+      "id": "kp-liandong-ju",
+      "knowledge_point": "连动句",
+      "level": 3,
+      "error_types": ["语法"]
+    },
+    "kp-standing-shi": {
+      "id": "kp-standing-shi",
+      "knowledge_point": "兼语句（请/让/叫）",
+      "level": 4,
+      "error_types": ["语法"]
+    },
+    "kp-shide-sentence": {
+      "id": "kp-shide-sentence",
+      "knowledge_point": "“是…的”强调句",
+      "level": 3,
+      "error_types": ["语法"]
+    },
+    "kp-dongci-shuangbin": {
+      "id": "kp-dongci-shuangbin",
+      "knowledge_point": "双宾语句（V+人+物）",
+      "level": 1,
+      "error_types": ["语法"]
+    },
+    "kp-zhuangyu-chezhi": {
+      "id": "kp-zhuangyu-chezhi",
+      "knowledge_point": "状语语序（时间/地点/方式）",
+      "level": 2,
+      "error_types": ["语法"],
+      "note": "高频：宾语/状语位置错误（受母语语序影响）"
+    },
+    "kp-zhongci-zhitou": {
+      "id": "kp-zhongci-zhitou",
+      "knowledge_point": "代词使用（人称/指示代词）",
+      "level": 1,
+      "error_types": ["语法", "语用"],
+      "note": "示例：'他/它'混用归此类"
+    },
+    "kp-preposition-zaizai": {
+      "id": "kp-preposition-zaizai",
+      "knowledge_point": "介词及其误用（在/从/给/向）",
+      "level": 2,
+      "error_types": ["语法"]
+    },
+    "kp-jietiaoyu-tiaojian": {
+      "id": "kp-jietiaoyu-tiaojian",
+      "knowledge_point": "关联词/条件复句（如果…就/因为…所以）",
+      "level": 3,
+      "error_types": ["语法", "语用"]
+    },
+    "kp-haishi-xuanze": {
+      "id": "kp-haishi-xuanze",
+      "knowledge_point": "选择问句（还是）与正反问（…吗/…不…）",
+      "level": 1,
+      "error_types": ["语法"]
+    },
+    "kp-chengdu-jieci": {
+      "id": "kp-chengdu-jieci",
+      "knowledge_point": "程度副词（很/太/非常/比较）",
+      "level": 1,
+      "error_types": ["语法", "词汇"]
+    },
+    "kp-zhizhi-dao": {
+      "id": "kp-zhizhi-dao",
+      "knowledge_point": "时量补语（看了一个小时）",
+      "level": 2,
+      "error_types": ["语法"]
+    },
+    "kp-zhongci-fugao": {
+      "id": "kp-zhongci-fugao",
+      "knowledge_point": "范围副词（都/也/只/还）",
+      "level": 1,
+      "error_types": ["语法", "语用"]
+    }
+  }
+}

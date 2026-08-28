@@ -1,0 +1,5 @@
+# 运行时零第三方依赖：仅 Python 标准库（urllib/json/threading 等）。
+# .env 文件由 config/settings.py 内置解析器加载，无需 python-dotenv。
+#
+# 可选依赖（仅数据准备工具需要）：
+# pip install openpyxl        # datasets/convert_lexicon.py（从 HSK 官方 xlsx 生成词表）

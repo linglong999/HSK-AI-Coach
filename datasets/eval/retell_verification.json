@@ -1,0 +1,1284 @@
+{
+  "meta": {
+    "name": "retell_verification",
+    "version": "0.4",
+    "purpose": "3.3 复述验证黄金集：方向一(构造覆盖变体集)×方向二(MuCGEC 真实学习者句转评测样本) 合并",
+    "note": "truth: pass/fail 由 evid 体现修正要点可判; partial/hollow 语义需你(二语)仲裁 → need_arbitration=True; 方向二 source_id 对回 retell_golden.json; v0.3 关把后 pass 支持多解(用 iso_solution 标主解/等价解)",
+    "boundary_samples": [
+      "MUCGEC-29:pass#2（等价解被误杀）: key_points 锚定‘配动词’解, 但‘争议性很大’是判断句(主语+表语, 无动词)亦合法。属要点锚点未覆盖等价解的边界, 非引擎判定错误。",
+      "HSK2-ERR-025:hollow（hollow 判 pass）: 该 hollow 复述实际落实了‘学习中文’搭配+‘努力’, 与要点重叠度太高, 无法体现‘空洞’。属 hollow 样本构造偏弱的边界, 非引擎判定错误。"
+    ],
+    "counts": {
+      "direction1": 34,
+      "direction2": 26
+    }
+  },
+  "items": [
+    {
+      "id": "HSK1-ERR-001:pass",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-001",
+      "explanation": "量词误用：猫用‘只’不用‘个’。正确为‘我有一只猫’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "要用名量词‘只’来数动物（猫）"
+        },
+        {
+          "id": 2,
+          "text": "量词‘只’放在数词‘一’和名词‘猫’之间"
+        }
+      ],
+      "restatement": "我有一只猫。",
+      "evid": "一只",
+      "truth": "pass",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK1-ERR-001:fail",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-001",
+      "explanation": "量词误用：猫用‘只’不用‘个’。正确为‘我有一只猫’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "要用名量词‘只’来数动物（猫）"
+        },
+        {
+          "id": 2,
+          "text": "量词‘只’放在数词‘一’和名词‘猫’之间"
+        }
+      ],
+      "restatement": "我有一个猫。",
+      "evid": "个",
+      "truth": "fail",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK1-ERR-001:partial",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-001",
+      "explanation": "量词误用：猫用‘只’不用‘个’。正确为‘我有一只猫’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "要用名量词‘只’来数动物（猫）"
+        },
+        {
+          "id": 2,
+          "text": "量词‘只’放在数词‘一’和名词‘猫’之间"
+        }
+      ],
+      "restatement": "我猫有一只。",
+      "evid": "只",
+      "truth": "partial",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "HSK1-ERR-001:hollow",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-001",
+      "explanation": "量词误用：猫用‘只’不用‘个’。正确为‘我有一只猫’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "要用名量词‘只’来数动物（猫）"
+        },
+        {
+          "id": 2,
+          "text": "量词‘只’放在数词‘一’和名词‘猫’之间"
+        }
+      ],
+      "restatement": "猫这个动物啊，其实有很多种量词的说法……",
+      "evid": "",
+      "truth": "hollow",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "HSK1-ERR-002:pass",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-002",
+      "explanation": "数量短语‘很多’作定语应前置。正确为‘我想买很多苹果’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "数量短语‘很多’放在名词前面作定语"
+        },
+        {
+          "id": 2,
+          "text": "正确搭配是‘很多+苹果’"
+        }
+      ],
+      "restatement": "我想买很多苹果。",
+      "evid": "很多苹果",
+      "truth": "pass",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK1-ERR-002:fail",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-002",
+      "explanation": "数量短语‘很多’作定语应前置。正确为‘我想买很多苹果’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "数量短语‘很多’放在名词前面作定语"
+        },
+        {
+          "id": 2,
+          "text": "正确搭配是‘很多+苹果’"
+        }
+      ],
+      "restatement": "我想买苹果很多。",
+      "evid": "苹果很多",
+      "truth": "fail",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK1-ERR-002:partial",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-002",
+      "explanation": "数量短语‘很多’作定语应前置。正确为‘我想买很多苹果’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "数量短语‘很多’放在名词前面作定语"
+        },
+        {
+          "id": 2,
+          "text": "正确搭配是‘很多+苹果’"
+        }
+      ],
+      "restatement": "我想买很多个苹果。",
+      "evid": "很多",
+      "truth": "partial",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "HSK1-ERR-002:hollow",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-002",
+      "explanation": "数量短语‘很多’作定语应前置。正确为‘我想买很多苹果’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "数量短语‘很多’放在名词前面作定语"
+        },
+        {
+          "id": 2,
+          "text": "正确搭配是‘很多+苹果’"
+        }
+      ],
+      "restatement": "买东西要多比较，苹果也有很多种。",
+      "evid": "",
+      "truth": "hollow",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "HSK1-ERR-003:pass",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-003",
+      "explanation": "语气词误用：是非疑问用‘吗’。正确为‘你喝水吗？’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "是非疑问句句末用疑问词‘吗’"
+        },
+        {
+          "id": 2,
+          "text": "疑问语气落在句末的‘吗’上"
+        }
+      ],
+      "restatement": "你喝水吗？",
+      "evid": "吗",
+      "truth": "pass",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK1-ERR-003:fail",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-003",
+      "explanation": "语气词误用：是非疑问用‘吗’。正确为‘你喝水吗？’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "是非疑问句句末用疑问词‘吗’"
+        },
+        {
+          "id": 2,
+          "text": "疑问语气落在句末的‘吗’上"
+        }
+      ],
+      "restatement": "你喝水吧？",
+      "evid": "吧",
+      "truth": "fail",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK1-ERR-003:partial",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-003",
+      "explanation": "语气词误用：是非疑问用‘吗’。正确为‘你喝水吗？’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "是非疑问句句末用疑问词‘吗’"
+        },
+        {
+          "id": 2,
+          "text": "疑问语气落在句末的‘吗’上"
+        }
+      ],
+      "restatement": "你渴了喝吗？",
+      "evid": "吗",
+      "truth": "partial",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "HSK1-ERR-003:hollow",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-003",
+      "explanation": "语气词误用：是非疑问用‘吗’。正确为‘你喝水吗？’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "是非疑问句句末用疑问词‘吗’"
+        },
+        {
+          "id": 2,
+          "text": "疑问语气落在句末的‘吗’上"
+        }
+      ],
+      "restatement": "喝水这个动作，我觉得很有意义……",
+      "evid": "",
+      "truth": "hollow",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "HSK2-ERR-005:pass",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-005",
+      "explanation": "‘把’字句：把+宾语+动词+补语，‘在桌子上’作结果补语后置。正确为‘我把书放在桌子上了’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "用‘把’字句，把+宾语‘书’"
+        },
+        {
+          "id": 2,
+          "text": "补语‘在桌子上’放在动词‘放’之后"
+        }
+      ],
+      "restatement": "我把书放在桌子上了。",
+      "evid": "放在桌子上",
+      "truth": "pass",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK2-ERR-005:fail",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-005",
+      "explanation": "‘把’字句：把+宾语+动词+补语，‘在桌子上’作结果补语后置。正确为‘我把书放在桌子上了’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "用‘把’字句，把+宾语‘书’"
+        },
+        {
+          "id": 2,
+          "text": "补语‘在桌子上’放在动词‘放’之后"
+        }
+      ],
+      "restatement": "我把书在桌子上放了。",
+      "evid": "在桌子上放了",
+      "truth": "fail",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK2-ERR-005:partial",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-005",
+      "explanation": "‘把’字句：把+宾语+动词+补语，‘在桌子上’作结果补语后置。正确为‘我把书放在桌子上了’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "用‘把’字句，把+宾语‘书’"
+        },
+        {
+          "id": 2,
+          "text": "补语‘在桌子上’放在动词‘放’之后"
+        }
+      ],
+      "restatement": "我把书放上了桌子。",
+      "evid": "放上",
+      "truth": "partial",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "HSK2-ERR-005:hollow",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-005",
+      "explanation": "‘把’字句：把+宾语+动词+补语，‘在桌子上’作结果补语后置。正确为‘我把书放在桌子上了’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "用‘把’字句，把+宾语‘书’"
+        },
+        {
+          "id": 2,
+          "text": "补语‘在桌子上’放在动词‘放’之后"
+        }
+      ],
+      "restatement": "桌子上面放书，这个场景我见过好几次……",
+      "evid": "",
+      "truth": "hollow",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "HSK2-ERR-006:pass",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-006",
+      "explanation": "‘比’字句不能再加‘很’。正确为‘他比我高’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "用‘A比B+形容词’句式比较"
+        },
+        {
+          "id": 2,
+          "text": "程度由形容词本身表达，比较句里不再加程度副词"
+        }
+      ],
+      "restatement": "他比我高。",
+      "evid": "比我高",
+      "truth": "pass",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK2-ERR-006:fail",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-006",
+      "explanation": "‘比’字句不能再加‘很’。正确为‘他比我高’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "用‘A比B+形容词’句式比较"
+        },
+        {
+          "id": 2,
+          "text": "程度由形容词本身表达，比较句里不再加程度副词"
+        }
+      ],
+      "restatement": "他比我很高。",
+      "evid": "比我",
+      "truth": "fail",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK2-ERR-006:hollow",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-006",
+      "explanation": "‘比’字句不能再加‘很’。正确为‘他比我高’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "用‘A比B+形容词’句式比较"
+        },
+        {
+          "id": 2,
+          "text": "程度由形容词本身表达，比较句里不再加程度副词"
+        }
+      ],
+      "restatement": "人和人之间比较身高，是很自然的事……",
+      "evid": "",
+      "truth": "hollow",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "HSK2-ERR-008:pass",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-008",
+      "explanation": "评述补语：表示能力喜恶应为‘(改)中文说得(不是)很好’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "自评语言能力用‘中文说得…’句式"
+        },
+        {
+          "id": 2,
+          "text": "表示‘中文’这项界定的‘说得’"
+        }
+      ],
+      "restatement": "我中文说得不是很好。",
+      "evid": "说得",
+      "truth": "pass",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK2-ERR-008:fail",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-008",
+      "explanation": "评述补语：表示能力喜恶应为‘(改)中文说得(不是)很好’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "自评语言能力用‘中文说得…’句式"
+        },
+        {
+          "id": 2,
+          "text": "表示‘中文’这项界定的‘说得’"
+        }
+      ],
+      "restatement": "我不能说中文很好。",
+      "evid": "不能说",
+      "truth": "fail",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK2-ERR-008:hollow",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-008",
+      "explanation": "评述补语：表示能力喜恶应为‘(改)中文说得(不是)很好’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "自评语言能力用‘中文说得…’句式"
+        },
+        {
+          "id": 2,
+          "text": "表示‘中文’这项界定的‘说得’"
+        }
+      ],
+      "restatement": "我最近在学中文，中文很有意思。",
+      "evid": "",
+      "truth": "hollow",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "HSK1-ERR-023:pass",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-023",
+      "explanation": "强调式‘是…的’误用为‘是…了’。正确为‘我是昨天来的’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "强调时间状语用‘是…的’结构"
+        },
+        {
+          "id": 2,
+          "text": "‘了’本句不能跟在强调结构后，应落在‘的’"
+        }
+      ],
+      "restatement": "我是昨天来的。",
+      "evid": "是昨天来的",
+      "truth": "pass",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK1-ERR-023:fail",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-023",
+      "explanation": "强调式‘是…的’误用为‘是…了’。正确为‘我是昨天来的’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "强调时间状语用‘是…的’结构"
+        },
+        {
+          "id": 2,
+          "text": "‘了’本句不能跟在强调结构后，应落在‘的’"
+        }
+      ],
+      "restatement": "我是昨天来了。",
+      "evid": "昨天来了",
+      "truth": "fail",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK1-ERR-023:hollow",
+      "source": "direction1_constructed",
+      "kp_id": "HSK1-ERR-023",
+      "explanation": "强调式‘是…的’误用为‘是…了’。正确为‘我是昨天来的’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "强调时间状语用‘是…的’结构"
+        },
+        {
+          "id": 2,
+          "text": "‘了’本句不能跟在强调结构后，应落在‘的’"
+        }
+      ],
+      "restatement": "昨天是个特别的日子，我来这边……",
+      "evid": "",
+      "truth": "hollow",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "HSK2-ERR-025:pass",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-025",
+      "explanation": "词汇搭配：学语言用‘学/学习’，‘做中文’不搭配。正确为‘我努力学习中文’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "‘中文’这门语言用‘学习/学’搭配"
+        },
+        {
+          "id": 2,
+          "text": "完整说法‘学习中文’，主语+努力+学习+中文"
+        }
+      ],
+      "restatement": "我努力学习中文。",
+      "evid": "学习中文",
+      "truth": "pass",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK2-ERR-025:fail",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-025",
+      "explanation": "词汇搭配：学语言用‘学/学习’，‘做中文’不搭配。正确为‘我努力学习中文’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "‘中文’这门语言用‘学习/学’搭配"
+        },
+        {
+          "id": 2,
+          "text": "完整说法‘学习中文’，主语+努力+学习+中文"
+        }
+      ],
+      "restatement": "我努力做中文。",
+      "evid": "做中文",
+      "truth": "fail",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK2-ERR-025:hollow",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-025",
+      "explanation": "词汇搭配：学语言用‘学/学习’，‘做中文’不搭配。正确为‘我努力学习中文’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "‘中文’这门语言用‘学习/学’搭配"
+        },
+        {
+          "id": 2,
+          "text": "完整说法‘学习中文’，主语+努力+学习+中文"
+        }
+      ],
+      "restatement": "学习中文需要努力，我每天都很努力……",
+      "evid": "",
+      "truth": "hollow",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "HSK2-ERR-030:pass",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-030",
+      "explanation": "缺‘的’：定语标志缺失，应为‘我爸爸开的汽车’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "定语修饰‘汽车’，用‘的’连接（开的汽车）"
+        },
+        {
+          "id": 2,
+          "text": "‘开的汽车’整体作主语"
+        }
+      ],
+      "restatement": "我爸爸开的汽车很大。",
+      "evid": "开的汽车",
+      "truth": "pass",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK2-ERR-030:fail",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-030",
+      "explanation": "缺‘的’：定语标志缺失，应为‘我爸爸开的汽车’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "定语修饰‘汽车’，用‘的’连接（开的汽车）"
+        },
+        {
+          "id": 2,
+          "text": "‘开的汽车’整体作主语"
+        }
+      ],
+      "restatement": "我爸爸开汽车很大。",
+      "evid": "开汽车",
+      "truth": "fail",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK2-ERR-030:hollow",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-030",
+      "explanation": "缺‘的’：定语标志缺失，应为‘我爸爸开的汽车’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "定语修饰‘汽车’，用‘的’连接（开的汽车）"
+        },
+        {
+          "id": 2,
+          "text": "‘开的汽车’整体作主语"
+        }
+      ],
+      "restatement": "汽车很大，开起来很稳当……",
+      "evid": "",
+      "truth": "hollow",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "HSK2-ERR-031:pass",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-031",
+      "explanation": "语体不当：问成年人年龄用‘多大了’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "对成年人提问年龄用‘多大了’"
+        },
+        {
+          "id": 2,
+          "text": "完整说法‘你多大了’"
+        }
+      ],
+      "restatement": "你多大了？",
+      "evid": "多大了",
+      "truth": "pass",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK2-ERR-031:fail",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-031",
+      "explanation": "语体不当：问成年人年龄用‘多大了’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "对成年人提问年龄用‘多大了’"
+        },
+        {
+          "id": 2,
+          "text": "完整说法‘你多大了’"
+        }
+      ],
+      "restatement": "你几岁？",
+      "evid": "几岁",
+      "truth": "fail",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "HSK2-ERR-031:hollow",
+      "source": "direction1_constructed",
+      "kp_id": "HSK2-ERR-031",
+      "explanation": "语体不当：问成年人年龄用‘多大了’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "对成年人提问年龄用‘多大了’"
+        },
+        {
+          "id": 2,
+          "text": "完整说法‘你多大了’"
+        }
+      ],
+      "restatement": "年龄嘛，不同的问法有不同的场合……",
+      "evid": "",
+      "truth": "hollow",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "MUCGEC-5:pass",
+      "source": "direction2_mucgec",
+      "source_id": "5",
+      "kp_id": null,
+      "explanation": "动词误用：乘交通工具用‘坐’，‘做’表制作/从事。正确为‘学生大概坐飞机去北京’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表示乘坐交通工具要用动词‘坐’"
+        },
+        {
+          "id": 2,
+          "text": "‘飞机’和‘坐’搭配，说‘坐飞机’"
+        }
+      ],
+      "restatement": "学生大概坐飞机去北京。",
+      "evid": "坐飞机",
+      "truth": "pass",
+      "iso_solution": 1,
+      "arbitration_note": "做/坐 同音高频混用；fail(做飞机)干净。已加坐/做英译区分，讲解更扎实。",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "MUCGEC-5:fail",
+      "source": "direction2_mucgec",
+      "source_id": "5",
+      "kp_id": null,
+      "explanation": "动词误用：乘交通工具用‘坐’，‘做’表制作/从事。正确为‘学生大概坐飞机去北京’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表示乘坐交通工具要用动词‘坐’"
+        },
+        {
+          "id": 2,
+          "text": "‘飞机’和‘坐’搭配，说‘坐飞机’"
+        }
+      ],
+      "restatement": "学生大概做飞机去北京。",
+      "evid": "做飞机",
+      "truth": "fail",
+      "iso_solution": 1,
+      "arbitration_note": "做/坐 同音高频混用；fail(做飞机)干净。已加坐/做英译区分，讲解更扎实。",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "MUCGEC-5:partial",
+      "source": "direction2_mucgec",
+      "source_id": "5",
+      "kp_id": null,
+      "explanation": "动词误用：乘交通工具用‘坐’，‘做’表制作/从事。正确为‘学生大概坐飞机去北京’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表示乘坐交通工具要用动词‘坐’"
+        },
+        {
+          "id": 2,
+          "text": "‘飞机’和‘坐’搭配，说‘坐飞机’"
+        }
+      ],
+      "restatement": "学生大概做坐飞机去北京。",
+      "evid": "坐",
+      "truth": "partial",
+      "iso_solution": 1,
+      "arbitration_note": "做/坐 同音高频混用；fail(做飞机)干净。已加坐/做英译区分，讲解更扎实。",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "MUCGEC-5:hollow",
+      "source": "direction2_mucgec",
+      "source_id": "5",
+      "kp_id": null,
+      "explanation": "动词误用：乘交通工具用‘坐’，‘做’表制作/从事。正确为‘学生大概坐飞机去北京’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表示乘坐交通工具要用动词‘坐’"
+        },
+        {
+          "id": 2,
+          "text": "‘飞机’和‘坐’搭配，说‘坐飞机’"
+        }
+      ],
+      "restatement": "坐飞机要提前买票，选靠窗的位置看风景挺美……",
+      "evid": "",
+      "truth": "hollow",
+      "iso_solution": 1,
+      "arbitration_note": "做/坐 同音高频混用；fail(做飞机)干净。已加坐/做英译区分，讲解更扎实。",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "MUCGEC-4:pass",
+      "source": "direction2_mucgec",
+      "source_id": "4",
+      "kp_id": null,
+      "explanation": "结构助词：副词修饰动词的状语用‘地’。正确为‘我不愿意这么过分地喜欢歌手’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表示程度地修饰‘喜欢’这个动作时，要用状语标记‘地’"
+        }
+      ],
+      "restatement": "我不愿意这么过分地喜欢歌手。",
+      "evid": "过分地",
+      "truth": "pass",
+      "iso_solution": 1,
+      "arbitration_note": "的/地/得经典混淆区；本句‘喜欢’及物(带宾语‘歌手’)，‘过分地’作状语用‘地’正确，判错不构成过度纠偏。(‘过分的喜欢’在‘喜欢’名词化时[如‘这种过分的喜欢’]才合法，本句语境非此，故 feel 成立。)",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "MUCGEC-4:fail",
+      "source": "direction2_mucgec",
+      "source_id": "4",
+      "kp_id": null,
+      "explanation": "结构助词：副词修饰动词的状语用‘地’。正确为‘我不愿意这么过分地喜欢歌手’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表示程度地修饰‘喜欢’这个动作时，要用状语标记‘地’"
+        }
+      ],
+      "restatement": "我不愿意这么过分的喜欢歌手。",
+      "evid": "过分的",
+      "truth": "fail",
+      "iso_solution": 1,
+      "arbitration_note": "的/地/得经典混淆区；本句‘喜欢’及物(带宾语‘歌手’)，‘过分地’作状语用‘地’正确，判错不构成过度纠偏。(‘过分的喜欢’在‘喜欢’名词化时[如‘这种过分的喜欢’]才合法，本句语境非此，故 feel 成立。)",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "MUCGEC-4:partial",
+      "source": "direction2_mucgec",
+      "source_id": "4",
+      "kp_id": null,
+      "explanation": "结构助词：副词修饰动词的状语用‘地’。正确为‘我不愿意这么过分地喜欢歌手’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表示程度地修饰‘喜欢’这个动作时，要用状语标记‘地’"
+        }
+      ],
+      "restatement": "我不愿意过分地喜欢歌手。",
+      "evid": "过分地",
+      "truth": "partial",
+      "iso_solution": 1,
+      "arbitration_note": "的/地/得经典混淆区；本句‘喜欢’及物(带宾语‘歌手’)，‘过分地’作状语用‘地’正确，判错不构成过度纠偏。(‘过分的喜欢’在‘喜欢’名词化时[如‘这种过分的喜欢’]才合法，本句语境非此，故 feel 成立。)",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "MUCGEC-4:hollow",
+      "source": "direction2_mucgec",
+      "source_id": "4",
+      "kp_id": null,
+      "explanation": "结构助词：副词修饰动词的状语用‘地’。正确为‘我不愿意这么过分地喜欢歌手’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表示程度地修饰‘喜欢’这个动作时，要用状语标记‘地’"
+        }
+      ],
+      "restatement": "喜欢歌手要有个度，别太投入就行……",
+      "evid": "",
+      "truth": "hollow",
+      "iso_solution": 1,
+      "arbitration_note": "的/地/得经典混淆区；本句‘喜欢’及物(带宾语‘歌手’)，‘过分地’作状语用‘地’正确，判错不构成过度纠偏。(‘过分的喜欢’在‘喜欢’名词化时[如‘这种过分的喜欢’]才合法，本句语境非此，故 feel 成立。)",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "MUCGEC-29:pass",
+      "source": "direction2_mucgec",
+      "source_id": "29",
+      "kp_id": null,
+      "explanation": "缺谓词：名词‘争议性’需要动词来承接。正确为‘死刑这个问题很有争议性’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表达‘有争议性’这个性质，要搭配动词，‘死刑问题很有争议性’"
+        }
+      ],
+      "restatement": "死刑这个问题很有争议性。",
+      "evid": "很有争议性",
+      "truth": "pass",
+      "iso_solution": 1,
+      "arbitration_note": "pass 指定更有自然度的‘很有争议性’为更优解，并纳入‘争议性很大/很有争议’等价解。原句‘是’为赘余；fail 保留学习者原样(未补谓词)。",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "MUCGEC-29:pass#2",
+      "source": "direction2_mucgec",
+      "source_id": "29",
+      "kp_id": null,
+      "explanation": "缺谓词：名词‘争议性’需要动词来承接。正确为‘死刑这个问题很有争议性’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表达‘有争议性’这个性质，要搭配动词，‘死刑问题很有争议性’"
+        }
+      ],
+      "restatement": "死刑这个问题争议性很大。",
+      "evid": "争议性很大",
+      "truth": "pass",
+      "iso_solution": 2,
+      "arbitration_note": "pass 指定更有自然度的‘很有争议性’为更优解，并纳入‘争议性很大/很有争议’等价解。原句‘是’为赘余；fail 保留学习者原样(未补谓词)。",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "MUCGEC-29:pass#3",
+      "source": "direction2_mucgec",
+      "source_id": "29",
+      "kp_id": null,
+      "explanation": "缺谓词：名词‘争议性’需要动词来承接。正确为‘死刑这个问题很有争议性’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表达‘有争议性’这个性质，要搭配动词，‘死刑问题很有争议性’"
+        }
+      ],
+      "restatement": "死刑这个问题很有争议。",
+      "evid": "很有争议",
+      "truth": "pass",
+      "iso_solution": 3,
+      "arbitration_note": "pass 指定更有自然度的‘很有争议性’为更优解，并纳入‘争议性很大/很有争议’等价解。原句‘是’为赘余；fail 保留学习者原样(未补谓词)。",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "MUCGEC-29:fail",
+      "source": "direction2_mucgec",
+      "source_id": "29",
+      "kp_id": null,
+      "explanation": "缺谓词：名词‘争议性’需要动词来承接。正确为‘死刑这个问题很有争议性’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表达‘有争议性’这个性质，要搭配动词，‘死刑问题很有争议性’"
+        }
+      ],
+      "restatement": "死刑这个问题特别争议性。",
+      "evid": "特别争议性",
+      "truth": "fail",
+      "iso_solution": 1,
+      "arbitration_note": "pass 指定更有自然度的‘很有争议性’为更优解，并纳入‘争议性很大/很有争议’等价解。原句‘是’为赘余；fail 保留学习者原样(未补谓词)。",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "MUCGEC-29:partial",
+      "source": "direction2_mucgec",
+      "source_id": "29",
+      "kp_id": null,
+      "explanation": "缺谓词：名词‘争议性’需要动词来承接。正确为‘死刑这个问题很有争议性’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表达‘有争议性’这个性质，要搭配动词，‘死刑问题很有争议性’"
+        }
+      ],
+      "restatement": "死刑这个问题特别具有争议性。",
+      "evid": "具有争议性",
+      "truth": "partial",
+      "iso_solution": 1,
+      "arbitration_note": "pass 指定更有自然度的‘很有争议性’为更优解，并纳入‘争议性很大/很有争议’等价解。原句‘是’为赘余；fail 保留学习者原样(未补谓词)。",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "MUCGEC-29:hollow",
+      "source": "direction2_mucgec",
+      "source_id": "29",
+      "kp_id": null,
+      "explanation": "缺谓词：名词‘争议性’需要动词来承接。正确为‘死刑这个问题很有争议性’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表达‘有争议性’这个性质，要搭配动词，‘死刑问题很有争议性’"
+        }
+      ],
+      "restatement": "关于死刑，争议一直都有，大家看法很不一样……",
+      "evid": "",
+      "truth": "hollow",
+      "iso_solution": 1,
+      "arbitration_note": "pass 指定更有自然度的‘很有争议性’为更优解，并纳入‘争议性很大/很有争议’等价解。原句‘是’为赘余；fail 保留学习者原样(未补谓词)。",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "MUCGEC-84:pass",
+      "source": "direction2_mucgec",
+      "source_id": "84",
+      "kp_id": null,
+      "explanation": "定语结构：母语更常用复合词‘健康意识’。正确为‘最后，提高人们的健康意识’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表达健康观念用固定说法‘健康意识’"
+        },
+        {
+          "id": 2,
+          "text": "说‘人们的健康意识’，中间用‘的’连接"
+        }
+      ],
+      "restatement": "最后，提高人们的健康意识。",
+      "evid": "人们的健康意识",
+      "truth": "pass",
+      "iso_solution": 1,
+      "arbitration_note": "学习者‘对健康意识’两解：漏‘的’(保留对) 或 误加‘对’(本应用复合词)。把‘健康意识’复合词列为更优 pass，避免自动判分把‘删对’的正确讲解误判为不命中要点。",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "MUCGEC-84:fail",
+      "source": "direction2_mucgec",
+      "source_id": "84",
+      "kp_id": null,
+      "explanation": "定语结构：母语更常用复合词‘健康意识’。正确为‘最后，提高人们的健康意识’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表达健康观念用固定说法‘健康意识’"
+        },
+        {
+          "id": 2,
+          "text": "说‘人们的健康意识’，中间用‘的’连接"
+        }
+      ],
+      "restatement": "最后，提高人们对健康意识。",
+      "evid": "对健康意识",
+      "truth": "fail",
+      "iso_solution": 1,
+      "arbitration_note": "学习者‘对健康意识’两解：漏‘的’(保留对) 或 误加‘对’(本应用复合词)。把‘健康意识’复合词列为更优 pass，避免自动判分把‘删对’的正确讲解误判为不命中要点。",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "MUCGEC-84:partial",
+      "source": "direction2_mucgec",
+      "source_id": "84",
+      "kp_id": null,
+      "explanation": "定语结构：母语更常用复合词‘健康意识’。正确为‘最后，提高人们的健康意识’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表达健康观念用固定说法‘健康意识’"
+        },
+        {
+          "id": 2,
+          "text": "说‘人们的健康意识’，中间用‘的’连接"
+        }
+      ],
+      "restatement": "最后，提高人们对健康的意识。",
+      "evid": "对健康的意识",
+      "truth": "partial",
+      "iso_solution": 1,
+      "arbitration_note": "学习者‘对健康意识’两解：漏‘的’(保留对) 或 误加‘对’(本应用复合词)。把‘健康意识’复合词列为更优 pass，避免自动判分把‘删对’的正确讲解误判为不命中要点。",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "MUCGEC-84:hollow",
+      "source": "direction2_mucgec",
+      "source_id": "84",
+      "kp_id": null,
+      "explanation": "定语结构：母语更常用复合词‘健康意识’。正确为‘最后，提高人们的健康意识’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表达健康观念用固定说法‘健康意识’"
+        },
+        {
+          "id": 2,
+          "text": "说‘人们的健康意识’，中间用‘的’连接"
+        }
+      ],
+      "restatement": "健康很重要，我们要多注意身体……",
+      "evid": "",
+      "truth": "hollow",
+      "iso_solution": 1,
+      "arbitration_note": "学习者‘对健康意识’两解：漏‘的’(保留对) 或 误加‘对’(本应用复合词)。把‘健康意识’复合词列为更优 pass，避免自动判分把‘删对’的正确讲解误判为不命中要点。",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "MUCGEC-90:pass",
+      "source": "direction2_mucgec",
+      "source_id": "90",
+      "kp_id": null,
+      "explanation": "疑问表达：询问解决办法用‘怎么办’。正确为‘那我们面对这个问题该怎么办呢？’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "询问解决办法用疑问表达‘怎么办’"
+        }
+      ],
+      "restatement": "那我们面对这个问题该怎么办呢？",
+      "evid": "怎么办",
+      "truth": "pass",
+      "iso_solution": 1,
+      "arbitration_note": "若 pass 亦可为‘该怎么解决(呢)’，MVP 以‘怎么办’为主解，等价解较少，暂不扩多 pass。",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "MUCGEC-90:fail",
+      "source": "direction2_mucgec",
+      "source_id": "90",
+      "kp_id": null,
+      "explanation": "疑问表达：询问解决办法用‘怎么办’。正确为‘那我们面对这个问题该怎么办呢？’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "询问解决办法用疑问表达‘怎么办’"
+        }
+      ],
+      "restatement": "那我们面对这个问题该如此好呢？",
+      "evid": "该如此好",
+      "truth": "fail",
+      "iso_solution": 1,
+      "arbitration_note": "若 pass 亦可为‘该怎么解决(呢)’，MVP 以‘怎么办’为主解，等价解较少，暂不扩多 pass。",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "MUCGEC-90:partial",
+      "source": "direction2_mucgec",
+      "source_id": "90",
+      "kp_id": null,
+      "explanation": "疑问表达：询问解决办法用‘怎么办’。正确为‘那我们面对这个问题该怎么办呢？’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "询问解决办法用疑问表达‘怎么办’"
+        }
+      ],
+      "restatement": "那我们面对这个问题怎么办好呢？",
+      "evid": "怎么办",
+      "truth": "partial",
+      "iso_solution": 1,
+      "arbitration_note": "若 pass 亦可为‘该怎么解决(呢)’，MVP 以‘怎么办’为主解，等价解较少，暂不扩多 pass。",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "MUCGEC-90:hollow",
+      "source": "direction2_mucgec",
+      "source_id": "90",
+      "kp_id": null,
+      "explanation": "疑问表达：询问解决办法用‘怎么办’。正确为‘那我们面对这个问题该怎么办呢？’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "询问解决办法用疑问表达‘怎么办’"
+        }
+      ],
+      "restatement": "每个问题都有解决的办法，我们要好好商量……",
+      "evid": "",
+      "truth": "hollow",
+      "iso_solution": 1,
+      "arbitration_note": "若 pass 亦可为‘该怎么解决(呢)’，MVP 以‘怎么办’为主解，等价解较少，暂不扩多 pass。",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "MUCGEC-147:pass",
+      "source": "direction2_mucgec",
+      "source_id": "147",
+      "kp_id": null,
+      "explanation": "固定搭配：告别信说‘分手信’。正确为‘这是我最后的一封分手信’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表示结束恋爱关系的信叫‘分手信’"
+        }
+      ],
+      "restatement": "这是我最后的一封分手信。",
+      "evid": "分手信",
+      "truth": "pass",
+      "iso_solution": 1,
+      "arbitration_note": "若 pass 可为‘我们最后的信’等，MVP 以‘分手信’主解；等价解较少，暂不扩多 pass。",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "MUCGEC-147:fail",
+      "source": "direction2_mucgec",
+      "source_id": "147",
+      "kp_id": null,
+      "explanation": "固定搭配：告别信说‘分手信’。正确为‘这是我最后的一封分手信’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表示结束恋爱关系的信叫‘分手信’"
+        }
+      ],
+      "restatement": "这是我最后的一封信分开分手。",
+      "evid": "分开分手",
+      "truth": "fail",
+      "iso_solution": 1,
+      "arbitration_note": "若 pass 可为‘我们最后的信’等，MVP 以‘分手信’主解；等价解较少，暂不扩多 pass。",
+      "golden_status": "draft",
+      "need_arbitration": false
+    },
+    {
+      "id": "MUCGEC-147:partial",
+      "source": "direction2_mucgec",
+      "source_id": "147",
+      "kp_id": null,
+      "explanation": "固定搭配：告别信说‘分手信’。正确为‘这是我最后的一封分手信’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表示结束恋爱关系的信叫‘分手信’"
+        }
+      ],
+      "restatement": "这是我最后一封分手的信。",
+      "evid": "分手",
+      "truth": "partial",
+      "iso_solution": 1,
+      "arbitration_note": "若 pass 可为‘我们最后的信’等，MVP 以‘分手信’主解；等价解较少，暂不扩多 pass。",
+      "golden_status": "draft",
+      "need_arbitration": true
+    },
+    {
+      "id": "MUCGEC-147:hollow",
+      "source": "direction2_mucgec",
+      "source_id": "147",
+      "kp_id": null,
+      "explanation": "固定搭配：告别信说‘分手信’。正确为‘这是我最后的一封分手信’。",
+      "key_points": [
+        {
+          "id": 1,
+          "text": "表示结束恋爱关系的信叫‘分手信’"
+        }
+      ],
+      "restatement": "写这封信的时候，我心里特别难过……",
+      "evid": "",
+      "truth": "hollow",
+      "iso_solution": 1,
+      "arbitration_note": "若 pass 可为‘我们最后的信’等，MVP 以‘分手信’主解；等价解较少，暂不扩多 pass。",
+      "golden_status": "draft",
+      "need_arbitration": true
+    }
+  ]
+}

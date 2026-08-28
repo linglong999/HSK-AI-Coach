@@ -1,0 +1,667 @@
+{
+  "metrics": {
+    "success": 17,
+    "total": 17,
+    "correction_fidelity_rate": 1.0,
+    "structure_compliance_rate": 0.7058823529411765,
+    "beyond_level_hit_count": 0
+  },
+  "rows": [
+    {
+      "id": "HSK1-ERR-001",
+      "level": "HSK1",
+      "original": "我有一个猫。",
+      "golden_correction": "一只猫",
+      "explanation": "哪里不对：量词“个”用错了，猫应该用“只”。为什么：中文里不同事物用不同量词，“个”常用于人、苹果等，“只”用于动物、鞋子等。怎么改：把“一个”改成“一只”，说“我有一只猫”。想一想：你还能用“只”说哪些东西？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "量词“只”用于动物，如猫、狗、鸟。"
+        },
+        {
+          "id": "kp-2",
+          "text": "量词“个”用于一般事物，如人、苹果。"
+        },
+        {
+          "id": "kp-3",
+          "text": "不同名词搭配不同量词，需记忆。"
+        }
+      ],
+      "keywords": [
+        "量词",
+        "只",
+        "个"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 105,
+        "length_ok": true,
+        "key_points_ids_ok": true,
+        "key_points_count": 3,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": "check",
+        "note": "轻微瑕疵：#1 量词“只”表述，讲解称鞋子用“只”，实际更常用“双”（无把对的改错的硬伤）"
+      }
+    },
+    {
+      "id": "HSK1-ERR-002",
+      "level": "HSK1",
+      "original": "我想买苹果很多。",
+      "golden_correction": "很多苹果",
+      "explanation": "哪里不对：'苹果很多'顺序反了，中文里数量词要放在名词前。为什么：中文习惯先说'多少'再说'东西'，比如'三个苹果'，不说'苹果三个'。怎么改：改成'我想买很多苹果'。想想：如果要说'我想买三个苹果'，你会怎么说？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "数量词（如'很多'）放在名词前"
+        }
+      ],
+      "keywords": [
+        "数量词位置",
+        "语序"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 107,
+        "length_ok": true,
+        "key_points_ids_ok": true,
+        "key_points_count": 1,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": true,
+        "note": ""
+      }
+    },
+    {
+      "id": "HSK1-ERR-003",
+      "level": "HSK1",
+      "original": "你喝水吧？",
+      "golden_correction": "吗",
+      "explanation": "哪里不对：这里用“吧”问别人喝不喝水，听起来像在建议或催促，不是真正的提问。为什么：在中文里，“吧”通常用于提议或推测，比如“我们走吧”；而“吗”才是用来把陈述变成疑问，比如“你喝水吗？”是单纯问对方要不要喝水。怎么改：把“吧”换成“吗”，变成“你喝水吗？”。你想想，如果问“你吃饭吧？”和“你吃饭吗？”，感觉有什么不同？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "“吗”用于一般疑问句，把陈述变提问"
+        },
+        {
+          "id": "kp-2",
+          "text": "“吧”用于提议或推测，不用于直接询问事实"
+        },
+        {
+          "id": "kp-3",
+          "text": "疑问句选择“吗”还是“吧”取决于说话意图"
+        }
+      ],
+      "keywords": [
+        "疑问词",
+        "语气词",
+        "疑问句"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 161,
+        "length_ok": false,
+        "key_points_ids_ok": true,
+        "key_points_count": 3,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": true,
+        "note": ""
+      }
+    },
+    {
+      "id": "HSK2-ERR-005",
+      "level": "HSK2",
+      "original": "我把书在桌子上放了。",
+      "golden_correction": "书放在桌子上",
+      "explanation": "哪里不对？你把‘在桌子上’放在动词‘放’前面了，但中文里‘放’要直接跟地点。为什么？因为‘放’是个动作，动作要落在某个地方，所以地点要跟在动词后面，像‘放在桌子上’。怎么改？把‘在’和‘放’换一下位置，变成‘我把书放在桌子上’。想想看，如果要说‘我把书放在书包里’，你会怎么说？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "动词‘放’后直接跟地点，用‘在’连接"
+        }
+      ],
+      "keywords": [
+        "动词+在+地点",
+        "语序"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 139,
+        "length_ok": true,
+        "key_points_ids_ok": true,
+        "key_points_count": 1,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": true,
+        "note": ""
+      }
+    },
+    {
+      "id": "HSK2-ERR-006",
+      "level": "HSK2",
+      "original": "他比我很高。",
+      "golden_correction": "比我高",
+      "explanation": "哪里不对？‘比’字句里，形容词前面不能加‘很’来加强，比如‘他比我高’就对了。为什么？因为‘比’已经表示比较，再用‘很’就重复了，就像说‘更更加’一样。怎么改？去掉‘很’，说‘比我高’。想想看，如果要说‘高很多’，该怎么说呢？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "‘比’字句形容词前不加‘很’"
+        }
+      ],
+      "keywords": [
+        "比字句",
+        "程度副词",
+        "比较"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 113,
+        "length_ok": true,
+        "key_points_ids_ok": true,
+        "key_points_count": 1,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": true,
+        "note": ""
+      }
+    },
+    {
+      "id": "HSK2-ERR-008",
+      "level": "HSK2",
+      "original": "我不能说中文很好。",
+      "golden_correction": "中文说得不是很好",
+      "explanation": "哪里不对：'不能说中文很好'听起来像'我不允许说'，意思反了。为什么：'能'表示能力，但这里你想说'说得好不好'，要用'说得'来连接。怎么改：说'中文说得不是很好'，就像'他跑得很快'一样，用'得'把动作和程度连起来。想想：如果你想说'我唱歌很好'，应该怎么说？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "用'得'连接动词和程度，如'说得很好'"
+        }
+      ],
+      "keywords": [
+        "得",
+        "程度补语"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 131,
+        "length_ok": true,
+        "key_points_ids_ok": true,
+        "key_points_count": 1,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": true,
+        "note": ""
+      }
+    },
+    {
+      "id": "HSK3-ERR-012",
+      "level": "HSK3",
+      "original": "虽然他很累，但是他去上班。",
+      "golden_correction": "他还是去上班了",
+      "explanation": "哪里不对？‘他去上班’少了‘还是’和‘了’，听起来像普通陈述，不是‘虽然…但是’的转折。为什么？‘虽然…但是’要强调‘出乎意料’——他累，但结果还是去了。‘了’表示动作完成。怎么改？加‘还是’和‘了’：‘虽然他很累，但是他还是去上班了。’想想：如果不说‘还是’，句子还像转折吗？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "转折复句需要‘还是’强调结果与预期相反"
+        },
+        {
+          "id": "kp-2",
+          "text": "‘了’表示动作完成，使句子更自然"
+        }
+      ],
+      "keywords": [
+        "转折",
+        "还是",
+        "了"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 139,
+        "length_ok": true,
+        "key_points_ids_ok": true,
+        "key_points_count": 2,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": true,
+        "note": ""
+      }
+    },
+    {
+      "id": "HSK2-ERR-017",
+      "level": "HSK2",
+      "original": "我昨天看了一个电影。",
+      "golden_correction": "一部电影",
+      "explanation": "哪里不对：'一个电影'中的'个'用错了，应该用'部'。为什么：中文里不同的东西用不同的量词，'电影'是完整的作品，像书、电影、电视剧用'部'，而'个'用于普通物品，如'一个苹果'。怎么改：把'一个'改成'一部'，说'我昨天看了一部电影'。想想看，还有哪些东西也用'部'呢？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "量词'部'用于电影、书籍等完整作品"
+        }
+      ],
+      "keywords": [
+        "量词",
+        "部",
+        "电影"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 136,
+        "length_ok": true,
+        "key_points_ids_ok": true,
+        "key_points_count": 1,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": true,
+        "note": ""
+      }
+    },
+    {
+      "id": "HSK3-ERR-018",
+      "level": "HSK3",
+      "original": "他常常迟到了。",
+      "golden_correction": "常常迟到",
+      "explanation": "哪里不对？‘常常’表示经常发生，后面不能加‘了’表示完成。比如‘他常常迟到’是对的，但‘他常常迟到了’就错了。为什么？‘了’表示动作已经完成，而‘常常’是反复发生，两者矛盾。就像‘我常常吃饭了’也不对，应该说‘我常常吃饭’。怎么改？去掉‘了’，改成‘他常常迟到’。你还能想到其他类似‘常常’的词吗？比如‘总是’‘每天’，它们后面也不能加‘了’哦。",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "‘常常’表示经常性动作，不与‘了’连用"
+        },
+        {
+          "id": "kp-2",
+          "text": "‘了’表示完成，与‘常常’的反复性矛盾"
+        },
+        {
+          "id": "kp-3",
+          "text": "改正：去掉‘了’，用‘常常迟到’"
+        }
+      ],
+      "keywords": [
+        "常常",
+        "了",
+        "频率副词"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 173,
+        "length_ok": false,
+        "key_points_ids_ok": true,
+        "key_points_count": 3,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": false,
+        "accurate_ok": true,
+        "note": ""
+      }
+    },
+    {
+      "id": "HSK1-ERR-023",
+      "level": "HSK1",
+      "original": "我是昨天来了。",
+      "golden_correction": "来的",
+      "explanation": "哪里不对：'来了'表示动作完成，但这里要强调'昨天'这个时间，应该用'来的'。为什么：'是……的'结构用来强调时间、地点、方式，比如'我是坐车来的'。'来了'只是说'来'这个动作完成了，没有强调时间。怎么改：改成'我是昨天来的'，这样就把'昨天'这个时间突出出来了。你想想，如果要说'我是坐车来的'，'坐车'是不是也被强调了呢？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "用'是……的'强调时间、地点、方式"
+        }
+      ],
+      "keywords": [
+        "是……的",
+        "强调",
+        "时间"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 164,
+        "length_ok": false,
+        "key_points_ids_ok": true,
+        "key_points_count": 1,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": true,
+        "note": ""
+      }
+    },
+    {
+      "id": "HSK2-ERR-025",
+      "level": "HSK2",
+      "original": "我努力做中文。",
+      "golden_correction": "学习中文",
+      "explanation": "哪里不对？\"做中文\"听起来像在制作中文，但中文是语言，不是物品。为什么？\"做\"通常用于具体动作，如\"做饭\"、\"做作业\"。学习语言要用\"学习\"或\"学\"。怎么改？说\"我努力学习中文\"或\"我学中文\"。想想：你还会\"做\"什么？\"做朋友\"对吗？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "动词\"做\"用于具体事物，如做饭、做作业"
+        },
+        {
+          "id": "kp-2",
+          "text": "学习语言用\"学习\"或\"学\"，如学中文"
+        },
+        {
+          "id": "kp-3",
+          "text": "注意动词和宾语的搭配，避免直译"
+        }
+      ],
+      "keywords": [
+        "动词搭配",
+        "学习",
+        "做"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 117,
+        "length_ok": true,
+        "key_points_ids_ok": true,
+        "key_points_count": 3,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": true,
+        "note": ""
+      }
+    },
+    {
+      "id": "HSK1-ERR-026",
+      "level": "HSK1",
+      "original": "她是个很好得人。",
+      "golden_correction": "很好的",
+      "explanation": "这里“的”和“得”用混了。“的”用在名词前，像“好人”；“得”用在动词后，像“跑得快”。句子说“很好的人”，“人”是名词，所以要用“的”。改一下：她是个很好的人。想想看，还有哪些词后面该用“的”呢？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "区分“的”和“得”的用法"
+        }
+      ],
+      "keywords": [
+        "的",
+        "得",
+        "结构助词"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 99,
+        "length_ok": true,
+        "key_points_ids_ok": true,
+        "key_points_count": 1,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": true,
+        "note": ""
+      }
+    },
+    {
+      "id": "HSK1-ERR-028",
+      "level": "HSK1",
+      "original": "这个苹果好吃的。",
+      "golden_correction": "好吃",
+      "explanation": "哪里不对：'好吃的'是形容词，但这里不需要'的'。为什么：在中文里，'的'通常用在名词前，比如'好吃的苹果'。但这里'苹果'是主语，后面直接跟形容词'好吃'就行，不需要'的'。怎么改：改成'这个苹果好吃'。试试看，如果想说'这个苹果是好吃的'，那'的'就用对了，但这里没有'是'，所以不用'的'。你想想，什么时候用'的'呢？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "形容词作谓语时，后面不加'的'。"
+        },
+        {
+          "id": "kp-2",
+          "text": "'的'用于修饰名词，如'好吃的苹果'。"
+        },
+        {
+          "id": "kp-3",
+          "text": "判断是否需要'的'，看后面有没有名词。"
+        }
+      ],
+      "keywords": [
+        "形容词谓语",
+        "的用法",
+        "修饰名词"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 162,
+        "length_ok": false,
+        "key_points_ids_ok": true,
+        "key_points_count": 3,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": true,
+        "note": ""
+      }
+    },
+    {
+      "id": "HSK2-ERR-030",
+      "level": "HSK2",
+      "original": "我爸爸开汽车很大。",
+      "golden_correction": "开的汽车",
+      "explanation": "哪里不对：句子想说爸爸的车很大，但把“开汽车”和“很大”放在一起，意思变成了“开车这个动作很大”。为什么：中文里形容词要放在名词前，比如“大汽车”，不能说“汽车很大”放在动词后。怎么改：应该说“我爸爸开的汽车很大”，用“的”连接“开”和“汽车”，表示“爸爸开的车”。想一想：如果想说“爸爸开车很快”，应该怎么说呢？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "形容词修饰名词时，放在名词前，如“大汽车”"
+        },
+        {
+          "id": "kp-2",
+          "text": "动词短语修饰名词时，用“的”连接，如“开的汽车”"
+        },
+        {
+          "id": "kp-3",
+          "text": "注意句子结构：主语+动词+的+名词+形容词"
+        }
+      ],
+      "keywords": [
+        "的",
+        "形容词位置",
+        "句子结构"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 157,
+        "length_ok": false,
+        "key_points_ids_ok": true,
+        "key_points_count": 3,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": "check",
+        "note": "轻微瑕疵：#14 规则表述（无硬伤）"
+      }
+    },
+    {
+      "id": "HSK2-ERR-031",
+      "level": "HSK2",
+      "original": "你几岁？",
+      "golden_correction": "多大了",
+      "explanation": "“几岁”通常问小孩，像问小朋友“你几岁啦？”对大人说“你几岁”不礼貌。就像问老师年龄，要说“您多大了？”更尊重。“多大了”适合问任何年龄的人。想想看，如果你问一位老奶奶“你几岁”，她会高兴吗？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "“几岁”用于问小孩，对大人不礼貌"
+        },
+        {
+          "id": "kp-2",
+          "text": "“多大了”更通用，适合各种年龄"
+        },
+        {
+          "id": "kp-3",
+          "text": "注意礼貌，用“您”更尊敬"
+        }
+      ],
+      "keywords": [
+        "语用",
+        "礼貌",
+        "年龄询问"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 96,
+        "length_ok": true,
+        "key_points_ids_ok": true,
+        "key_points_count": 3,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": true,
+        "note": ""
+      }
+    },
+    {
+      "id": "HSK2-ADV-001",
+      "level": "HSK2",
+      "original": "今天我他一起吃饭。",
+      "golden_correction": "我跟他",
+      "explanation": "哪里不对：'我他'缺少连接词，听起来像两个词堆在一起。为什么：中文里两个人一起做某事，要用'跟'或'和'连接，就像'我和朋友'。怎么改：改成'我跟他一起吃饭'。想想看，如果换成'你'，该怎么说？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "用'跟'或'和'连接两个人"
+        },
+        {
+          "id": "kp-2",
+          "text": "注意语序：我+跟+他+动作"
+        }
+      ],
+      "keywords": [
+        "跟",
+        "和",
+        "一起"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 97,
+        "length_ok": true,
+        "key_points_ids_ok": true,
+        "key_points_count": 2,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": true,
+        "note": ""
+      }
+    },
+    {
+      "id": "HSK1-ADV-004",
+      "level": "HSK1",
+      "original": "我喝水了水。",
+      "golden_correction": null,
+      "explanation": "哪里不对：'水了水'重复了'水'，动词'喝'后面只需要一个宾语'水'。为什么：'了'表示动作完成，放在动词后，但宾语只能有一个，不能再说'水'。怎么改：说'我喝水了'或'我喝了水'。想想：如果要说'我喝了两杯水'，该怎么放'了'呢？",
+      "key_points": [
+        {
+          "id": "kp-1",
+          "text": "动词后接一个宾语，不重复"
+        }
+      ],
+      "keywords": [
+        "宾语",
+        "了",
+        "语序"
+      ],
+      "auto": {
+        "correction_fidelity": true,
+        "beyond_level_words": [],
+        "length": 116,
+        "length_ok": true,
+        "key_points_ids_ok": true,
+        "key_points_count": 1,
+        "free_generated": true,
+        "uncertain_note_present": false,
+        "is_keyword_list": true
+      },
+      "manual": {
+        "feynman_method_ok": true,
+        "retention_prompt_ok": true,
+        "accurate_ok": true,
+        "note": ""
+      }
+    }
+  ]
+}
