@@ -368,7 +368,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 # 写回记忆：user 必记；assistant 回复非空才记（fallback 文案也记，多轮不断档）
                 reply = str(res.get("text") or "")
                 mem.append(conversation_id, "user", user_input)
-                # 会话标题（0.19 前端 v2）：首条消息自动设为标题（仿 Explore 卡片标题取自提问）
+                # 会话标题（0.19 前端 v2）：首条消息自动设为标题（取自首句提问，便于侧栏回访识别）
                 if not history:
                     try:
                         mem.touch(conversation_id, title=user_input[:18])

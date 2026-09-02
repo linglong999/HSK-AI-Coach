@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HSK-AI-Coach · 自由对话 · 认知地图</title>
 <!--
-  前端壳 v2（0.19 · Explore 化改造，2026-09-02）
-  借鉴 Explore：单强调色+灰阶、可折叠侧栏、卡片画布、主题切换、大弹窗设置。
+  前端壳 v2（0.19 · 卡片画布，2026-09-02）
+  单强调色+灰阶、可折叠侧栏、卡片画布、主题切换、大弹窗设置。
   驯化语义（项目铁律）：卡片分支动作只沿图谱权威边（↗深挖已有KP / →混淆边相邻 / ↓待复习），
   无权威边方向置灰——"界面自由，数据规则"。
   主题：孟菲斯 / 暖橙 两套（用户拍板），data-theme 切换派生 token。
@@ -1406,7 +1406,7 @@ const settingsTabs={
   about:()=>`
     <h3>关于</h3>
     <ul class="about-li">
-      <li>HSK-AI-Coach · 前端壳 v2（Explore 化改造，0.19）</li>
+      <li>HSK-AI-Coach · 前端壳 v2（0.19）</li>
       <li>架构：planner 自由 ReAct 唯一对话入口（dialog 契约 v1）</li>
       <li>数据：偏误图谱唯一权威 · 两段式写回 · 服务端多轮记忆（按会话）</li>
       <li>零第三方依赖：Python 标准库 + 原生 JS/SVG，单文件可离线</li>

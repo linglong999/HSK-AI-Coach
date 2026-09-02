@@ -1,6 +1,6 @@
 # ============================================================
 # engine/providers.py
-# 0.20 · BYOK 模型密钥管理（对标 Explore：UI 内添加供应商，无需改 .env 重启）
+# 0.20 · 模型密钥管理（UI 内添加供应商，无需改 .env 重启）
 # - 存储仅含 UI 添加的供应商（data/llm_providers.json，gitignore 挡住）
 # - .env 密钥向后兼容：运行时虚拟为 id="env" 的默认供应商（不可删除）
 # - 全部走 OpenAI 兼容协议：DeepSeek/Qwen/GLM/Kimi/Ollama 等同一格式
