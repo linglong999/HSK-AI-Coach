@@ -1,199 +1,413 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh" data-theme="memphis">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HSK-AI-Coach · 自由对话 · 认知地图</title>
+<!--
+  前端壳 v2（0.19 · Explore 化改造，2026-09-02）
+  借鉴 Explore：单强调色+灰阶、可折叠侧栏、卡片画布、主题切换、大弹窗设置。
+  驯化语义（项目铁律）：卡片分支动作只沿图谱权威边（↗深挖已有KP / →混淆边相邻 / ↓待复习），
+  无权威边方向置灰——"界面自由，数据规则"。
+  主题：孟菲斯 / 暖橙 两套（用户拍板），data-theme 切换派生 token。
+  零依赖铁律（M10）：无 CDN/字体外链，系统字体栈，单文件可离线。
+  数据接缝：/api/dialog（planner 唯一入口，conversation_id 多轮记忆）+ /api/graph
+            + /api/profile（画像/会话列表）+ /api/conversation?id=（深链恢复）。
+-->
 <style>
-  :root{
-    --bg:#0d1017; --panel:#151a23; --panel2:#1b2230; --line:#28304a;
-    --tx:#dde4f0; --tx2:#8b94a8; --tx3:#5c6579;
-    --ac:#4f9cff; --ok:#3fd68f; --warn:#e8b45a; --err:#ef6a5f;
-    --kp-vocab:#4f9cff; --kp-grammar:#a88bfa; --kp-pragma:#e8925a; --kp-char:#ef6a5f;
-    --r-sm:8px; --r-md:12px; --r-lg:16px;
-    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px;
-    --shadow:0 2px 10px rgba(0,0,0,.35);
+  /* ============ 主题 token（两套，用户拍板：孟菲斯 / 暖橙） ============ */
+  :root,[data-theme="memphis"]{
+    --brand:223 107 140; --brand-ink:#fff;
+    --bg:250 248 243; --panel:244 240 234; --panel2:255 255 255;
+    --line:212 204 190; --line-strong:196 184 166;
+    --tx:42 36 34; --tx2:96 86 80; --tx3:140 128 120;
+    --input:242 238 232; --usermsg:252 230 236;
+    --item:240 236 228; --item-active:252 226 236;
+    /* 语义色（承载信息，不随主题降级为灰阶） */
+    --sem-ok:34 154 104; --sem-warn:183 121 26; --sem-err:206 74 64;
+    --kp-vocab:52 118 186; --kp-grammar:128 84 186; --kp-pragma:206 116 40; --kp-char:206 74 64;
   }
+  [data-theme="warm"]{
+    --brand:244 95 40; --brand-ink:#fff;
+    --bg:242 234 219; --panel:236 226 209; --panel2:255 252 247;
+    --line:208 197 180; --line-strong:190 176 156;
+    --tx:32 28 24; --tx2:90 82 72; --tx3:145 135 130;
+    --input:236 228 215; --usermsg:250 228 210;
+    --item:240 232 220; --item-active:250 222 205;
+    --sem-ok:34 154 104; --sem-warn:183 121 26; --sem-err:206 74 64;
+    --kp-vocab:52 118 186; --kp-grammar:128 84 186; --kp-pragma:206 116 40; --kp-char:206 74 64;
+  }
+
   *{box-sizing:border-box}
   html,body{height:100%}
-  body{margin:0;background:var(--bg);color:var(--tx);font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;font-size:14px}
-  #app{display:grid;grid-template-rows:54px 1fr;height:100vh}
-  header{display:flex;align-items:center;gap:12px;padding:0 18px;background:var(--panel);border-bottom:1px solid var(--line);box-shadow:0 1px 0 rgba(0,0,0,.25)}
-  header .logo{font-weight:700;font-size:16px;letter-spacing:.4px}
-  header .logo b{color:var(--ac)}
-  header .sub{font-size:12px;color:var(--tx2)}
-  header .status{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2)}
-  header .status .dot{width:8px;height:8px;border-radius:50%;background:var(--tx3)}
-  header .status.on .dot{background:var(--ok);box-shadow:0 0 6px var(--ok)}
-  header .status.off .dot{background:var(--err)}
+  body{margin:0;background:rgb(var(--bg));color:rgb(var(--tx));
+       font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;
+       transition:background .25s ease,color .25s ease}
+  .mono{font-family:Consolas,"JetBrains Mono","Courier New",monospace}
+  .a{color:rgb(var(--brand))}
 
-  /* ---- 左右布局（用户决策：必须左右）---- */
-  main{display:grid;grid-template-columns:clamp(400px,34vw,520px) 1fr;min-height:0}
-  @media (max-width:920px){
-    main{grid-template-columns:1fr;grid-template-rows:minmax(320px,54%) 1fr}
-  }
+  #app{display:flex;height:100vh}
 
-  /* =========== 左：对话流 =========== */
-  .left{border-right:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}
-  @media (max-width:920px){.left{border-right:0;border-bottom:1px solid var(--line)}}
-  .chat{flex:1;overflow-y:auto;padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-4)}
+  /* ============ 左：侧栏（0.19 新增） ============ */
+  .side{width:238px;flex-shrink:0;display:flex;flex-direction:column;background:rgb(var(--panel));
+        border-right:1px solid rgb(var(--line));transition:width .2s ease,transform .2s ease;overflow:hidden}
+  .side.closed{width:0;border-right:0}
+  .side-top{display:flex;align-items:center;gap:8px;padding:13px 12px 9px;white-space:nowrap}
+  .side-top .logo{font-weight:700;font-size:16px;letter-spacing:.4px}
+  .side-top .logo b{color:rgb(var(--brand))}
+  .fold{margin-left:auto;background:none;border:0;color:rgb(var(--tx3));cursor:pointer;font-size:16px;padding:4px 6px;border-radius:6px}
+  .fold:hover{color:rgb(var(--tx));background:rgb(var(--item))}
+  .side-open{position:fixed;top:12px;left:12px;z-index:60;width:34px;height:34px;border-radius:9px;
+             border:1px solid rgb(var(--line));background:rgb(var(--panel2));color:rgb(var(--tx2));
+             cursor:pointer;font-size:15px;display:none;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+  .side-open:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+  .side-open.show{display:block}   /* 全局生效：宽屏收起侧栏后也能拉起 */
+  .side-scroll{flex:1;overflow-y:auto;padding:2px 10px 10px;display:flex;flex-direction:column;gap:2px;min-height:0}
+  .side-scroll::-webkit-scrollbar{width:7px}
+  .side-scroll::-webkit-scrollbar-thumb{background:rgb(var(--line));border-radius:4px}
+  .hd{display:flex;align-items:center;gap:7px;padding:10px 6px 5px;color:rgb(var(--tx3));
+      font-size:11px;font-weight:700;letter-spacing:1.2px;white-space:nowrap}
+  .hd .sep{flex:1;height:1px;background:rgb(var(--line))}
+  .hd .ct{font-weight:400;letter-spacing:0}
+  .resident{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:10px;
+            background:rgb(var(--item));border:1px solid rgb(var(--line));cursor:pointer;white-space:nowrap}
+  .resident:hover{border-color:rgb(var(--brand)/.5)}
+  .resident .av{width:30px;height:30px;border-radius:8px;background:rgb(var(--brand));color:rgb(var(--brand-ink));
+                display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
+  .resident .mt{flex:1;min-width:0}
+  .resident .mt .t{font-size:13px;font-weight:600}
+  .resident .mt .s{font-size:10.5px;color:rgb(var(--tx3))}
+  .resident .chip{font-size:9.5px;padding:1px 7px;border-radius:6px;
+                  background:rgb(var(--brand)/.14);color:rgb(var(--brand))}
+  .sbtn{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:9px;cursor:pointer;
+        color:rgb(var(--tx2));transition:background .15s;white-space:nowrap;user-select:none}
+  .sbtn:hover{background:rgb(var(--item))}
+  .sbtn .ic{width:17px;text-align:center;color:rgb(var(--tx3));flex-shrink:0;font-size:13px}
+  .sbtn.add{border:1px dashed rgb(var(--line-strong));color:rgb(var(--tx3));justify-content:center;font-size:12.5px;padding:7px}
+  .sbtn.add:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+  .sbtn .bdg{margin-left:auto;font-size:10.5px;color:rgb(var(--tx3))}
+  .sbtn.cur{background:rgb(var(--item-active));color:rgb(var(--tx));font-weight:600}
+  .sbtn.cur .ic{color:rgb(var(--brand))}
+  .srow-sub{font-size:10.5px;color:rgb(var(--tx3));margin-left:auto}
+  .side-bot{border-top:1px solid rgb(var(--line));padding:8px 10px;display:flex;flex-direction:column;gap:2px;white-space:nowrap}
+  .status{display:flex;align-items:center;gap:6px;font-size:11px;color:rgb(var(--tx3));padding:4px 9px;overflow:hidden;text-overflow:ellipsis}
+  .status .dot{width:7px;height:7px;border-radius:50%;background:rgb(var(--tx3));flex-shrink:0}
+  .status.on .dot{background:rgb(var(--sem-ok))}
+  .status.off .dot{background:rgb(var(--sem-err))}
+
+  /* ============ 主区：对话画布（0.19 第三轮：地图不常驻，仅经侧栏「◈ 认知地图」进入） ============ */
+  main{flex:1;display:grid;grid-template-columns:1fr;min-width:0;min-height:0}
+  .right{display:none}                        /* 地图默认隐藏 */
+  main.mapview .right{display:flex;flex-direction:column;border-left:0}
+  main.mapview .left{display:none}
+  .back-chat{display:none;align-items:center;gap:4px;border:1px solid rgb(var(--line));background:rgb(var(--panel2));
+             color:rgb(var(--tx2));font-size:12px;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap}
+  .back-chat:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+  main.mapview .back-chat{display:inline-flex}
+  .left{background:rgb(var(--panel));display:flex;flex-direction:column;min-height:0}
+  .chat{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px;
+        align-items:center}
+  .chat>*{width:100%;max-width:880px}         /* 全宽画布下内容居中限宽，保可读性 */
   .chat::-webkit-scrollbar{width:8px}
-  .chat::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+  .chat::-webkit-scrollbar-thumb{background:rgb(var(--line));border-radius:4px}
 
-  /* 空状态（左对齐不对称，非居中卡片） */
-  .empty{color:var(--tx2);padding:var(--sp-5) var(--sp-2);line-height:1.9}
-  .empty h2{margin:0 0 var(--sp-2);font-size:17px;color:var(--tx);font-weight:700}
-  .empty p{margin:0 0 var(--sp-4);font-size:13px}
-  .chips{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
-  .chip{padding:6px 13px;border-radius:20px;border:1px solid var(--line);background:var(--panel2);
-        color:var(--tx2);font-size:12.5px;cursor:pointer;transition:border-color .15s,color .15s}
-  .chip:hover{border-color:var(--ac);color:var(--ac)}
+  .empty{color:rgb(var(--tx2));padding:24px 6px;line-height:1.9}
+  .empty h2{margin:0 0 8px;font-size:17px;color:rgb(var(--tx));font-weight:700}
+  .empty p{margin:0 0 14px;font-size:13px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{padding:6px 13px;border-radius:20px;border:1px solid rgb(var(--line));background:rgb(var(--panel2));
+        color:rgb(var(--tx2));font-size:12.5px;cursor:pointer;transition:border-color .15s,color .15s}
+  .chip:hover{border-color:rgb(var(--brand));color:rgb(var(--brand))}
 
-  .msg-user{align-self:flex-end;max-width:86%;background:#1d3a5f;border:1px solid #2c4f7d;
-            border-radius:var(--r-md) var(--r-md) 4px var(--r-md);padding:9px 12px;line-height:1.55;white-space:pre-wrap;animation:pop .18s ease}
-  /* 一个 AI 回合 = 成果卡组 + 结语文本（组内紧、回合间松的节奏） */
-  .turn{display:flex;flex-direction:column;gap:var(--sp-2);animation:pop .18s ease}
+  .msg-user{align-self:flex-end;max-width:86%;background:rgb(var(--usermsg));border:1px solid rgb(var(--line));
+            border-radius:12px 12px 4px 12px;padding:8px 12px;line-height:1.55;white-space:pre-wrap;animation:pop .18s ease}
+  .branch-tag{align-self:flex-end;font-size:10.5px;font-weight:700;color:rgb(var(--brand));
+              background:rgb(var(--brand)/.1);border:1px solid rgb(var(--brand)/.3);border-radius:6px;
+              padding:1px 8px;margin-bottom:-6px;letter-spacing:.5px}
   @keyframes pop{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 
-  /* 结语文本：不装箱，左侧强调线（区别于卡片的信息层级） */
-  .ai-text{padding:2px 0 2px 12px;border-left:3px solid var(--ac);color:var(--tx);
-           line-height:1.7;white-space:pre-wrap;font-size:14px}
+  .ai-text{padding:2px 0 2px 12px;border-left:3px solid rgb(var(--brand));color:rgb(var(--tx));
+           line-height:1.7;white-space:pre-wrap;font-size:14px;animation:pop .18s ease}
+  .note-c{color:rgb(var(--brand));text-decoration:underline;text-decoration-color:rgb(var(--brand)/.5);
+          text-underline-offset:3px;cursor:pointer}
+  .note-c:hover{background:rgb(var(--brand)/.1);border-radius:3px}
 
   /* ---- 学习成果卡 ---- */
-  .card{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r-md);
-        padding:12px 14px;box-shadow:var(--shadow)}
+  .card{position:relative;background:rgb(var(--panel2));border:1px solid rgb(var(--line));border-radius:12px;
+        padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.07);animation:pop .18s ease}
+  .cardlabel{font-size:11px;font-weight:700;letter-spacing:1px;color:rgb(var(--tx3));margin-bottom:7px}
   .card .head{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
-  .cardlabel{font-size:11px;font-weight:700;letter-spacing:1px;color:var(--tx3);margin-bottom:6px}
   .tag{font-size:11px;padding:2px 9px;border-radius:20px;font-weight:600}
-  .tag.vocab{background:#12355c;color:var(--kp-vocab)} .tag.grammar{background:#2a1d5c;color:var(--kp-grammar)}
-  .tag.pragma{background:#3d2a14;color:var(--kp-pragma)} .tag.char{background:#3d1414;color:var(--kp-char)}
-  .frag{font-size:15px;font-weight:600;color:var(--err);text-decoration:line-through;text-decoration-color:rgba(239,106,95,.55)}
-  .corr{font-size:15px;font-weight:600;color:var(--ok)}
+  .tag.vocab{background:rgb(var(--kp-vocab)/.14);color:rgb(var(--kp-vocab))}
+  .tag.grammar{background:rgb(var(--kp-grammar)/.14);color:rgb(var(--kp-grammar))}
+  .tag.pragma{background:rgb(var(--kp-pragma)/.16);color:rgb(var(--kp-pragma))}
+  .tag.char{background:rgb(var(--kp-char)/.14);color:rgb(var(--kp-char))}
+  .frag{font-size:15px;font-weight:600;color:rgb(var(--sem-err));text-decoration:line-through;
+        text-decoration-color:rgb(var(--sem-err)/.5)}
+  .corr{font-size:15px;font-weight:600;color:rgb(var(--sem-ok))}
   .expl-text{font-size:13px;line-height:1.7;white-space:pre-wrap}
-  .kp-row{display:flex;gap:6px;margin-top:var(--sp-2);flex-wrap:wrap}
-  .kp{padding:2px 9px;border-radius:6px;font-size:12px;color:var(--ac);background:rgba(79,156,255,.09);border:1px solid rgba(79,156,255,.22)}
-  .meta-row{font-size:11px;color:var(--tx3);margin-top:var(--sp-2);display:flex;gap:10px;flex-wrap:wrap}
+  .kp-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .kp{padding:2px 9px;border-radius:6px;font-size:12px;color:rgb(var(--brand));
+      background:rgb(var(--brand)/.08);border:1px solid rgb(var(--brand)/.25);cursor:pointer}
+  .kp:hover{background:rgb(var(--brand)/.16)}
+  .kp-plain{padding:2px 9px;border-radius:6px;font-size:12px;color:rgb(var(--tx2));
+            background:rgb(var(--item));border:1px solid rgb(var(--line))}
+  .meta-row{font-size:11px;color:rgb(var(--tx3));margin-top:8px;display:flex;gap:10px;flex-wrap:wrap}
 
-  /* 低置信候选条 */
-  .uc-strip{font-size:12px;color:var(--tx2);background:rgba(232,180,90,.07);border:1px dashed rgba(232,180,90,.3);
-            border-radius:var(--r-sm);padding:7px 11px;line-height:1.6}
+  /* 低置信候选条（琥珀虚线 = 与已确认偏误卡明确区分） */
+  .uc-strip{font-size:12px;color:rgb(var(--sem-warn));background:rgb(var(--sem-warn)/.07);
+            border:1px dashed rgb(var(--sem-warn)/.45);border-radius:8px;padding:7px 11px;line-height:1.6}
 
-  /* 正确句卡 */
-  .card.clean{border-color:rgba(63,214,143,.35);background:linear-gradient(180deg,rgba(63,214,143,.07),var(--panel2))}
-  .clean-title{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--ok);font-size:14px}
-  .clean-sub{font-size:12.5px;color:var(--tx2);margin-top:4px;line-height:1.6}
+  .card.clean{border-color:rgb(var(--sem-ok)/.4);background:linear-gradient(180deg,rgb(var(--sem-ok)/.06),rgb(var(--panel2)))}
+  .clean-title{display:flex;align-items:center;gap:8px;font-weight:700;color:rgb(var(--sem-ok));font-size:14px}
+  .clean-sub{font-size:12.5px;color:rgb(var(--tx2));margin-top:4px;line-height:1.6}
 
-  /* 验证卡 */
-  .card.verify{border-left:3px solid var(--warn)}
-  .card.verify.v-pass{border-left-color:var(--ok)}
-  .card.verify.v-fail{border-left-color:var(--err)}
+  .card.verify{border-left:3px solid rgb(var(--sem-warn))}
+  .card.verify.v-pass{border-left-color:rgb(var(--sem-ok))}
+  .card.verify.v-fail{border-left-color:rgb(var(--sem-err))}
   .v-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .v-badge{font-size:12px;font-weight:700;padding:3px 11px;border-radius:20px}
-  .v-badge.pass{background:rgba(63,214,143,.15);color:var(--ok)}
-  .v-badge.partial{background:rgba(232,180,90,.15);color:var(--warn)}
-  .v-badge.fail{background:rgba(239,106,95,.15);color:var(--err)}
-  .v-cov{font-size:12.5px;color:var(--tx2)}
-  .v-bar{height:7px;border-radius:5px;background:#232c42;overflow:hidden;margin:9px 0 4px}
-  .v-bar>div{height:100%;border-radius:5px;background:linear-gradient(90deg,#3a8fe0,var(--ok));transition:width .5s ease}
-  .v-points{margin-top:var(--sp-2);display:flex;flex-direction:column;gap:5px}
+  .v-badge.pass{background:rgb(var(--sem-ok)/.13);color:rgb(var(--sem-ok))}
+  .v-badge.partial{background:rgb(var(--sem-warn)/.14);color:rgb(var(--sem-warn))}
+  .v-badge.fail{background:rgb(var(--sem-err)/.12);color:rgb(var(--sem-err))}
+  .v-cov{font-size:12.5px;color:rgb(var(--tx2))}
+  .v-bar{height:7px;border-radius:5px;background:rgb(var(--item));overflow:hidden;margin:9px 0 4px}
+  .v-bar>div{height:100%;border-radius:5px;background:linear-gradient(90deg,rgb(var(--brand)),rgb(var(--sem-ok)));transition:width .5s ease}
+  .v-points{margin-top:8px;display:flex;flex-direction:column;gap:5px}
   .v-point{display:flex;gap:8px;font-size:12.5px;line-height:1.55;align-items:flex-start}
   .v-point .mk{font-weight:700;flex-shrink:0}
-  .v-point.hit .mk{color:var(--ok)} .v-point.miss .mk{color:var(--err)}
-  .v-point .ev{color:var(--tx3);font-size:11.5px}
-  .v-feedback{margin-top:9px;font-size:12.5px;line-height:1.65;background:var(--panel);border-radius:8px;padding:8px 11px}
-  .v-action{margin-top:var(--sp-2);font-size:12px;padding:7px 10px;border-radius:8px}
-  .v-action.a-retry{background:rgba(232,180,90,.12);color:var(--warn)}
-  .v-action.a-teacher{background:rgba(239,106,95,.12);color:var(--err)}
-  .v-hollow{margin-top:var(--sp-2);font-size:12px;color:var(--warn);background:rgba(232,180,90,.1);border-radius:8px;padding:7px 10px}
+  .v-point.hit .mk{color:rgb(var(--sem-ok))}
+  .v-point.miss .mk{color:rgb(var(--sem-err))}
+  .v-point .ev{color:rgb(var(--tx3));font-size:11.5px}
+  .v-feedback{margin-top:9px;font-size:12.5px;line-height:1.65;background:rgb(var(--panel));border-radius:8px;padding:8px 11px}
+  .v-action{margin-top:8px;font-size:12px;padding:7px 10px;border-radius:8px;display:inline-block}
+  .v-action.a-retry{background:rgb(var(--sem-warn)/.11);color:rgb(var(--sem-warn))}
+  .v-action.a-teacher{background:rgb(var(--sem-err)/.1);color:rgb(var(--sem-err))}
+  .v-hollow{margin-top:8px;font-size:12px;color:rgb(var(--sem-warn));background:rgb(var(--sem-warn)/.09);border-radius:8px;padding:7px 10px}
 
-  /* 知识点卡 / 复习卡 */
-  .kp-li{display:flex;gap:10px;align-items:baseline;padding:7px 2px;border-bottom:1px solid rgba(40,48,74,.5);line-height:1.6}
+  .kp-li{display:flex;gap:10px;align-items:baseline;padding:7px 2px;border-bottom:1px solid rgb(var(--line)/.6);line-height:1.6}
   .kp-li:last-child{border-bottom:0}
   .kp-li .nm{font-weight:600;font-size:13.5px}
-  .kp-li .lv{flex-shrink:0;font-size:11px;color:var(--tx2);border:1px solid var(--line);border-radius:20px;padding:1px 8px}
-  .kp-li .sm{font-size:12.5px;color:var(--tx2);margin-top:2px}
+  .kp-li .lv{flex-shrink:0;font-size:11px;color:rgb(var(--tx2));border:1px solid rgb(var(--line));border-radius:20px;padding:1px 8px}
+  .kp-li .sm{font-size:12.5px;color:rgb(var(--tx2));margin-top:2px}
   .rv-li{display:flex;gap:9px;align-items:center;font-size:12.5px;padding:5px 7px;border-radius:7px;cursor:pointer}
-  .rv-li:hover{background:var(--panel)}
-  .bar{height:6px;border-radius:4px;background:#232c42;overflow:hidden;flex:1}
-  .bar>div{height:100%;background:linear-gradient(90deg,#3a8fe0,var(--ac))}
-  .rv-prio{color:var(--tx2);min-width:42px;text-align:right;font-variant-numeric:tabular-nums}
+  .rv-li:hover{background:rgb(var(--item))}
+  .bar{height:6px;border-radius:4px;background:rgb(var(--item));overflow:hidden;flex:1}
+  .bar>div{height:100%;background:linear-gradient(90deg,rgb(var(--brand)/.7),rgb(var(--brand)))}
+  .rv-prio{color:rgb(var(--tx2));min-width:42px;text-align:right;font-variant-numeric:tabular-nums}
 
-  /* 生成单元卡 */
-  .card.unit{border-color:rgba(79,156,255,.3)}
+  .card.unit{border-color:rgb(var(--brand)/.35)}
   .unit-title{font-weight:700;font-size:14px;margin:2px 0 6px}
   .unit-th{font-size:13px;font-weight:600;margin:1px 0 5px}
-  .unit-sec{font-size:12px;color:var(--tx3);margin:var(--sp-2) 0 0}
+  .unit-sec{font-size:12px;color:rgb(var(--tx3));margin-top:8px}
   .unit-li,.unit-forbid{font-size:12.5px;line-height:1.6;margin:0;padding-left:18px}
-  .unit-forbid{color:var(--warn)}
+  .unit-forbid{color:rgb(var(--sem-warn))}
   .unit-kp{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
 
-  /* 参考来源 / 材料解析（折叠证据层，默认收起） */
-  details.src{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 14px}
-  details.src summary{cursor:pointer;font-size:12.5px;color:var(--tx2);font-weight:600;list-style:none;display:flex;align-items:center;gap:7px}
+  details.src{background:rgb(var(--panel2));border:1px solid rgb(var(--line));border-radius:12px;padding:10px 14px;animation:pop .18s ease}
+  details.src summary{cursor:pointer;font-size:12.5px;color:rgb(var(--tx2));font-weight:600;list-style:none;display:flex;align-items:center;gap:7px}
   details.src summary::-webkit-details-marker{display:none}
-  details.src summary::before{content:"▸";color:var(--tx3);transition:transform .15s}
+  details.src summary::before{content:"▸";color:rgb(var(--tx3));transition:transform .15s}
   details.src[open] summary::before{transform:rotate(90deg)}
-  .src-list{margin-top:var(--sp-2);display:flex;flex-direction:column;gap:var(--sp-2)}
+  .src-list{margin-top:8px;display:flex;flex-direction:column;gap:8px}
   .src-item{font-size:12.5px;line-height:1.6}
-  .src-item a{color:var(--ac);text-decoration:none;font-weight:600}
+  .src-item a{color:rgb(var(--brand));text-decoration:none;font-weight:600}
   .src-item a:hover{text-decoration:underline}
-  .src-item .sn{color:var(--tx2);display:block;font-size:12px;margin-top:2px}
-  .blk-pre{font-size:12px;color:var(--tx2);background:var(--panel);border-radius:6px;padding:7px 10px;margin-top:6px;line-height:1.6;white-space:pre-wrap}
+  .src-item .sn{color:rgb(var(--tx2));display:block;font-size:12px;margin-top:2px}
+  .blk-pre{font-size:12px;color:rgb(var(--tx2));background:rgb(var(--panel));border-radius:6px;padding:7px 10px;margin-top:6px;line-height:1.6;white-space:pre-wrap}
 
-  /* 提示条 */
-  .note{border-radius:var(--r-sm);font-size:12.5px;padding:8px 11px;line-height:1.7}
-  .note.warn{background:rgba(232,180,90,.09);border:1px solid rgba(232,180,90,.3);color:#f0d9a0}
-  .note.err{background:rgba(239,106,95,.1);border:1px solid rgba(239,106,95,.35);color:#f3b8b2}
-  .note.plain{background:var(--panel2);border:1px solid var(--line);color:var(--tx2)}
-  .note .hint{display:block;margin-top:4px;font-size:11.5px;color:var(--tx2)}
+  .note{border-radius:8px;font-size:12.5px;padding:8px 11px;line-height:1.7;animation:pop .18s ease}
+  .note.warn{background:rgb(var(--sem-warn)/.09);border:1px solid rgb(var(--sem-warn)/.35);color:rgb(var(--sem-warn))}
+  .note.err{background:rgb(var(--sem-err)/.08);border:1px solid rgb(var(--sem-err)/.4);color:rgb(var(--sem-err))}
+  .note.plain{background:rgb(var(--panel2));border:1px solid rgb(var(--line));color:rgb(var(--tx2))}
+  .note .hint{display:block;margin-top:5px;font-size:11.5px;color:rgb(var(--tx2));opacity:.9}
 
-  /* 输入行 */
-  .inputrow{padding:var(--sp-3);border-top:1px solid var(--line);display:flex;gap:var(--sp-2);background:var(--panel2)}
-  .inputrow input{flex:1;padding:11px 13px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--bg);color:var(--tx);font-size:14px;outline:none;transition:border-color .15s}
-  .inputrow input:focus{border-color:var(--ac)}
-  .inputrow button{padding:0 20px;border:0;border-radius:var(--r-sm);background:var(--ac);color:#fff;font-size:14px;cursor:pointer;font-weight:600;transition:filter .15s}
-  .inputrow button:hover{filter:brightness(1.12)}
-  .inputrow button:disabled{opacity:.45;cursor:default}
+  /* ---- 卡片分支动作（锚定图谱权威边；无方向置灰） ---- */
+  .card-tools{position:absolute;top:-13px;right:12px;display:flex;gap:5px;opacity:0;transition:opacity .15s}
+  .card:hover .card-tools{opacity:1}
+  .tool{width:27px;height:27px;border-radius:8px;border:1px solid rgb(var(--line-strong));background:rgb(var(--panel2));
+        color:rgb(var(--tx2));cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;
+        transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  .tool:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+  .tool.del:hover{color:rgb(var(--sem-err));border-color:rgb(var(--sem-err))}
+  .tool.off{opacity:.35;cursor:not-allowed}
+  .tool.off:hover{color:rgb(var(--tx2));border-color:rgb(var(--line-strong))}
+  .popover{position:fixed;z-index:80;background:rgb(var(--panel2));border:1px solid rgb(var(--line-strong));
+           border-radius:10px;padding:5px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+  .popover .po-t{font-size:10.5px;color:rgb(var(--tx3));padding:4px 9px 5px;font-weight:700;letter-spacing:.5px}
+  .pop-item{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:7px;cursor:pointer;font-size:12.5px}
+  .pop-item:hover{background:rgb(var(--item-active))}
+  .pop-item .pl{font-size:10.5px;color:rgb(var(--tx3))}
 
-  /* pending */
-  .pending{display:flex;gap:5px;align-items:center;padding:12px 14px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--r-md);color:var(--tx2);font-size:13px}
-  .pending .ti{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:blink 1.1s infinite}
+  /* 报告卡（0.19 · AI 学习报告，数据只读来源 /api/profile） */
+  .card.report{border-color:rgb(var(--brand)/.35)}
+  .rep-stats{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:rgb(var(--tx2));margin-bottom:8px}
+  .rep-stats b{color:rgb(var(--tx));font-size:14px}
+  .rf-row{display:flex;gap:9px;align-items:center;padding:7px 6px;border-radius:8px;cursor:pointer;flex-wrap:wrap}
+  .rf-row:hover{background:rgb(var(--item))}
+  .rf-row .nm{font-weight:600;font-size:13px;min-width:96px}
+  .rf-row .lv{font-size:10.5px;color:rgb(var(--tx2));border:1px solid rgb(var(--line));border-radius:20px;padding:0 7px}
+  .rf-off{font-size:10.5px;font-weight:700;color:rgb(var(--sem-err));background:rgb(var(--sem-err)/.1);
+          border-radius:5px;padding:1px 6px}
+  .rf-rep{font-size:11px;color:rgb(var(--tx3))}
+  .rf-ev{flex-basis:100%;font-size:11.5px;color:rgb(var(--tx3));line-height:1.5;padding-left:2px}
+
+  /* 输入行（与对话内容同宽居中） */
+  .hint{font-size:11px;color:rgb(var(--tx3));padding:6px 16px 0;width:100%;max-width:880px;
+        margin:0 auto;box-sizing:border-box}
+  .inputrow{padding:10px 14px 12px;display:flex;gap:9px;justify-content:center;background:rgb(var(--panel2));border-top:1px solid rgb(var(--line))}
+  .inputbox{flex:1;max-width:880px;display:flex;align-items:flex-end;gap:8px;background:rgb(var(--input));
+            border:1px solid rgb(var(--line));border-radius:12px;padding:9px 12px}
+  .inputbox:focus-within{border-color:rgb(var(--brand))}
+  .inputbox textarea{flex:1;background:transparent;border:0;outline:none;resize:none;color:rgb(var(--tx));
+                     font-family:inherit;font-size:14px;line-height:1.45;max-height:140px}
+  .inputbox textarea::placeholder{color:rgb(var(--tx3))}
+  .send{width:36px;height:36px;border-radius:9px;background:rgb(var(--brand));color:rgb(var(--brand-ink));
+        border:0;cursor:pointer;font-size:15px;flex-shrink:0;transition:filter .15s}
+  .send:hover{filter:brightness(1.08)}
+  .send:disabled{opacity:.5;cursor:default}
+
+  .pending{display:flex;gap:5px;align-items:center;padding:12px 14px;background:rgb(var(--panel2));
+           border:1px solid rgb(var(--line));border-radius:12px;color:rgb(var(--tx2));font-size:13px}
+  .pending .ti{width:6px;height:6px;border-radius:50%;background:rgb(var(--brand));animation:blink 1.1s infinite}
   .pending .ti:nth-child(2){animation-delay:.22s}
   .pending .ti:nth-child(3){animation-delay:.44s}
   @keyframes blink{0%,70%,100%{opacity:.25}35%{opacity:1}}
 
-  /* =========== 右：认知地图 + 复习队列 =========== */
-  .right{display:flex;flex-direction:column;min-height:0}
-  .maptitle{padding:11px var(--sp-4);font-size:12.5px;color:var(--tx2);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
-  .maplegend{display:flex;gap:12px;font-size:11px;color:var(--tx3)}
+  /* ============ 右：认知地图 + 复习队列 ============ */
+  .right{min-height:0}
+  .maptitle{padding:11px 16px;font-size:12px;color:rgb(var(--tx2));border-bottom:1px solid rgb(var(--line));
+            display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .maplegend{display:flex;gap:11px;font-size:11px;color:rgb(var(--tx3));align-items:center}
   .maplegend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
-  .mapwrap{flex:1;overflow:hidden;position:relative;background:radial-gradient(ellipse at 50% 38%,#141b2b 0%,#0d1017 72%)}
+  .mapwrap{flex:1;overflow:hidden;position:relative;background:radial-gradient(ellipse at 50% 38%,rgb(var(--panel)) 0%,rgb(var(--bg)) 75%)}
   #map{width:100%;height:100%;display:block;cursor:default}
-  .map-empty{position:absolute;inset:0;display:flex;flex-direction:column;gap:var(--sp-2);align-items:center;justify-content:center;color:var(--tx3);font-size:13px;pointer-events:none}
+  .map-empty{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;align-items:center;
+             justify-content:center;color:rgb(var(--tx3));font-size:13px;pointer-events:none}
   .map-empty .big{font-size:30px;opacity:.5}
-  .queue{max-height:210px;overflow-y:auto;padding:10px var(--sp-4) var(--sp-3);border-top:1px solid var(--line);background:var(--panel)}
-  .queue h4{margin:2px 0 var(--sp-2);font-size:12.5px;color:var(--tx2);display:flex;justify-content:space-between}
+  .queue{max-height:200px;overflow-y:auto;padding:10px 16px 12px;border-top:1px solid rgb(var(--line));background:rgb(var(--panel))}
+  .queue h4{margin:2px 0 8px;font-size:12px;color:rgb(var(--tx2));display:flex;justify-content:space-between;font-weight:600}
   .qitem{display:flex;gap:9px;align-items:center;font-size:12.5px;padding:5px 7px;border-radius:7px;cursor:pointer}
-  .qitem:hover{background:var(--panel2)}
-  .q-prio{color:var(--tx2);min-width:42px;text-align:right;font-variant-numeric:tabular-nums}
+  .qitem:hover{background:rgb(var(--item))}
+  .q-prio{color:rgb(var(--tx2));min-width:42px;text-align:right;font-variant-numeric:tabular-nums}
 
-  /* SVG 图谱元素 */
   .node{cursor:pointer;transition:opacity .25s ease}
   .node circle{transition:filter .2s ease}
-  .node:hover circle{filter:brightness(1.25)}
-  .node.hot circle{filter:brightness(1.3) drop-shadow(0 0 7px rgba(232,180,90,.85))}
-  .node.selected circle{stroke:#fff;stroke-width:2;filter:brightness(1.2) drop-shadow(0 0 9px rgba(255,255,255,.5))}
+  .node:hover circle{filter:brightness(1.15)}
+  .node.hot circle{filter:brightness(1.12) drop-shadow(0 0 7px rgb(var(--sem-warn)/.8))}
+  .node.selected circle{stroke:rgb(var(--tx));stroke-width:2;filter:brightness(1.05) drop-shadow(0 0 8px rgb(var(--tx)/.4))}
   .node.dim{opacity:.14}
   .node.born circle{animation:grow .55s cubic-bezier(.22,1.2,.4,1)}
   @keyframes grow{0%{transform:scale(0)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
-  .node-label{pointer-events:none;font-size:11px;fill:var(--tx2);transition:opacity .25s ease}
+  .node-label{pointer-events:none;font-size:11px;fill:rgb(var(--tx2));transition:opacity .25s ease}
   .node-label.dim{opacity:.1}
-  .edge{stroke:rgba(139,148,168,.3);transition:opacity .25s ease,stroke .2s ease}
-  .edge.lit{stroke:rgba(79,156,255,.75)}
+  .edge{stroke:rgb(var(--tx3)/.35);transition:opacity .25s ease,stroke .2s ease}
+  .edge.lit{stroke:rgb(var(--brand)/.8)}
   .edge.dim{opacity:.08}
-  .lv-band{fill:rgba(255,255,255,.02)}
-  .lv-label{font-size:10px;fill:var(--tx3);pointer-events:none;letter-spacing:.5px}
+  .lv-band{fill:rgb(var(--tx)/.025)}
+  .lv-label{font-size:10px;fill:rgb(var(--tx3));pointer-events:none;letter-spacing:.5px}
 
+  /* ============ 弹窗 ============ */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:100;display:none;
+           align-items:center;justify-content:center;padding:20px}
+  .overlay.show{display:flex}
+  .modal{position:relative;background:rgb(var(--panel2));border:1px solid rgb(var(--line));border-radius:18px;
+         box-shadow:0 20px 60px rgba(0,0,0,.28);display:flex;overflow:hidden;max-width:960px;width:76vw;max-height:82vh}
+  .modal-nav{width:172px;flex-shrink:0;border-right:1px solid rgb(var(--line));padding:18px 12px;overflow-y:auto}
+  .modal-nav h4{font-size:11px;letter-spacing:1.2px;color:rgb(var(--tx3));margin:0 0 10px 8px;font-weight:700}
+  .modal-nav li{list-style:none;padding:8px 11px;border-radius:8px;color:rgb(var(--tx2));cursor:pointer;font-size:13px;margin-bottom:2px}
+  .modal-nav li:hover{background:rgb(var(--item))}
+  .modal-nav li.active{background:rgb(var(--item-active));color:rgb(var(--tx));font-weight:600}
+  .modal-body{flex:1;padding:24px 26px;overflow-y:auto;min-width:0}
+  .modal-body h3{font-size:17px;margin:0 0 14px;font-weight:700}
+  .modal-body p.sub{font-size:12.5px;color:rgb(var(--tx2));margin:0 0 16px;line-height:1.7}
+
+  /* 模型选择器（输入框左侧，0.20 BYOK）+ 供应商管理表单 */
+  .model-pick{flex-shrink:0;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    display:inline-flex;align-items:center;gap:5px;font-family:Consolas,"JetBrains Mono","Courier New",monospace;font-size:11px;
+    color:rgb(var(--tx2));background:rgb(var(--panel));border:1px solid rgb(var(--line));
+    border-radius:8px;padding:6px 9px;cursor:pointer;margin-bottom:2px}
+  .model-pick:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+  .model-pick .dot{width:6px;height:6px;border-radius:50%;background:rgb(var(--sem-ok));flex-shrink:0}
+  .prov-note{font-size:11.5px;color:rgb(var(--tx3));background:rgb(var(--item));border-radius:8px;
+    padding:8px 11px;margin:0 0 14px;line-height:1.6}
+  .prov-note b{color:rgb(var(--tx2))}
+  .prov-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid rgb(var(--line));
+    border-radius:10px;margin-bottom:8px;flex-wrap:wrap}
+  .prov-row .pv-nm{font-weight:600;font-size:13px}
+  .prov-row .pv-md{font-family:Consolas,"JetBrains Mono","Courier New",monospace;font-size:11px;color:rgb(var(--tx2))}
+  .prov-row .pv-key{font-family:Consolas,"JetBrains Mono","Courier New",monospace;font-size:10.5px;color:rgb(var(--tx3))}
+  .prov-row .pv-bdg{font-size:10px;padding:2px 7px;border-radius:6px;background:rgb(var(--item-active));
+    color:rgb(var(--brand));font-weight:700}
+  .prov-row .pv-st{font-size:11px;flex:1;min-width:70px}
+  .prov-row .pv-st.ok{color:rgb(var(--sem-ok))}
+  .prov-row .pv-st.err{color:rgb(var(--sem-err))}
+  .prov-btn{font-size:11.5px;padding:4px 10px;border-radius:7px;border:1px solid rgb(var(--line));
+    background:rgb(var(--panel2));color:rgb(var(--tx2));cursor:pointer;white-space:nowrap}
+  .prov-btn:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+  .prov-btn.danger:hover{color:rgb(var(--sem-err));border-color:rgb(var(--sem-err))}
+  .prov-form{border:1px dashed rgb(var(--line-strong));border-radius:10px;padding:14px;margin-top:14px}
+  .prov-form h5{margin:0 0 10px;font-size:12.5px;color:rgb(var(--tx2))}
+  .prov-form .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .prov-form input{width:100%;box-sizing:border-box;background:rgb(var(--input));border:1px solid rgb(var(--line));
+    border-radius:8px;padding:7px 10px;font-size:12.5px;color:rgb(var(--tx));outline:none;
+    font-family:Consolas,"JetBrains Mono","Courier New",monospace}
+  .prov-form input:focus{border-color:rgb(var(--brand))}
+  .prov-form .fgrid input.wide{grid-column:1 / -1}
+  .prov-form .frow{display:flex;gap:8px;margin-top:10px;align-items:center}
+  .prov-form .hint{font-size:10.5px;color:rgb(var(--tx3));flex:1;padding:0;line-height:1.5}
+  .btn-brand{font-size:12px;padding:6px 14px;border-radius:8px;border:0;cursor:pointer;
+    background:rgb(var(--brand));color:var(--brand-ink);font-weight:600}
+  .btn-brand:hover{filter:brightness(1.08)}
+  .btn-brand:disabled{opacity:.55;cursor:default}
+  .close{position:absolute;top:12px;right:16px;cursor:pointer;color:rgb(var(--tx3));font-size:22px;
+         background:none;border:0;line-height:1;padding:4px}
+  .close:hover{color:rgb(var(--tx))}
+  .modal.small{flex-direction:column;width:min(600px,94vw);max-height:88vh;padding:22px 24px;gap:0}
+  .modal.small h3{font-size:16px;margin:0 0 4px}
+  .theme-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:420px}
+  .theme-swatch{border:2px solid rgb(var(--line));border-radius:12px;padding:12px;cursor:pointer;background:rgb(var(--panel))}
+  .theme-swatch .dot{width:100%;height:36px;border-radius:8px}
+  .theme-swatch .nm{font-size:12.5px;color:rgb(var(--tx2));margin-top:9px;font-weight:600}
+  .theme-swatch.active{border-color:rgb(var(--brand))}
+  .theme-swatch.active .nm{color:rgb(var(--brand))}
+  .row2{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:10px;font-size:13px}
+  .kbd{font-family:Consolas,monospace;font-size:12px;background:rgb(var(--item));border:1px solid rgb(var(--line));
+       border-bottom-width:2px;border-radius:6px;padding:3px 9px;color:rgb(var(--tx2));white-space:nowrap}
+  .about-li{font-size:13px;color:rgb(var(--tx2));line-height:2;margin:0;padding-left:18px}
+  .ctypes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 16px}
+  .ctype{border:1px solid rgb(var(--line));border-radius:12px;padding:14px;background:rgb(var(--panel))}
+  .ctype .ar{font-size:24px;color:rgb(var(--brand));font-weight:700}
+  .ctype .ct{font-weight:600;margin:7px 0 4px;font-size:13.5px}
+  .ctype .cd{font-size:12px;color:rgb(var(--tx3));line-height:1.6}
+  .htu h3{font-size:14.5px;margin:14px 0 6px}
+  .htu ul{margin:0 0 4px}
+  .htu li{margin:3px 0 3px 18px;color:rgb(var(--tx2));font-size:12.5px;line-height:1.7}
+  .docfield{width:100%;min-height:150px;background:rgb(var(--input));border:1px solid rgb(var(--line));
+            border-radius:10px;padding:11px;color:rgb(var(--tx));font-family:inherit;font-size:13px;
+            line-height:1.6;resize:vertical;outline:none;margin-top:10px}
+  .docfield:focus{border-color:rgb(var(--brand))}
+  .filebtn{display:inline-block;padding:7px 14px;border-radius:9px;border:1px dashed rgb(var(--line-strong));
+           color:rgb(var(--tx2));font-size:12.5px;cursor:pointer;background:rgb(var(--panel))}
+  .filebtn:hover{border-color:rgb(var(--brand));color:rgb(var(--brand))}
+  .filebtn input{display:none}
+  .charct{font-size:11px;color:rgb(var(--tx3));margin-top:6px}
+  .charct.over{color:rgb(var(--sem-err));font-weight:700}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgb(var(--tx));color:rgb(var(--bg));
+         padding:9px 18px;border-radius:10px;font-size:12.5px;font-weight:600;z-index:200;opacity:0;
+         transition:opacity .25s;pointer-events:none;max-width:80vw}
+  .toast.show{opacity:.95}
+
+  /* ============ 响应式 ============ */
+  @media (max-width:920px){
+    .side{position:fixed;left:0;top:0;bottom:0;z-index:70;width:250px;box-shadow:8px 0 30px rgba(0,0,0,.18)}
+    .side.closed{width:250px;transform:translateX(-105%);border-right:1px solid rgb(var(--line))}
+    .modal{flex-direction:column;width:min(560px,94vw)}
+    .modal-nav{width:auto;border-right:0;border-bottom:1px solid rgb(var(--line));display:flex;overflow-x:auto;padding:10px 14px;gap:2px}
+    .modal-nav h4{display:none}
+    .modal-nav li{margin:0;white-space:nowrap}
+    .ctypes{grid-template-columns:1fr}
+  }
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{animation-duration:.001s !important;transition-duration:.001s !important}
   }
@@ -201,17 +415,45 @@
 </head>
 <body>
 <div id="app">
-  <header>
-    <div class="logo">HSK<b>-Coach</b></div>
-    <div class="sub">自由对话 · 偏误图谱 · 费曼复述</div>
-    <div class="status" id="status"><span class="dot"></span><span id="statusText">连接中…</span></div>
-  </header>
+  <!-- ================= 左：侧栏 ================= -->
+  <aside class="side" id="side">
+    <div class="side-top">
+      <span class="logo">HSK<b>-Coach</b></span>
+      <button class="fold" id="foldBtn" title="折叠侧栏" aria-label="折叠侧栏">‹</button>
+    </div>
+    <div class="side-scroll">
+      <div class="resident" id="resident" title="本地图谱感知助教 · 点击查看怎么用">
+        <div class="av">AI</div>
+        <div class="mt"><div class="t">AI 助教</div><div class="s">本地图谱感知 · 偏误驱动</div></div>
+        <span class="chip">local</span>
+      </div>
+
+      <div class="hd"><span>会话</span><span class="sep"></span><span class="ct" id="sessCount"></span></div>
+      <div id="sessionList"></div>
+      <div class="sbtn add" id="newSess">＋ 新建会话</div>
+
+      <div class="hd"><span>学习动线</span><span class="sep"></span></div>
+      <div class="sbtn" id="actMap"><span class="ic">◈</span>认知地图<span class="bdg" id="mapBadge"></span></div>
+      <div class="sbtn" id="actReview"><span class="ic">▶</span>开始复习<span class="bdg" id="rvCount">—</span></div>
+      <div class="sbtn" id="actReport"><span class="ic">◎</span>AI 学习报告</div>
+      <div class="sbtn" id="actDoc"><span class="ic">▤</span>阅读材料<span class="bdg">txt/md</span></div>
+    </div>
+    <div class="side-bot">
+      <div class="status" id="status"><span class="dot"></span><span id="statusText">连接中…</span></div>
+      <div class="sbtn" id="actSettings"><span class="ic">⚙</span>设置</div>
+      <div class="sbtn" id="actHowto"><span class="ic">?</span>怎么用</div>
+    </div>
+  </aside>
+  <button class="side-open" id="sideOpen" title="展开侧栏" aria-label="展开侧栏">»</button>
+
+  <!-- ================= 主区 ================= -->
   <main>
     <section class="left">
       <div class="chat" id="chat">
         <div class="empty" id="emptyState">
           <h2>开始你的第一句</h2>
-          <p>直接对话：写一句中文让它找错、问一个语法点、复述刚学的内容检验理解。<br>你的每次偏误都会沉淀到右侧认知地图。</p>
+          <p>直接对话：写一句中文让它找错、问一个语法点、复述刚学的内容检验理解。<br>
+             你的每次偏误都会沉淀到认知地图（侧栏「◈ 认知地图」随时查看），切换会话上下文互不干扰。</p>
           <div class="chips">
             <button class="chip" data-ex="我想买苹果很多。">✍ 我想买苹果很多。</button>
             <button class="chip" data-ex="把字句是什么意思？">📖 把字句是什么意思？</button>
@@ -219,19 +461,25 @@
           </div>
         </div>
       </div>
+      <div class="hint mono">Enter 换行 · Ctrl+Enter 发送</div>
       <div class="inputrow">
-        <input id="text" placeholder="说一句话、问一个知识点，或复述刚学的内容…" aria-label="输入对话内容" autocomplete="off">
-        <button id="send" aria-label="发送">发送</button>
+        <div class="inputbox">
+          <button class="model-pick" id="modelPick" title="选择模型（设置 → 模型密钥 可添加供应商）"><span class="dot"></span><span id="modelPickName">默认模型</span> ▾</button>
+          <textarea id="text" rows="1" placeholder="说一句话、问一个知识点，或复述刚学的内容…" aria-label="输入对话内容"></textarea>
+          <button class="send" id="send" title="发送 (Ctrl+Enter)" aria-label="发送">↑</button>
+        </div>
       </div>
     </section>
+
     <section class="right">
       <div class="maptitle">
+        <button class="back-chat" id="backChat">‹ 返回对话</button>
         <span>认知地图 · 横轴=HSK 等级 纵轴=掌握度 大小=错误次数 描边=待复习</span>
         <span class="maplegend">
-          <span><i style="background:var(--kp-vocab)"></i>词汇</span>
-          <span><i style="background:var(--kp-grammar)"></i>语法</span>
-          <span><i style="background:var(--kp-pragma)"></i>语用</span>
-          <span><i style="background:var(--kp-char)"></i>汉字</span>
+          <span><i style="background:rgb(var(--kp-vocab))"></i>词汇</span>
+          <span><i style="background:rgb(var(--kp-grammar))"></i>语法</span>
+          <span><i style="background:rgb(var(--kp-pragma))"></i>语用</span>
+          <span><i style="background:rgb(var(--kp-char))"></i>汉字</span>
           <span id="mapCount"></span>
         </span>
       </div>
@@ -239,7 +487,7 @@
         <svg id="map" role="img" aria-label="知识点认知地图"></svg>
         <div class="map-empty" id="mapEmpty" style="display:none">
           <div class="big">◎</div>
-          <div>地图还是空的 —— 从左侧输入第一个句子开始生长</div>
+          <div>地图还是空的 —— 回到对话输入第一个句子，地图开始生长</div>
         </div>
       </div>
       <div class="queue"><h4><span>复习队列 · priority 降序（点击定位）</span></h4><div id="queue"></div></div>
@@ -247,21 +495,101 @@
   </main>
 </div>
 
+<!-- ================= 设置弹窗 ================= -->
+<div class="overlay" id="settingsOvl">
+  <div class="modal">
+    <button class="close" data-close="settingsOvl" aria-label="关闭">×</button>
+    <ul class="modal-nav" id="settingsNav">
+      <h4>设置</h4>
+      <li data-tab="theme" class="active">界面主题</li>
+      <li data-tab="llm">模型密钥</li>
+      <li data-tab="keys">快捷键</li>
+      <li data-tab="about">关于</li>
+    </ul>
+    <div class="modal-body" id="settingsBody"></div>
+  </div>
+</div>
+
+<!-- ================= 怎么用 ================= -->
+<div class="overlay" id="howtoOvl">
+  <div class="modal">
+    <button class="close" data-close="howtoOvl" aria-label="关闭">×</button>
+    <ul class="modal-nav"><h4>怎么用</h4><li class="active">HSK-AI-Coach</li></ul>
+    <div class="modal-body htu">
+      <h3>灵动的卡片，锚定你的图谱</h3>
+      <p class="sub">每张偏误卡右上角（悬停浮现）有分支动作。它们不是任意发散——只指向<b class="a">图谱里已确认的权威边</b>，灰掉的按钮说明图谱里还没有这条边。守住"图谱唯一权威，无自由发散"。</p>
+      <div class="ctypes">
+        <div class="ctype"><div class="ar">↗</div><div class="ct">子卡深挖</div><div class="cd">对已确认知识点请 AI 费曼式深入讲解：核心规则、常见用法和易错点。</div></div>
+        <div class="ctype"><div class="ar">→</div><div class="ct">相邻角度</div><div class="cd">沿图谱<b>混淆边</b>切到相邻知识点，讲两者区别与联系（你容易混的）。</div></div>
+        <div class="ctype"><div class="ar">↓</div><div class="ct">沿待复习</div><div class="cd">该知识点在复习队列时可用：直接出针对性巩固练习。</div></div>
+      </div>
+      <h3>Smart Annotation</h3>
+      <ul><li>AI 回答里的<b class="a">下划线名词</b>（你图谱里已有的知识点）点一下 → 自动进入认知地图并定位该节点。</li></ul>
+      <h3>学习动线（左侧栏）</h3>
+      <ul>
+        <li><b>▶ 开始复习</b>：拉取复习队列，对最需要复习的知识点出一道针对性练习。</li>
+        <li><b>◎ AI 学习报告</b>：基于画像（常错点/惯犯）生成数据报告——只读事实，不编造。</li>
+        <li><b>▤ 阅读材料</b>：粘贴文本或上传 txt/md，让 AI 解析并讲解其中的中文知识点。</li>
+      </ul>
+      <h3>会话</h3>
+      <ul>
+        <li>每个会话独立上下文（互不串扰），切换会话同步到网址（可收藏/回访恢复）。</li>
+        <li>会话标题自动取自你的第一句话；图谱和画像跨会话共享（这是"你"的长期记忆）。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 阅读材料 ================= -->
+<div class="overlay" id="docOvl">
+  <div class="modal small">
+    <button class="close" data-close="docOvl" aria-label="关闭">×</button>
+    <h3>阅读材料 → 抽取中文知识点</h3>
+    <p class="sub">当前支持<b class="a">粘贴文本 / .txt / .md</b>（PDF / Word / OCR 后续版本）。材料将作为对话发给 AI 助教解析。</p>
+    <label class="filebtn">选择 .txt / .md 文件<input type="file" id="docFile" accept=".txt,.md,.markdown,text/plain,text/markdown"></label>
+    <textarea class="docfield" id="docText" placeholder="粘贴中文 / 英中对照段落、邮件、课文…"></textarea>
+    <div class="charct" id="charCt">0 / 6000 字</div>
+    <div style="display:flex;gap:10px;margin-top:14px;align-items:center">
+      <button class="kp" id="docParse" style="font-size:13px;padding:7px 16px">开始解析</button>
+      <span class="charct">解析结果以"材料解析卡"出现在对话流中</span>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <script>
 "use strict";
+/* ============================================================
+ * 前端壳 v2（0.19）· planner 唯一入口 /api/dialog
+ * 数据接缝：dialog 契约 v1（text/used_skills/trace/degraded/graph）
+ *          + GET /api/graph + GET /api/profile + GET /api/conversation
+ * ============================================================ */
 const $=id=>document.getElementById(id);
 const SVGNS='http://www.w3.org/2000/svg';
+const DOC_CHAR_LIMIT=6000;
+
+const state={
+  conversation:'',       // 当前会话 id（M5：服务端按此读写多轮记忆）
+  sessions:[],           // 侧栏会话列表（GET /api/profile）
+  providers:[],          // BYOK 供应商列表（GET /api/providers，0.20）
+  defaultProvider:null,  // 服务端实际生效的默认供应商 id
+  providerId:(()=>{try{return localStorage.getItem('hsk-provider')||''}catch(e){return ''}})(),
+};
 let graph=null;
-let selectedNode=null;      // 当前选中节点 id（null=无）
-let bornIds=new Set();      // 本次新增节点 → 播放生长动画
-let history=[];             // [{role:'user'|'assistant', content}] 供 /api/dialog 多轮上下文
+let selectedNode=null;
+let bornIds=new Set();
+let kpVocab=[];          // Smart Annotation 词表：[{id,name}]（来自图谱节点名）
 const chat=$('chat');
 
 // ============ 通用 ============
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function escRe(s){return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 function scrollChat(){chat.scrollTop=chat.scrollHeight;}
 function el(html){const t=document.createElement('template');t.innerHTML=html.trim();return t.content.firstChild;}
 function addMsg(node){chat.appendChild(node);scrollChat();return node;}
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1800);}
+function timeShort(ts){const d=new Date(ts*1000);const p=n=>String(n).padStart(2,'0');return `${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;}
 
 async function api(url,body){
   let r;
@@ -273,14 +601,15 @@ async function api(url,body){
   return data;
 }
 
-// ============ 类型 → 样式 ============
 function typeClass(t){t=t||'';if(t.includes('词汇'))return 'vocab';if(t.includes('语法'))return 'grammar';if(t.includes('语用'))return 'pragma';if(t.includes('汉字'))return 'char';return 'grammar';}
-function typeColor(t){t=t||'';if(t.includes('词汇'))return 'var(--kp-vocab)';if(t.includes('语法'))return 'var(--kp-grammar)';if(t.includes('语用'))return 'var(--kp-pragma)';if(t.includes('汉字'))return 'var(--kp-char)';return 'var(--kp-grammar)';}
+function typeColor(t){t=t||'';if(t.includes('词汇'))return 'rgb(var(--kp-vocab))';if(t.includes('语法'))return 'rgb(var(--kp-grammar))';if(t.includes('语用'))return 'rgb(var(--kp-pragma))';if(t.includes('汉字'))return 'rgb(var(--kp-char))';return 'rgb(var(--kp-grammar))';}
 function nodeColor(types){return typeColor(Object.keys(types||{}).join(''));}
 
 // ============ 气泡 / pending / 提示 ============
-function addUserMsg(text){ return addMsg(el(`<div class="msg-user">${esc(text)}</div>`)); }
-
+function addUserMsg(text,badge){
+  if(badge) addMsg(el(`<div class="branch-tag">${esc(badge)}</div>`));
+  return addMsg(el(`<div class="msg-user">${esc(text)}</div>`));
+}
 const PENDING_LABELS=['正在思考…','正在分析句子…','正在调取讲解…','正在整理回复…'];
 function addPending(){
   const p=el(`<div class="pending"><span class="ti"></span><span class="ti"></span><span class="ti"></span><span>${PENDING_LABELS[0]}</span></div>`);
@@ -291,14 +620,38 @@ function addPending(){
 function addNote(txt,cls,hint){
   return addMsg(el(`<div class="note ${cls||'plain'}">${esc(txt)}${hint?`<span class="hint">${esc(hint)}</span>`:''}</div>`));
 }
+function addAiText(text){
+  if(!text) return;
+  addMsg(el(`<div class="ai-text">${annotate(esc(text))}</div>`));
+}
+
+// ============ Smart Annotation（词表=图谱节点名；点击→地图定位） ============
+function rebuildVocab(){
+  kpVocab=Object.entries((graph&&graph.nodes)||{})
+    .map(([id,n])=>({id,name:String((n&&n.knowledge_point)||id)}))
+    .filter(v=>v.name&&v.name.length>=2)
+    .sort((a,b)=>b.name.length-a.name.length);
+}
+function annotate(escaped){
+  if(!kpVocab.length) return escaped;
+  const re=new RegExp('('+kpVocab.map(v=>escRe(v.name)).join('|')+')','g');
+  return escaped.replace(re,m=>{
+    const v=kpVocab.find(x=>x.name===m);
+    return v?`<span class="note-c" data-kp="${esc(v.id)}" title="点击在地图定位">${m}</span>`:m;
+  });
+}
+chat.addEventListener('click',e=>{
+  const n=e.target.closest('.note-c');
+  if(n){e.stopPropagation();locateKp(n.dataset.kp);}
+});
 
 /* ============================================================
- * 学习成果卡（A1 决策：内部工具轨迹隐藏，只渲染转译后的成果卡）
- * 数据源 = /api/dialog 返回的 trace[]（planner 技能调用轨迹）
+ * 学习成果卡（A1：内部工具轨迹隐藏，只渲染转译后的成果卡）
+ * 数据源 = /api/dialog 返回的 trace[]；t.ok===false 跳过（无成果不渲染）
  * ============================================================ */
 function renderTrace(trace){
   (trace||[]).forEach(t=>{
-    if(t.ok===false) return;  // 校验失败/技能异常：无学习成果，不渲染（防误导卡）
+    if(t.ok===false) return;
     const r=t.result||{};
     switch(t.name){
       case 'identify_errors':  renderIdentify(r); break;
@@ -315,12 +668,13 @@ function renderTrace(trace){
   });
 }
 
-// ---- 偏误识别：偏误卡 / 正确卡 + 低置信条 ----
+// ---- 偏误识别：偏误卡（含分支工具栏）/ 正确卡 + 低置信条 ----
 function renderIdentify(res){
   const errors=Array.isArray(res.errors)?res.errors:[];
   const uncertain=Array.isArray(res.uncertain)?res.uncertain:[];
   errors.forEach(err=>{
     const gw=err.graph_write||{};
+    const kpId=err.knowledge_point_id||'';
     const c=el(`<div class="card"></div>`);
     c.innerHTML=`
       <div class="cardlabel">偏误识别</div>
@@ -332,8 +686,12 @@ function renderIdentify(res){
       <div class="meta-row">
         <span>图谱：${esc(gw.status||'?')}${gw.kp_id?' · '+esc(gw.kp_id):''}</span>
         <span>置信 ${err.confidence!=null?Number(err.confidence).toFixed(2):'?'}</span>
-      </div>`;
+      </div>
+      ${kpId&&graph&&graph.nodes[kpId]?`<div class="kp-row"><span class="kp" data-kp="${esc(kpId)}">· ${esc((graph.nodes[kpId]&&graph.nodes[kpId].knowledge_point)||kpId)}</span></div>`:''}`;
+    if(kpId) c.appendChild(cardTools(kpId));
     addMsg(c);
+    const chip=c.querySelector('.kp[data-kp]');
+    if(chip) chip.addEventListener('click',()=>locateKp(chip.dataset.kp));
   });
   if(!errors.length){
     const c=el(`<div class="card clean"></div>`);
@@ -342,7 +700,7 @@ function renderIdentify(res){
       <div class="clean-sub">继续输入保持练习${uncertain.length?`；${uncertain.length} 处低置信候选已进入待确认队列`:''}。</div>`;
     addMsg(c);
   }else if(uncertain.length){
-    addMsg(el(`<div class="uc-strip">另有 ${uncertain.length} 处低置信候选（待确认）：${uncertain.map(u=>esc(u.fragment||'')).join('、')}</div>`));
+    addMsg(el(`<div class="uc-strip">另有 ${uncertain.length} 处低置信候选（待确认，不直接写入图谱）：${uncertain.map(u=>esc(u.fragment||'')).join('、')}</div>`));
   }
   (Array.isArray(res.degraded)?res.degraded:[]).forEach(d=>addNote('识别降级：'+String(d),'warn'));
 }
@@ -354,8 +712,8 @@ function renderExplain(res){
   const c=el(`<div class="card"></div>`);
   c.innerHTML=`
     <div class="cardlabel">费曼讲解</div>
-    <div class="expl-text">${esc(res.explanation||'')}</div>
-    ${kps.length?`<div class="kp-row">${kps.map(k=>`<span class="kp">· ${esc(typeof k==='string'?k:(k.text||''))}</span>`).join('')}</div>`:''}
+    <div class="expl-text">${annotate(esc(res.explanation||''))}</div>
+    ${kps.length?`<div class="kp-row">${kps.map(k=>`<span class="kp-plain">${esc(typeof k==='string'?k:(k.text||''))}</span>`).join('')}</div>`:''}
     ${res._degraded?'<div class="note warn" style="margin-top:8px">讲解引擎降级：内容可能不完整</div>':''}`;
   addMsg(c);
 }
@@ -423,7 +781,7 @@ function renderReview(res){
         <span class="rv-prio">${(it.priority||0).toFixed(1)}</span>
       </div>`;}).join('')}</div>`:'<div class="clean-sub">暂无到期复习项</div>'}`;
   addMsg(c);
-  c.querySelectorAll('.rv-li').forEach(row=>row.addEventListener('click',()=>selectNode(row.dataset.kp)));
+  c.querySelectorAll('.rv-li').forEach(row=>row.addEventListener('click',()=>locateKp(row.dataset.kp)));
 }
 
 // ---- 生成单元卡（费曼讲解单元 / 巩固练习） ----
@@ -431,7 +789,7 @@ function renderUnit(out,label){
   const c=el(`<div class="card unit"></div>`);
   if(!out||out.ok!==true||!out.unit){
     const diags=Array.isArray(out&&out.diagnostics)?out.diagnostics:[];
-    let html=`<div class="cardlabel" style="color:var(--err)">生成失败${label?' · '+esc(label):''}</div>
+    let html=`<div class="cardlabel" style="color:rgb(var(--sem-err))">生成失败${label?' · '+esc(label):''}</div>
       <div class="note err">${esc((out&&out.message)||'生成单元不可用')}</div>`;
     if(diags.length){
       html+=`<div class="unit-sec">诊断 · ${esc((out&&out.attempts)||0)} 次尝试（稳定 code）</div>
@@ -446,15 +804,19 @@ function renderUnit(out,label){
   c.innerHTML=`
     <div class="cardlabel">${esc(label||(u.type==='practice'?'巩固练习':'费曼讲解单元'))}</div>
     <div class="unit-title">${esc(u.title||'')}</div>
-    ${kps.length?`<div class="unit-th">要点（正向知识）</div><div class="unit-kp">${kps.map(k=>`<span class="kp">· ${esc(k)}</span>`).join('')}</div>`:''}
+    ${kps.length?`<div class="unit-th">要点（正向知识）</div><div class="unit-kp">${kps.map(k=>`<span class="kp-plain">${esc(k)}</span>`).join('')}</div>`:''}
     ${u.task_kind?`<div class="unit-sec">任务类型：${esc(u.task_kind)} · 题量 ${u.questionCount!=null?esc(u.questionCount):'?'}</div>`:''}
-    ${forb.length?`<div class="unit-th" style="color:var(--warn);margin-top:10px">本回合不会犯（护栏）</div>
+    ${forb.length?`<div class="unit-th" style="color:rgb(var(--sem-warn));margin-top:10px">本回合不会犯（护栏）</div>
       <ul class="unit-forbid">${forb.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}
     ${u.estimatedDuration?`<div class="unit-sec">建议时长 ${esc(u.estimatedDuration)}s</div>`:''}`;
   return addMsg(c);
 }
 
 // ---- 参考来源卡（折叠证据层） ----
+function safeUrl(u){
+  const s=String(u||'').trim();
+  return /^https?:\/\//i.test(s)?s:'#';   // 仅放行 http(s)，防 javascript: 等注入
+}
 function renderSearch(res){
   const results=Array.isArray(res.results)?res.results:[];
   if(!results.length) return;
@@ -463,13 +825,13 @@ function renderSearch(res){
     <summary>参考来源 · ${results.length} 条（点击展开）</summary>
     <div class="src-list">${results.map(r=>`
       <div class="src-item">
-        <a href="${esc(r.link||r.url||'#')}" target="_blank" rel="noopener noreferrer">${esc(r.title||r.link||r.url||'（无标题）')}</a>
+        <a href="${esc(safeUrl(r.link||r.url))}" target="_blank" rel="noopener noreferrer">${esc(r.title||r.link||r.url||'（无标题）')}</a>
         ${r.snippet?`<span class="sn">${esc(String(r.snippet).slice(0,200))}</span>`:''}
       </div>`).join('')}</div>`;
   addMsg(d);
 }
 
-// ---- 语料检索卡（折叠：知识点清单 / HSK 词表 / 该生图谱，本地语料无外链） ----
+// ---- 语料检索卡（折叠：知识点清单 / HSK 词表 / 该生图谱） ----
 function renderRetrieve(res){
   const results=Array.isArray(res.results)?res.results:[];
   if(!results.length) return;
@@ -497,58 +859,74 @@ function renderParse(res){
   addMsg(d);
 }
 
-// ---- AI 结语文本（不装箱） ----
-function addAiText(text){
-  if(!text) return;
-  addMsg(el(`<div class="ai-text">${esc(text)}</div>`));
-}
-
 /* ============================================================
- * 多轮上下文：assistant 消息 = 结语文本 + 紧凑学习记录
- * （planner 下轮据此调 verify_retell / generate_unit，取真实 key_points）
+ * 卡片分支动作（0.19 核心：锚定图谱权威边，无方向置灰）
+ *   ↗ 深挖：节点已确认 → 请 AI 费曼讲解
+ *   → 相邻：图谱混淆边存在 → 选相邻 KP 讲区别
+ *   ↓ 待复习：节点在复习队列 → 出针对性练习
+ *   ✕ 删除：仅移除卡片（不影响图谱/记忆）
  * ============================================================ */
-function cardSummary(trace){
-  const lines=[];
-  (trace||[]).forEach(t=>{
-    if(t.ok===false) return;  // 失败调用不入学习记录摘要（防"未发现偏误"误入记忆）
-    const r=t.result||{};
-    switch(t.name){
-      case 'identify_errors':
-        (r.errors||[]).forEach(e=>lines.push(`识别偏误「${e.fragment||''}」→「${e.correction||''}」（${e.type||''}，kp: ${e.knowledge_point_id||'无'}）`));
-        if(!(r.errors||[]).length) lines.push('识别：未发现高置信偏误');
-        break;
-      case 'explain_error':{
-        const kps=(r.key_points||[]).map(k=>typeof k==='string'?k:(k&&k.text)||'').filter(Boolean).join(' | ');
-        lines.push(`讲解要点：${kps||'（无）'}`);
-        if(r.explanation) lines.push(`讲解摘录：${String(r.explanation).slice(0,300)}`);
-        break;}
-      case 'verify_retell':
-        lines.push(`复述验证：${r.verdict||'?'} ${r.covered_points!=null?r.covered_points:'?'}/${r.total_points!=null?r.total_points:'?'}`);
-        break;
-      case 'generate_unit':
-        if(r.ok&&r.unit) lines.push(`生成单元（${r.unit.type||'?'}）：${r.unit.title||''}`);
-        break;
-      case 'lookup_knowledge_point':
-        lines.push(`查询知识点：${(r.results||[]).map(x=>x.knowledge_point||x.title||x.kp_id||'').filter(Boolean).slice(0,3).join('、')}`);
-        break;
-      case 'get_review_queue':
-        lines.push(`复习队列：${r.count!=null?r.count:(r.items||[]).length} 项`);
-        break;
-      case 'web_search':
-        lines.push(`联网检索「${(t.params&&t.params.query)||''}」：${(r.results||[]).length} 条`);
-        break;
-      case 'retrieve_corpus':
-        lines.push(`语料检索「${(t.params&&t.params.query)||''}」：${(r.results||[]).length} 条（${[...new Set((r.results||[]).map(x=>x.source).filter(Boolean))].join('/')||'?'}）`);
-        break;
-      case 'parse_document':
-        lines.push(`解析材料：${(r.blocks||[]).length} 块`);
-        break;
-    }
+function neighborsOf(kpId){
+  const out=[];
+  (graph&&graph.edges||[]).forEach(e=>{
+    if(e.from_node_id===kpId) out.push(e.to_node_id);
+    else if(e.to_node_id===kpId) out.push(e.from_node_id);
   });
-  return lines.length?`\n\n[学习记录]\n`+lines.map(l=>'- '+l).join('\n'):'';
+  return [...new Set(out)].filter(id=>graph&&graph.nodes&&graph.nodes[id]);
+}
+function inQueue(kpId){return (graph&&graph.queue||[]).some(q=>q.kp_id===kpId);}
+function nodeName(kpId){const n=graph&&graph.nodes&&graph.nodes[kpId];return (n&&n.knowledge_point)||kpId;}
+
+function cardTools(kpId){
+  const bar=el(`<div class="card-tools"></div>`);
+  const hasNode=!!(graph&&graph.nodes&&graph.nodes[kpId]);
+  const nbs=neighborsOf(kpId);
+  const queued=inQueue(kpId);
+  const mk=(glyph,title,on,fn)=>{
+    const b=el(`<button class="tool ${on?'':'off'}" title="${esc(title)}">${glyph}</button>`);
+    if(on&&fn) b.addEventListener('click',ev=>{ev.stopPropagation();fn(b);});
+    bar.appendChild(b);
+    return b;
+  };
+  mk('↗',hasNode?'子卡深挖：请 AI 深入讲解该知识点':'图谱中无此节点（未确认，不可深挖）',hasNode,()=>{
+    const nm=nodeName(kpId);
+    sendPrompt(`请用费曼式讲解深入讲一下「${nm}」：核心规则、常见用法和易错点。`,'↗ 深挖 · '+nm);
+  });
+  mk('→',nbs.length?'相邻角度：沿图谱混淆边展开':'无关联边（图谱未确认，不可发散）',nbs.length>0,btn=>{
+    showNeighborMenu(btn,kpId);
+  });
+  mk('↓',queued?'沿待复习：出针对性巩固练习':'该知识点不在复习队列',queued,()=>{
+    const nm=nodeName(kpId);
+    sendPrompt(`请针对「${nm}」出一道巩固练习（practice 单元）并开始。`,'↓ 待复习 · '+nm);
+  });
+  mk('✕','删除本卡片（不影响图谱）',true,()=>{bar.closest('.card').remove();toast('已移除卡片（不影响图谱）');});
+  return bar;
 }
 
-// ============ 认知地图（原生 SVG，沿用既有实现） ============
+function showNeighborMenu(btn,kpId){
+  closePopovers();
+  const nbs=neighborsOf(kpId);
+  const r=btn.getBoundingClientRect();
+  const p=el(`<div class="popover"></div>`);
+  p.innerHTML=`<div class="po-t">沿混淆边选择相邻知识点</div>`+nbs.slice(0,8).map(id=>{
+    const n=graph.nodes[id]||{};
+    return `<div class="pop-item" data-kp="${esc(id)}"><span>${esc(nodeName(id))}</span><span class="pl">${esc(n.level||'')}</span></div>`;
+  }).join('');
+  document.body.appendChild(p);
+  const pw=p.getBoundingClientRect();
+  p.style.left=Math.min(r.left,window.innerWidth-pw.width-10)+'px';
+  p.style.top=Math.max(8,Math.min(r.bottom+6,window.innerHeight-pw.height-8))+'px';
+  p.querySelectorAll('.pop-item').forEach(it=>it.addEventListener('click',()=>{
+    const other=it.dataset.kp;
+    const a=nodeName(kpId),b=nodeName(other);
+    closePopovers();
+    sendPrompt(`我容易混淆「${a}」和「${b}」，请讲讲它们的区别和联系。`,'→ 相邻 · '+a+' × '+b);
+  }));
+}
+function closePopovers(){document.querySelectorAll('.popover').forEach(p=>p.remove());}
+document.addEventListener('click',e=>{if(!e.target.closest('.popover')&&!e.target.closest('.tool'))closePopovers();});
+
+// ============ 认知地图（原生 SVG） ============
 function levelNum(lv){const m=String(lv||'').match(/\d+/);return m?parseInt(m[0],10):3;}
 function layoutNodes(){
   const nodes=graph&&graph.nodes?graph.nodes:{};
@@ -584,6 +962,7 @@ function renderMap(){
   const ids=Object.keys(nodes);
   const L=layoutNodes();
   $('mapCount').textContent=ids.length+' 节点';
+  $('mapBadge').textContent=ids.length?ids.length+' 节点':'';
   $('mapEmpty').style.display=ids.length?'none':'flex';
   const g=document.createElementNS(SVGNS,'g');
   g.setAttribute('id','gRoot');
@@ -627,7 +1006,7 @@ function renderMap(){
     const c=document.createElementNS(SVGNS,'circle');
     c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);c.setAttribute('r',r);
     c.setAttribute('fill',nodeColor(n.error_types));c.setAttribute('opacity',.88);
-    if(prio>1){c.setAttribute('stroke','var(--warn)');c.setAttribute('stroke-width',2.5);}
+    if(prio>1){c.setAttribute('stroke','rgb(var(--sem-warn))');c.setAttribute('stroke-width',2.5);}
     grp.appendChild(c);
     const tip=document.createElementNS(SVGNS,'title');
     tip.textContent=`${n.knowledge_point||id}\n等级 ${n.level||'?'} · 掌握度 ${(n.mastery||0).toFixed(2)}\n错误 ${n.error_count||0} 次 · 复习优先级 ${prio.toFixed(2)}`;
@@ -655,13 +1034,11 @@ function hoverNode(id,on){
     line.classList.toggle('lit',lit);
   });
 }
-
 function selectNode(id){
   selectedNode=(selectedNode===id)?null:id;
   applySelection();
-  document.querySelectorAll('.qitem').forEach(q=>q.style.background=(q.dataset.kp===selectedNode)?'var(--panel2)':'');
+  document.querySelectorAll('.qitem').forEach(q=>q.style.background=(q.dataset.kp===selectedNode)?'rgb(var(--item))':'');
 }
-
 function applySelection(){
   const root=$('gRoot');if(!root)return;
   if(!selectedNode){
@@ -708,65 +1085,529 @@ function renderQueue(){
 function applyGraph(g){
   if(!g)return;
   graph=g;
+  rebuildVocab();
   renderMap();renderQueue();
-  setStatus(true,`learner ${graph.learner_id||'demo'} · ${Object.keys(graph.nodes||{}).length} 节点`);
+  const q=g.queue||[];
+  $('rvCount').textContent=q.length?q.length+' 项':'空';
+  setStatus(true,`${g.learner_id||'demo'} · ${Object.keys(g.nodes||{}).length} 节点 · ${state.conversation}`);
 }
 function setStatus(on,text){
   const s=$('status');s.className='status '+(on?'on':'off');
   $('statusText').textContent=text;
 }
 
-// ============ 主流程：单一输入框 → /api/dialog（planner 唯一对话入口） ============
+/* ============================================================
+ * 会话（M5：conversation_id + URL 深链 ?conversation=<id>）
+ * ============================================================ */
+function setUrlConversation(id){
+  const u=new URL(location);
+  if(id)u.searchParams.set('conversation',id);else u.searchParams.delete('conversation');
+  history.replaceState(null,'',u);
+}
+async function loadSessions(){
+  try{
+    const p=await api('/api/profile');
+    state.sessions=p.sessions||[];
+    renderSessions();
+  }catch(e){ /* 侧栏列表失败不打断对话 */ }
+}
+function renderSessions(){
+  const L=$('sessionList');
+  L.innerHTML='';
+  const cur=state.conversation;
+  const list=[...state.sessions];
+  if(cur&&!list.some(s=>s.id===cur)){
+    list.unshift({id:cur,title:'',message_count:0,_pending:true});
+  }
+  $('sessCount').textContent=state.sessions.length?state.sessions.length+' 个':'';
+  list.slice(0,30).forEach(s=>{
+    const isCur=s.id===cur;
+    const d=el(`<div class="sbtn ${isCur?'cur':''}" data-id="${esc(s.id)}">
+      <span class="ic">${isCur?'●':'○'}</span>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${esc(s.title||(s._pending?'新会话 · 未开始':s.id))}</span>
+      <span class="srow-sub">${s._pending?'':esc((s.message_count||0)+' 条')}</span>
+    </div>`);
+    d.title=(s.title||s.id)+(s.updated_at?` · ${timeShort(s.updated_at)}`:'');
+    d.addEventListener('click',()=>switchSession(s.id));
+    L.appendChild(d);
+  });
+}
+async function switchSession(id,forceNew){
+  if(id===state.conversation&&!forceNew) return;
+  if(mapView)setMapView(false);   // 地图视图下点会话 → 自动回对话视图
+  state.conversation=id;
+  setUrlConversation(id);
+  clearChat();
+  try{
+    const c=await api('/api/conversation?id='+encodeURIComponent(id));
+    const msgs=(c&&c.messages)||[];
+    if(msgs.length){
+      addMsg(el(`<div class="note plain">已恢复会话（${msgs.length} 条消息）· 成果卡不随会话持久，此处为文本记录</div>`));
+      msgs.forEach(m=>{
+        if(m.role==='user') addUserMsg(m.content);
+        else addAiText(m.content);
+      });
+    }
+  }catch(e){ /* 恢复失败不阻塞新对话 */ }
+  loadSessions();
+  $('text').focus();
+}
+function newSession(){
+  const id='s-'+Date.now().toString(36);
+  switchSession(id,true);
+  toast('已新建会话');
+}
+function clearChat(){
+  chat.innerHTML='';
+  const e=el(`<div class="empty" id="emptyState">
+    <h2>开始你的第一句</h2>
+    <p>直接对话：写一句中文让它找错、问一个语法点、复述刚学的内容检验理解。<br>你的每次偏误都会沉淀到认知地图（侧栏「◈ 认知地图」随时查看）。</p>
+    <div class="chips">
+      <button class="chip" data-ex="我想买苹果很多。">✍ 我想买苹果很多。</button>
+      <button class="chip" data-ex="把字句是什么意思？">📖 把字句是什么意思？</button>
+      <button class="chip" data-ex="我该复习什么了？">🔁 我该复习什么了？</button>
+    </div>
+  </div>`);
+  chat.appendChild(e);
+  bindChips(e);
+}
+function bindChips(root){
+  (root||document).querySelectorAll('.chip[data-ex]').forEach(ch=>{
+    if(ch._bound)return;ch._bound=true;
+    ch.addEventListener('click',()=>{$('text').value=ch.dataset.ex;submit();});
+  });
+}
+
+/* ============================================================
+ * 学习动线（侧栏）
+ * ============================================================ */
+function beginReview(){
+  sendPrompt('我该复习什么了？请拉取我的复习队列，并对最需要复习的知识点给我一道针对性练习。','▶ 开始复习');
+}
+async function showReport(){
+  const pend=addPending();
+  try{
+    const p=await api('/api/profile');
+    renderReport(p);
+  }catch(e){
+    addNote('报告加载失败：'+e.message,'err');
+  }finally{
+    clearInterval(pend._iv);pend.remove();
+  }
+}
+function renderReport(p){
+  const st=p.stats||{};
+  const facts=p.common_errors&&p.common_errors.length?p.common_errors:
+              ((p.profile&&p.profile.common_errors)||[]);
+  const isStored=!(p.common_errors&&p.common_errors.length)&&facts.length;
+  const offenders=(st.repeat_offenders||[]);
+  const c=el(`<div class="card report"></div>`);
+  let rows='';
+  if(facts.length){
+    rows=facts.slice(0,8).map(f=>`
+      <div class="rf-row" data-kp="${esc(f.kp_id||'')}">
+        <span class="nm">${esc(f.knowledge_point||f.kp_id||'')}</span>
+        ${f.level?`<span class="lv">${esc(f.level)}</span>`:''}
+        ${f.repeat_offender?`<span class="rf-off">惯犯 ×${f.repeated}</span>`:`<span class="rf-rep">撞错 ${f.repeated||0} 次</span>`}
+        <div class="bar" style="min-width:60px;max-width:120px"><div style="width:${Math.min((f.priority||0)*10,100)}%"></div></div>
+        <span class="rv-prio">${(f.priority||0).toFixed(1)}</span>
+        ${f.latest_evidence?`<div class="rf-ev">最近证据：「${esc(String(f.latest_evidence).slice(0,60))}」</div>`:''}
+      </div>`).join('');
+  }
+  c.innerHTML=`
+    <div class="cardlabel">AI 学习报告 · ${new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+    <div class="rep-stats">
+      <span>图谱 <b>${st.graph_nodes!=null?st.graph_nodes:'?'}</b> 节点</span>
+      <span>待复习 <b>${st.review_count!=null?st.review_count:'?'}</b> 项</span>
+      <span>混淆边 <b>${st.graph_edges!=null?st.graph_edges:'?'}</b> 条</span>
+      <span>惯犯 <b style="color:${offenders.length?'rgb(var(--sem-err))':'inherit'}">${offenders.length}</b> 个</span>
+    </div>
+    ${offenders.length?`<div class="uc-strip">⚠ 惯犯知识点：${offenders.map(o=>esc(o)).join('、')} —— 建议今日优先巩固</div>`:''}
+    ${facts.length?rows:'<div class="clean-sub">暂无画像数据 —— 先和助教多聊几句、写几个句子，你的偏误会自动沉淀成报告。</div>'}
+    ${isStored?'<div class="meta-row"><span>（历史快照：当前复习队列无到期项）</span></div>':''}
+    <div class="meta-row"><span>数据来源：偏误图谱 × 事件账本 × 长期记忆（只读，非 LLM 生成）</span></div>`;
+  addMsg(c);
+  c.querySelectorAll('.rf-row[data-kp]').forEach(r=>r.addEventListener('click',()=>locateKp(r.dataset.kp)));
+}
+
+// ============ 阅读材料（轻量：粘贴 / .txt / .md） ============
+function openDoc(){$('docOvl').classList.add('show');updateCharCt();}
+function updateCharCt(){
+  const n=$('docText').value.length;
+  const ct=$('charCt');
+  ct.textContent=`${n} / ${DOC_CHAR_LIMIT} 字`+(n>DOC_CHAR_LIMIT?'（超出将截断）':'');
+  ct.classList.toggle('over',n>DOC_CHAR_LIMIT);
+}
+$('docText').addEventListener('input',updateCharCt);
+$('docFile').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0];
+  if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{$('docText').value=String(rd.result||'');updateCharCt();toast('已载入 '+f.name);};
+  rd.onerror=()=>toast('文件读取失败');
+  rd.readAsText(f,'utf-8');
+});
+$('docParse').addEventListener('click',()=>{
+  let t=$('docText').value.trim();
+  if(!t){toast('先粘贴文本或选择文件');return;}
+  if(t.length>DOC_CHAR_LIMIT)t=t.slice(0,DOC_CHAR_LIMIT);
+  $('docOvl').classList.remove('show');
+  $('docText').value='';updateCharCt();
+  sendPrompt('请解析这份材料，找出其中的中文知识点并讲解：\n\n'+t,'▤ 阅读材料');
+});
+
+/* ============================================================
+ * BYOK 模型密钥（0.20）：供应商列表 / 输入框模型选择器 / 设置 tab
+ * 全部 OpenAI 兼容协议；Key 存服务端 data/llm_providers.json（掩码返回）
+ * ============================================================ */
+async function loadProviders(){
+  try{
+    const d=await api('/api/providers');
+    state.providers=(d&&d.providers)||[];
+    state.defaultProvider=(d&&d.default_id)||null;
+    renderModelPick();
+  }catch(e){ /* 服务未起/端点缺失：选择器保持"默认模型" */ }
+}
+function currentProvider(){
+  return state.providers.find(p=>p.id===state.providerId)
+      || state.providers.find(p=>p.id===state.defaultProvider)
+      || null;
+}
+function renderModelPick(){
+  const p=currentProvider();
+  $('modelPickName').textContent=p?p.model:'默认模型';
+  $('modelPick').querySelector('.dot').style.background=
+    p?'rgb(var(--sem-ok))':'rgb(var(--tx3))';
+}
+function showModelMenu(btn){
+  closePopovers();
+  const r=btn.getBoundingClientRect();
+  const p=el(`<div class="popover"></div>`);
+  if(!state.providers.length){
+    p.innerHTML=`<div class="po-t">模型</div><div class="pop-item" data-open="llm"><span>尚未配置供应商 → 前往「模型密钥」</span></div>`;
+  }else{
+    p.innerHTML=`<div class="po-t">选择模型</div>`+state.providers.map(pr=>{
+      const cur=(pr.id===state.providerId)||( !state.providerId && pr.id===state.defaultProvider);
+      return `<div class="pop-item" data-pv="${esc(pr.id)}"><span>${esc(pr.name)}</span><span class="pl">${esc(pr.model)}${cur?' ·当前':''}</span></div>`;
+    }).join('')+(state.defaultProvider?`<div class="pop-item" data-pv=""><span>跟随默认（服务端）</span></div>`:'');
+  }
+  document.body.appendChild(p);
+  const pw=p.getBoundingClientRect();
+  p.style.left=Math.min(r.left,window.innerWidth-pw.width-10)+'px';
+  p.style.top=Math.max(8,Math.min(r.bottom+6,window.innerHeight-pw.height-8))+'px';
+  p.querySelectorAll('.pop-item[data-pv]').forEach(it=>it.addEventListener('click',()=>{
+    state.providerId=it.dataset.pv;
+    try{localStorage.setItem('hsk-provider',state.providerId);}catch(e){}
+    renderModelPick();closePopovers();
+    const pr=currentProvider();toast(pr?('模型 → '+pr.model):'模型 → 跟随服务端默认');
+  }));
+  const openLlm=p.querySelector('[data-open="llm"]');
+  if(openLlm)openLlm.addEventListener('click',()=>{
+    closePopovers();openOverlay('settingsOvl');renderSettingsTab('llm');
+  });
+}
+$('modelPick').addEventListener('click',()=>showModelMenu($('modelPick')));
+
+/* ============================================================
+ * 主流程：单一输入框 → /api/dialog（planner 唯一对话入口）
+ * 会话内多轮上下文由服务端按 conversation_id 持久化（M5 权威源）
+ * ============================================================ */
+async function runDialog(text){
+  const before=new Set(Object.keys((graph&&graph.nodes)||{}));
+  const res=await api('/api/dialog',{text,conversation_id:state.conversation,
+                                     provider_id:state.providerId});
+  bornIds=new Set(Object.keys((res.graph&&res.graph.nodes)||{}).filter(id=>!before.has(id)));
+  applyGraph(res.graph);
+  renderTrace(res.trace);
+  addAiText(res.text);
+  (res.degraded||[]).forEach(d=>addNote(`⚠ ${d.stage}：${d.reason||''}`,'warn'));
+  loadSessions();   // 刷新侧栏标题/计数（首条消息后服务端自动命名）
+  return res;
+}
+async function sendPrompt(text,badge){
+  const emptyEl=$('emptyState');if(emptyEl)emptyEl.remove();
+  addUserMsg(text,badge);
+  const pend=addPending();
+  try{
+    await runDialog(text);
+  }catch(e){
+    dialogError(e);
+  }finally{
+    clearInterval(pend._iv);pend.remove();
+    $('text').focus();
+  }
+}
+function dialogError(e){
+  if(e.code==='llm_not_configured'){
+    addNote('自由对话需要配置 LLM API Key：'+e.message,'err',
+      '两种方法：① 设置 → 模型密钥，添加供应商（OpenAI 兼容，即时生效）；② 复制 .env.example 为 .env，填入 DEEPSEEK_API_KEY 后重启服务');
+  }else if(e.code==='unknown_provider'){
+    addNote(e.message,'err','该供应商可能已被删除，请重新选择模型');
+    loadProviders();
+  }else{
+    addNote('请求失败：'+e.message,'err');
+  }
+}
 async function submit(){
   const input=$('text'),btn=$('send');
   const text=input.value.trim();
   if(!text)return;
-  btn.disabled=true;input.value='';
-  const emptyEl=$('emptyState');if(emptyEl)emptyEl.remove();
-  addUserMsg(text);
-  const pend=addPending();
-  try{
-    const before=new Set(Object.keys((graph&&graph.nodes)||{}));
-    const res=await api('/api/dialog',{text,history:history.slice(-8)});
-    // 图谱生长动画：标记新增节点
-    bornIds=new Set(Object.keys((res.graph&&res.graph.nodes)||{}).filter(id=>!before.has(id)));
-    applyGraph(res.graph);
-    // 学习成果卡（trace 顺序）→ 结语文本 → 降级提示
-    renderTrace(res.trace);
-    addAiText(res.text);
-    (res.degraded||[]).forEach(d=>addNote(`⚠ ${d.stage}：${d.reason||''}`,'warn'));
-    // 多轮上下文（assistant = 结语文本 + 紧凑学习记录，供下轮复述验证取真实要点）
-    history.push({role:'user',content:text});
-    history.push({role:'assistant',content:(res.text||'')+cardSummary(res.trace)});
-    if(history.length>12)history=history.slice(-12);
-  }catch(e){
-    if(e.code==='llm_not_configured'){
-      addNote('自由对话需要配置 LLM API Key：'+e.message,'err',
-        '配置方法：复制 .env.example 为 .env，填入 DEEPSEEK_API_KEY（或 QWEN_API_KEY），重启 python -m engine.serve');
-    }else{
-      addNote('请求失败：'+e.message,'err');
-    }
-  }finally{
-    clearInterval(pend._iv);
-    pend.remove();
-    btn.disabled=false;input.focus();
+  btn.disabled=true;input.value='';input.style.height='auto';
+  await sendPrompt(text);
+  btn.disabled=false;
+}
+
+// ============ 弹窗 / 主题 / 侧栏 ============
+const THEMES=[
+  {id:'memphis',name:'孟菲斯',brand:'#df6b8c',bg:'#faf8f3'},
+  {id:'warm',name:'暖橙',brand:'#f45f28',bg:'#f2eadb'},
+];
+function setTheme(id){
+  document.documentElement.dataset.theme=id;
+  try{localStorage.setItem('hsk-theme',id);}catch(e){}
+  renderSettingsTab('theme');
+}
+const settingsTabs={
+  theme:()=>`
+    <h3>界面主题</h3>
+    <p class="sub">两套主题（深浅相同、强调色不同），切换只换 token，语义色（图谱类型/偏误红绿）保持不变。</p>
+    <div class="theme-grid">${THEMES.map(t=>`
+      <div class="theme-swatch ${document.documentElement.dataset.theme===t.id?'active':''}" data-th="${t.id}">
+        <div class="dot" style="background:${t.bg};outline:3px solid ${t.brand};outline-offset:-3px"></div>
+        <div class="nm">${t.name}</div>
+      </div>`).join('')}</div>`,
+  llm:()=>`
+    <h3>模型密钥（BYOK）</h3>
+    <div class="prov-note">统一 <b>OpenAI 兼容协议</b>：DeepSeek / Qwen / GLM / Kimi / 本地 Ollama 均可。
+      添加后<b>即时生效</b>，无需重启服务；Key 存于本机 <b>data/llm_providers.json</b>（已 gitignore，不会上传）。
+      <b>DeepSeek 已按 M6 评测校准（80% 达标），其他模型未评测</b>——协议遵循度可能下降。</div>
+    <div id="provList">加载中…</div>
+    <div class="prov-form">
+      <h5>＋ 添加供应商</h5>
+      <div class="fgrid">
+        <input id="pvName" placeholder="名称（如 GLM-4）">
+        <input id="pvModel" placeholder="模型名（如 glm-4-plus）">
+        <input id="pvUrl" class="wide" placeholder="Base URL（如 https://open.bigmodel.cn/api/paas/v4）">
+        <input id="pvKey" class="wide" placeholder="API Key（仅存本机）" type="password">
+      </div>
+      <div class="frow">
+        <button class="btn-brand" id="pvAdd">添加</button>
+        <button class="prov-btn" id="pvTestNew">先测试连通</button>
+        <span class="hint">模型名手动填写，请参考各供应商官方文档；「先测试连通」验证后再保存。</span>
+      </div>
+    </div>`,
+  keys:()=>`
+    <h3>快捷键</h3>
+    <div class="row2"><span class="kbd">Ctrl+Enter</span><span>发送</span></div>
+    <div class="row2"><span class="kbd">Enter</span><span>换行</span></div>
+    <div class="row2"><span class="kbd">↗ → ↓ ✕</span><span>卡片分支动作（悬停卡片右上角，锚定图谱权威边）</span></div>
+    <div class="row2"><span class="kbd">点击下划线词</span><span>Smart Annotation → 地图定位知识点</span></div>
+    <div class="row2"><span class="kbd">?conversation=</span><span>网址参数携带当前会话（可收藏/回访恢复）</span></div>`,
+  about:()=>`
+    <h3>关于</h3>
+    <ul class="about-li">
+      <li>HSK-AI-Coach · 前端壳 v2（Explore 化改造，0.19）</li>
+      <li>架构：planner 自由 ReAct 唯一对话入口（dialog 契约 v1）</li>
+      <li>数据：偏误图谱唯一权威 · 两段式写回 · 服务端多轮记忆（按会话）</li>
+      <li>零第三方依赖：Python 标准库 + 原生 JS/SVG，单文件可离线</li>
+      <li>卡片沿图谱权威边生长（↗深挖 →相邻 ↓待复习），无自由发散</li>
+    </ul>`,
+};
+function renderSettingsTab(k){
+  document.querySelectorAll('#settingsNav li').forEach(li=>li.classList.toggle('active',li.dataset.tab===k));
+  $('settingsBody').innerHTML=settingsTabs[k]();
+  if(k==='theme'){
+    $('settingsBody').querySelectorAll('.theme-swatch').forEach(sw=>
+      sw.addEventListener('click',()=>{setTheme(sw.dataset.th);toast('主题 → '+(THEMES.find(t=>t.id===sw.dataset.th)||{}).name);}));
+  }
+  if(k==='llm')bindProvidersTab();
+}
+
+// ---- 模型密钥 tab（0.20 BYOK）：列表渲染 + 增删/测试/设默认 ----
+function renderProvList(){
+  const box=$('provList');if(!box)return;
+  if(!state.providers.length){
+    box.innerHTML=`<div class="clean-sub">还没有任何供应商 —— .env 未配置 Key，也未在界面添加。
+      在下方表单添加即可开始对话（DeepSeek 为已评测默认选择）。</div>`;
+    return;
+  }
+  box.innerHTML=state.providers.map(p=>{
+    const isDef=p.id===state.defaultProvider;
+    return `<div class="prov-row" data-pv="${esc(p.id)}">
+      <div style="min-width:0;flex:1">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="pv-nm">${esc(p.name)}</span>
+          <span class="pv-md">${esc(p.model)}</span>
+          ${isDef?'<span class="pv-bdg">默认</span>':''}
+        </div>
+        <div class="pv-key">${esc(p.api_key_masked)} · ${esc(p.base_url)}</div>
+      </div>
+      <span class="pv-st" data-st="${esc(p.id)}"></span>
+      <button class="prov-btn" data-act="test">测试</button>
+      ${p.source==='env'?'':`<button class="prov-btn" data-act="def">${isDef?'取消默认':'设为默认'}</button>`}
+      ${p.source==='env'?'':`<button class="prov-btn danger" data-act="del">删除</button>`}
+    </div>`;
+  }).join('');
+  box.querySelectorAll('.prov-row').forEach(row=>{
+    const pid=row.dataset.pv;
+    row.querySelectorAll('.prov-btn').forEach(b=>b.addEventListener('click',()=>provAction(b.dataset.act,pid,b)));
+  });
+}
+async function provAction(act,pid,btn){
+  if(act==='test'){
+    const st=$('provList').querySelector(`[data-st="${CSS.escape(pid)}"]`)||btn;
+    st.textContent='测试中…';btn.disabled=true;
+    try{
+      const r=await api('/api/providers/test',{id:pid});
+      if(st.classList)st.classList.remove('ok','err');
+      if(r&&r.ok){st.textContent=`✓ ${r.latency_ms}ms`;st.classList.add('ok');}
+      else{st.textContent='✕ 连通失败';st.classList.add('err');
+        toast('测试失败：'+((r&&r.error)||'未知错误').slice(0,120));}
+    }catch(e){st.textContent='✕ 连通失败';st.classList.add('err');toast('测试失败：'+e.message);}
+    btn.disabled=false;
+    return;
+  }
+  if(act==='def'){
+    const target=(state.defaultProvider===pid)?'env':'p';
+    try{
+      await api('/api/providers/default',{id:(target==='env'?'env':pid)});
+      toast(target==='env'?'已回落 .env 默认':'默认供应商已切换');
+      await loadProviders();renderProvList();
+    }catch(e){toast('操作失败：'+e.message);}
+    return;
+  }
+  if(act==='del'){
+    if(!confirm('确认删除该供应商？已选它的会话将回落默认模型。'))return;
+    try{
+      const r=await fetch('/api/providers?id='+encodeURIComponent(pid),{method:'DELETE'});
+      if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||('HTTP '+r.status));}
+      if(state.providerId===pid){state.providerId='';try{localStorage.setItem('hsk-provider','');}catch(e){}}
+      await loadProviders();renderProvList();toast('已删除');
+    }catch(e){toast('删除失败：'+e.message);}
   }
 }
+function bindProvidersTab(){
+  renderProvList();
+  loadProviders().then(renderProvList);   // 打开 tab 时刷新一次（可能别处已变更）
+  $('pvTestNew').addEventListener('click',async()=>{
+    const b=$('pvTestNew');b.disabled=true;const old=b.textContent;b.textContent='测试中…';
+    try{
+      const r=await api('/api/providers/test',{
+        base_url:$('pvUrl').value.trim(),api_key:$('pvKey').value.trim(),model:$('pvModel').value.trim()});
+      toast(r&&r.ok?('连通成功（'+r.latency_ms+'ms）'):('连通失败：'+((r&&r.error)||'').slice(0,120)));
+    }catch(e){toast('测试失败：'+e.message);}
+    b.disabled=false;b.textContent=old;
+  });
+  $('pvAdd').addEventListener('click',async()=>{
+    const name=$('pvName').value.trim(),model=$('pvModel').value.trim(),
+          base_url=$('pvUrl').value.trim(),api_key=$('pvKey').value.trim();
+    if(!(name&&model&&base_url&&api_key)){toast('四个字段都必填');return;}
+    const b=$('pvAdd');b.disabled=true;const old=b.textContent;b.textContent='添加中…';
+    try{
+      await api('/api/providers',{name,model,base_url,api_key});
+      ['pvName','pvModel','pvUrl','pvKey'].forEach(i=>$(i).value='');
+      await loadProviders();renderProvList();
+      toast('已添加供应商（即时生效，输入框左上角可切换）');
+    }catch(e){toast('添加失败：'+e.message);}
+    b.disabled=false;b.textContent=old;
+  });
+}
+document.querySelectorAll('#settingsNav li').forEach(li=>
+  li.addEventListener('click',()=>renderSettingsTab(li.dataset.tab)));
+
+function openOverlay(id){$(id).classList.add('show');}
+document.querySelectorAll('[data-close]').forEach(x=>
+  x.addEventListener('click',()=>$(x.dataset.close).classList.remove('show')));
+document.querySelectorAll('.overlay').forEach(o=>
+  o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show');}));
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){document.querySelectorAll('.overlay.show').forEach(o=>o.classList.remove('show'));closePopovers();}
+});
+
+$('actSettings').addEventListener('click',()=>{openOverlay('settingsOvl');renderSettingsTab('theme');});
+$('actHowto').addEventListener('click',()=>openOverlay('howtoOvl'));
+$('resident').addEventListener('click',()=>openOverlay('howtoOvl'));
+$('actReview').addEventListener('click',beginReview);
+$('actReport').addEventListener('click',showReport);
+$('actDoc').addEventListener('click',openDoc);
+$('newSess').addEventListener('click',newSession);
+
+// ---- 认知地图独立视图（0.19：侧栏入口切换主区，地图独占；SVG 同实例复用，切换后按新尺寸重排） ----
+let mapView=false;
+function setMapView(on){
+  mapView=on;
+  document.querySelector('main').classList.toggle('mapview',on);
+  $('actMap').classList.toggle('cur',on);
+  if(on)requestAnimationFrame(()=>{renderMap();renderQueue();});
+}
+$('actMap').addEventListener('click',()=>setMapView(!mapView));
+$('backChat').addEventListener('click',()=>setMapView(false));
+
+// 地图不常驻后：对话流内点知识点 → 自动切到地图视图并定位
+function locateKp(id){
+  if(!mapView)setMapView(true);
+  selectedNode=null;
+  selectNode(id);
+}
+
+// 容器尺寸变化（视图切换/窗口缩放）后重排地图布局
+let _rzT=null;
+window.addEventListener('resize',()=>{
+  clearTimeout(_rzT);
+  _rzT=setTimeout(()=>{if(graph&&graph.nodes)renderMap();},200);
+});
+
+function foldSide(on){
+  $('side').classList.toggle('closed',on);
+  $('sideOpen').classList.toggle('show',on);
+}
+$('foldBtn').addEventListener('click',()=>foldSide(true));
+$('sideOpen').addEventListener('click',()=>foldSide(false));
+
+$('send').addEventListener('click',submit);
+$('text').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();submit();}
+});
+$('text').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px';});
 
 // ============ 启动 ============
 (async function init(){
-  $('send').addEventListener('click',submit);
-  $('text').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)submit();});
-  document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{
-    $('text').value=ch.dataset.ex;submit();
-  }));
+  // 主题（localStorage 持久化，默认孟菲斯）
+  let th='memphis';
+  try{th=localStorage.getItem('hsk-theme')||'memphis';}catch(e){}
+  if(!THEMES.some(t=>t.id===th))th='memphis';
+  document.documentElement.dataset.theme=th;
+
+  // 会话：URL 深链 ?conversation=<id>（OpenMAIC 式查询参数驱动）
+  const u=new URL(location);
+  const fromUrl=u.searchParams.get('conversation');
+  state.conversation=fromUrl||('s-'+Date.now().toString(36));
+  setUrlConversation(state.conversation);
+
   try{
     graph=await api('/api/graph');
-    renderMap();renderQueue();
-    setStatus(true,`learner ${graph.learner_id||'demo'} · ${Object.keys(graph.nodes||{}).length} 节点`);
+    applyGraph(graph);
   }catch(e){
     setStatus(false,'服务未连接');
     addNote('无法加载图谱：'+e.message,'err');
+  }
+  bindChips(document);
+  await loadSessions();
+  loadProviders();   // 0.20 BYOK：模型选择器数据（失败静默，选择器显示"默认模型"）
+  // 深链恢复：URL 带会话参数时拉取历史（新生成的 id 无历史 → 空态）
+  if(fromUrl){
+    try{
+      const c=await api('/api/conversation?id='+encodeURIComponent(fromUrl));
+      const msgs=(c&&c.messages)||[];
+      if(msgs.length){
+        const emptyEl=$('emptyState');if(emptyEl)emptyEl.remove();
+        addMsg(el(`<div class="note plain">已恢复会话（${msgs.length} 条消息）· 成果卡不随会话持久，此处为文本记录</div>`));
+        msgs.forEach(m=>{
+          if(m.role==='user')addUserMsg(m.content);
+          else addAiText(m.content);
+        });
+      }
+    }catch(e){ /* 恢复失败不阻塞新对话 */ }
   }
   window.addEventListener('resize',()=>{renderMap();});
 })();

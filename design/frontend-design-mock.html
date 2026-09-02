@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="Default">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HSK-AI-Coach · 前端设计稿（静态原型）</title>
+<!--
+  设计稿原型：借鉴 Explore 的"单强调色+灰阶+9主题"、卡片/Smart Annotation/大弹窗交互，
+  但驯化语义——卡片分支锚定图谱权威边（无发散方向置灰）、图谱节点类型色与偏误对立色保留为语义色。
+  可点着玩：侧栏折叠/会话切换/新建、主题切换、分支动作、Smart Annotation 图谱定位、
+  开始复习、AI 学习报告、document reading、设置/how-to 弹窗。
+  ⚠ 纯静态壳，不接后端；并入正式前端时再连 /api/dialog。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ============ 主题化 token：只改 brand + bg 即换肤 ============ */
+:root{
+  /* twiddle（主题只改这三个） */
+  --brand:19 228 37; --bg-bg:16 16 16; --is-light:0;
+  /* 派生（灰阶 + 表面） */
+  --primary:235 235 235; --secondary:205 205 205; --tertiary:150 150 150; --quaternary:115 115 115;
+  --card:28 28 28; --card2:36 36 36; --panel:22 22 22; --input:34 34 34;
+  --line:60 60 60; --usermsg:30 40 30; --item:40 40 40; --item-active:42 52 42;
+  /* 语义色（保留，承载信息；深/浅下对比略有差异但语义不变） */
+  --sem-vocab:82 151 255; --sem-grammar:168 139 250; --sem-pragma:235 148 79; --sem-char:239 106 95;
+  --sem-ok:63 214 143; --sem-err:239 106 95; --sem-warn:232 180 90;
+}
+[data-theme="Default"]{--brand:19 228 37;--bg-bg:16 16 16;--is-light:0;}
+[data-theme="Midnight"]{--brand:135 206 250;--bg-bg:9 14 23;--is-light:0;}
+[data-theme="Default-Purple"]{--brand:178 38 224;--bg-bg:16 16 16;--is-light:0;}
+[data-theme="Default-Blue"]{--brand:50 120 250;--bg-bg:16 16 16;--is-light:0;}
+[data-theme="Default-Orange"]{--brand:255 113 4;--bg-bg:16 16 16;--is-light:0;}
+[data-theme="Warm"]{--brand:244 95 40;--bg-bg:242 234 219;--is-light:1;
+  --primary:32 28 24;--secondary:90 82 72;--tertiary:145 135 130;--quaternary:160 152 142;
+  --card:255 252 247;--card2:255 255 255;--panel:246 238 226;--input:236 228 215;
+  --line:210 200 186;--usermsg:250 228 210;--item:240 232 220;--item-active:250 222 205;}
+[data-theme="Sakura"]{--brand:163 104 200;--bg-bg:228 240 250;--is-light:1;
+  --primary:40 36 52;--secondary:96 90 112;--tertiary:135 148 165;--quaternary:160 170 185;
+  --card:255 255 255;--card2:255 255 255;--panel:238 246 252;--input:236 244 252;
+  --line:206 218 234;--usermsg:246 234 250;--item:234 242 250;--item-active:244 230 250;}
+[data-theme="Memphis"]{--brand:223 107 140;--bg-bg:250 248 243;--is-light:1;
+  --primary:42 36 34;--secondary:96 86 80;--tertiary:140 128 120;--quaternary:165 152 144;
+  --card:255 255 255;--card2:255 255 255;--panel:244 240 234;--input:242 238 232;
+  --line:212 204 190;--usermsg:252 230 236;--item:240 236 228;--item-active:252 226 236;}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:rgb(var(--bg-bg));color:rgb(var(--primary));font-family:'Inter',system-ui,sans-serif;
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow:hidden;
+  transition:background .35s ease,color .35s ease}
+.font-space{font-family:'Space Grotesk',sans-serif}
+.font-mono{font-family:'JetBrains Mono',monospace}
+.a{color:rgb(var(--brand))}
+.sec{color:rgb(var(--secondary))}
+.ter{color:rgb(var(--tertiary))}
+
+/* ============ 三栏骨架 ============ */
+.app{display:flex;height:100vh}
+/* 左：项目侧栏 */
+.side{width:236px;flex-shrink:0;border-right:1px solid rgb(var(--line));display:flex;flex-direction:column;
+  background:rgb(var(--bg-bg));overflow:hidden;transition:width .2s,opacity .2s}
+.side.closed{width:0;border-right:0;opacity:0}
+.side-top{display:flex;align-items:center;gap:8px;padding:12px 12px 8px}
+.side-top .logo{font-family:'Space Grotesk';font-weight:700;font-size:17px;letter-spacing:.4px}
+.side-top .logo b{color:rgb(var(--brand))}
+.side-top .fold{margin-left:auto;background:none;border:0;color:rgb(var(--tertiary));cursor:pointer;font-size:15px;padding:4px}
+.side-top .fold:hover{color:rgb(var(--primary))}
+.side-scroll{flex:1;overflow-y:auto;padding:6px 10px;display:flex;flex-direction:column;gap:2px}
+.hd{display:flex;align-items:center;gap:7px;padding:8px 6px 4px;color:rgb(var(--tertiary));
+  font-size:11px;font-weight:600;letter-spacing:1px}
+.hd .sep{flex:1;height:1px;background:rgb(var(--line))}
+.resident{display:flex;align-items:center;gap:9px;padding:8px;border-radius:10px;
+  background:rgb(var(--item));border:1px solid rgb(var(--line));cursor:pointer}
+.resident .av{width:30px;height:30px;border-radius:8px;background:rgb(var(--brand));color:#111;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.resident .mt{flex:1;min-width:0}
+.resident .mt .t{font-size:13px;font-weight:600}
+.resident .mt .s{font-size:10.5px;color:rgb(var(--tertiary))}
+.resident .chip{font-size:9.5px;padding:1px 6px;border-radius:5px;background:rgb(var(--brand)/.15);color:rgb(var(--brand))}
+.sbtn{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:9px;cursor:pointer;
+  border:1px solid transparent;color:rgb(var(--secondary));transition:background .15s}
+.sbtn:hover{background:rgb(var(--item))}
+.sbtn .ic{width:17px;height:17px;color:rgb(var(--tertiary));flex-shrink:0}
+.sbtn.solid{border:1px dashed rgb(var(--line));color:rgb(var(--tertiary));justify-content:center;font-size:12.5px}
+.sbtn.solid:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+.sbtn.add{color:rgb(var(--brand));border:1px dashed rgb(var(--brand)/.45)}
+.sbtn .bdg{margin-left:auto;font-size:10px;color:rgb(var(--tertiary))}
+.spr{flex:1}
+.side-bot{border-top:1px solid rgb(var(--line));padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+
+/* ============ 右主区：对话流 + 图谱 ============ */
+.main{flex:1;display:grid;grid-template-columns:clamp(400px,40vw,560px) 1fr;min-width:0;min-height:0}
+@media (max-width:1100px){.main{grid-template-columns:1fr;grid-template-rows:minmax(320px,56%) 1fr}}
+.col{border-right:1px solid rgb(var(--line));display:flex;flex-direction:column;min-height:0;background:rgb(var(--panel))}
+@media (max-width:1100px){.col{border-right:0;border-bottom:1px solid rgb(var(--line))}}
+.mapc{display:flex;flex-direction:column;min-height:0}
+
+/* ---- 对话流 ---- */
+.chat{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:16px}
+.chat::-webkit-scrollbar,.side-scroll::-webkit-scrollbar{width:8px}
+.chat::-webkit-scrollbar-thumb{background:rgb(var(--line));border-radius:4px}
+.empty{color:rgb(var(--secondary));padding:26px 6px;line-height:1.9}
+.empty h2{margin:0 0 6px;font-size:18px;color:rgb(var(--primary));font-family:'Space Grotesk'}
+.empty p{font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{padding:7px 14px;border-radius:20px;border:1px solid rgb(var(--line));background:rgb(var(--card2));
+  color:rgb(var(--secondary));font-size:12.5px;cursor:pointer;transition:.15s}
+.chip:hover{border-color:rgb(var(--brand));color:rgb(var(--brand))}
+.msg-user{align-self:flex-end;max-width:86%;background:rgb(var(--usermsg));border-radius:12px 12px 4px 12px;
+  padding:8px 12px;color:rgb(var(--primary));white-space:pre-wrap;animation:pop .18s ease;font-size:14px}
+@keyframes pop{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+/* 回合单元 + 可折叠嵌套 */
+.turn{position:relative;display:flex;flex-direction:column;gap:10px;animation:pop .2s ease}
+.turn.el{margin-left:18px;border-left:2px solid rgb(var(--brand)/.35);padding-left:12px}
+.ai-text{padding:2px 0 2px 12px;border-left:3px solid rgb(var(--brand));color:rgb(var(--primary));
+  line-height:1.7;white-space:pre-wrap;font-size:14px}
+.ai-text .note-c{color:rgb(var(--brand));text-decoration:underline;text-decoration-color:rgb(var(--brand)/.5);
+  text-underline-offset:3px;cursor:pointer}
+
+/* 成果卡（语义色保留承载信息） */
+.card{position:relative;background:rgb(var(--card));border:1px solid rgb(var(--line));border-radius:12px;
+  padding:13px 15px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.card .label{font-size:10.5px;font-weight:700;letter-spacing:1px;color:rgb(var(--tertiary));
+  margin-bottom:7px;font-family:'JetBrains Mono'}
+.card .head{display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap}
+.tag{font-size:11px;padding:2px 9px;border-radius:20px;font-weight:600;border:1px solid transparent}
+.frag{font-size:14.5px;font-weight:600;text-decoration:line-through;text-decoration-color:
+  rgb(var(--sem-err)/.55)}
+.corr{font-size:14.5px;font-weight:600;color:rgb(var(--sem-ok))}
+.meta{font-size:11px;color:rgb(var(--tertiary));margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+.kp-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.kp{padding:2px 9px;border-radius:6px;font-size:11.5px;color:rgb(var(--brand));
+  background:rgb(var(--brand)/.1);border:1px solid rgb(var(--brand)/.25);cursor:pointer}
+.expl{font-size:13px;line-height:1.7;white-space:pre-wrap}
+.kp-li,.rv-li{display:flex;gap:9px;align-items:baseline;padding:6px 2px;border-bottom:1px solid rgb(var(--line)/.5);font-size:12.5px}
+.kp-li:last-child,.rv-li:last-child{border-bottom:0}
+.bar{height:6px;border-radius:4px;background:rgb(var(--card2));overflow:hidden;flex:1;min-width:40px}
+.bar>div{height:100%;background:rgb(var(--brand));border-radius:4px}
+.rv-prio{color:rgb(var(--tertiary));min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
+.row-btn{margin-top:8px;display:flex;gap:8px}
+.mini-btn{font-size:12px;padding:6px 11px;border-radius:8px;border:1px solid rgb(var(--brand)/.5);
+  color:rgb(var(--brand));background:transparent;cursor:pointer;transition:.15s}
+.mini-btn:hover{background:rgb(var(--brand));color:#111}
+
+/* 低置信（warn 语义色：明显区别于已确认偏误） */
+.uc{font-size:12.5px;color:rgb(var(--sem-warn));background:rgb(var(--sem-warn)/.07);
+  border:1px dashed rgb(var(--sem-warn)/.4);border-radius:8px;padding:8px 12px;line-height:1.6}
+.correct-card{border-color:rgb(var(--sem-ok)/.4);background:linear-gradient(180deg,rgb(var(--sem-ok)/.07),rgb(var(--card)))}
+.correct-title{font-weight:700;color:rgb(var(--sem-ok));font-size:14px}
+
+/* 求知/讲解/方法卡动作（卡片级快捷：分支方向来自图谱权威边） */
+.card-tools{position:absolute;top:-13px;right:12px;display:flex;gap:5px;opacity:0;transition:opacity .15s}
+.turn:hover .card-tools,.card:hover .card-tools{opacity:1}
+.tool{width:28px;height:28px;border-radius:8px;border:1px solid rgb(var(--line));background:rgb(var(--card2));
+  color:rgb(var(--secondary));cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:14px;transition:.15s}
+.tool:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+.tool.del:hover{color:rgb(var(--sem-err));border-color:rgb(var(--sem-err))}
+.tool.off{opacity:.32;cursor:not-allowed}
+.tool.off:hover{color:inherit;border-color:rgb(var(--line))}
+/* 分支子卡：brand 渐变背景 + 标题染 brand */
+.turn.child .card{background:linear-gradient(180deg,rgb(var(--brand)/.07),rgb(var(--card)));border-color:rgb(var(--brand)/.3)}
+.turn.child .label{color:rgb(var(--brand))}
+.proj-badge{font-size:10px;color:rgb(var(--brand));border:1px solid rgb(var(--brand)/.4);
+  border-radius:6px;padding:1px 6px;display:inline-block;margin-bottom:6px}
+
+/* 学习记录摘要、证明折叠 */
+.note{border-radius:8px;font-size:12.5px;padding:8px 12px;line-height:1.7}
+.note.plain{background:rgb(var(--card));border:1px solid rgb(var(--line));color:rgb(var(--secondary))}
+.note.warn{background:rgb(var(--sem-warn)/.1);border:1px solid rgb(var(--sem-warn)/.35);color:rgb(var(--sem-warn))}
+.note.err{background:rgb(var(--sem-err)/.1);border:1px solid rgb(var(--sem-err)/.4);color:rgb(var(--sem-err))}
+details.ev{background:rgb(var(--card));border:1px solid rgb(var(--line));border-radius:10px;padding:9px 13px}
+details.ev summary{cursor:pointer;font-size:12px;color:rgb(var(--tertiary));font-weight:600;list-style:none}
+details.ev summary::before{content:"▸";color:rgb(var(--tertiary));margin-right:6px;transition:transform .15s;display:inline-block}
+details.ev[open] summary::before{transform:rotate(90deg)}
+.ev-list{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+.ev-item{font-size:12px;color:rgb(var(--secondary));line-height:1.6}
+
+/* 待办动线卡（开始复习 / AI 报告） */
+.dong-card{display:flex;gap:12px;align-items:center}
+.dong-card .dk{width:34px;height:34px;border-radius:9px;background:rgb(var(--brand)/.14);color:rgb(var(--brand));
+  display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.dong-card .dm{flex:1;min-width:0}
+.dong-card .dm .t{font-weight:600;font-size:13.5px}
+.dong-card .dm .s{font-size:12px;color:rgb(var(--tertiary))}
+
+/* 输入行 */
+.inputrow{padding:12px 14px;border-top:1px solid rgb(var(--line));display:flex;gap:9px;background:rgb(var(--card2))}
+.inputbox{flex:1;display:flex;align-items:flex-end;gap:8px;background:rgb(var(--input));
+  border:1px solid rgb(var(--line));border-radius:12px;padding:9px 12px}
+.inputbox textarea{flex:1;background:transparent;border:0;outline:none;resize:none;color:rgb(var(--primary));
+  font-family:inherit;font-size:14px;line-height:1.4;max-height:150px}
+.inputbox textarea::placeholder{color:rgb(var(--tertiary))}
+.send{width:34px;height:34px;border-radius:9px;background:rgb(var(--brand));color:#111;border:0;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
+.send:hover{opacity:.9}
+.hint{font-size:11px;color:rgb(var(--quaternary));margin-top:8px;padding:0 14px}
+
+/* ---- 图谱 ---- */
+.maptitle{padding:11px 16px;font-size:12px;color:rgb(var(--secondary));border-bottom:1px solid rgb(var(--line));
+  display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.legend{display:flex;gap:11px;font-size:11px;color:rgb(var(--tertiary))}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.mapwrap{flex:1;overflow:hidden;position:relative}
+svg#map{width:100%;height:100%}
+.map-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgb(var(--tertiary));font-size:13px;pointer-events:none}
+.node{cursor:pointer}
+.node circle{transition:.2s}
+.node:hover circle{stroke:rgb(var(--brand));stroke-width:2}
+.node.hot circle{filter:drop-shadow(0 0 6px rgb(var(--sem-warn)/.9))}
+.node.sel circle{stroke:rgb(var(--brand));stroke-width:2.5;filter:drop-shadow(0 0 7px rgb(var(--brand)/.6))}
+.edge{stroke:rgb(var(--secondary)/.35)}
+.edge.lit{stroke:rgb(var(--brand)/.8)}
+.nl{font-size:10px;fill:rgb(var(--tertiary));pointer-events:none}
+.lv-label{font-size:9.5px;fill:rgb(var(--quaternary));letter-spacing:.5px}
+.tooltip{position:fixed;z-index:60;max-width:240px;background:rgb(var(--card2));border:1px solid rgb(var(--line));
+  border-radius:10px;padding:9px 12px;font-size:12px;color:rgb(var(--primary));box-shadow:0 6px 20px rgba(0,0,0,.4);
+  opacity:0;pointer-events:none;transition:opacity .15s}
+.tooltip.show{opacity:1}
+.tooltip .tt{font-weight:700;color:rgb(var(--brand));margin-bottom:3px;font-family:'Space Grotesk'}
+
+/* ============ 弹窗 ============ */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:center;justify-content:center}
+.overlay.show{display:flex}
+.modal{width:76vw;height:78vh;background:rgb(var(--card));border:1px solid rgb(var(--line));border-radius:22px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);display:flex;overflow:hidden;position:relative}
+.modal.closeit{width:auto;height:auto}
+.modal-nav{width:24%;border-right:1px solid rgb(var(--line));padding:16px 12px;overflow-y:auto}
+.modal-nav h4{font-size:11px;letter-spacing:1px;color:rgb(var(--tertiary));margin-bottom:10px;font-family:'JetBrains Mono'}
+.modal-nav li{list-style:none;padding:8px 11px;border-radius:8px;color:rgb(var(--secondary));cursor:pointer;font-size:13px;margin-bottom:2px}
+.modal-nav li:hover{background:rgb(var(--item))}
+.modal-nav li.active{background:rgb(var(--item-active));color:rgb(var(--primary));font-weight:600}
+.modal-body{flex:1;padding:24px 26px;overflow-y:auto}
+.modal-body h3{font-size:18px;font-family:'Space Grotesk';margin-bottom:14px}
+.close{position:absolute;top:14px;right:18px;cursor:pointer;color:rgb(var(--tertiary));font-size:22px;background:none;border:0}
+.close:hover{color:rgb(var(--primary))}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12px;color:rgb(var(--tertiary));margin-bottom:6px}
+.field select,.field input[type=text]{width:100%;background:rgb(var(--input));border:1px solid rgb(var(--line));
+  border-radius:9px;padding:10px 12px;color:rgb(var(--primary));font-family:inherit}
+.theme-grid,.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.theme-swatch{border:2px solid rgb(var(--line));border-radius:12px;padding:12px;cursor:pointer;background:rgb(var(--card2))}
+.theme-swatch .dot{width:100%;height:34px;border-radius:8px}
+.theme-swatch .nm{font-size:12px;color:rgb(var(--secondary));margin-top:8px}
+.theme-swatch.active{border-color:rgb(var(--brand))}
+.plans{margin-top:8px}
+.plan{border:1px solid rgb(var(--line));background:rgb(var(--card2));border-radius:14px;padding:16px;cursor:pointer;transition:.2s}
+.plan:hover{background:rgb(var(--item))}
+.plan .pn{font-weight:700;font-size:15px}
+.plan .pp{font-size:23px;font-weight:800;color:rgb(var(--brand))}
+.plan .pp span{font-size:11px;font-weight:400;color:rgb(var(--tertiary))}
+.plan .feat{font-size:12px;color:rgb(var(--tertiary));margin-top:9px;display:flex;flex-direction:column;gap:4px}
+.plan .feat .hl{color:rgb(var(--brand));font-weight:600}
+.row2{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.kbd{font-family:'JetBrains Mono';font-size:12px;background:rgb(var(--item));border:1px solid rgb(var(--line));
+  border-radius:6px;padding:3px 9px;color:rgb(var(--secondary))}
+.ctypes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:6px 0 16px}
+.ctype{border:1px solid rgb(var(--line));border-radius:12px;padding:14px;background:rgb(var(--card2))}
+.ctype .ar{font-size:26px;color:rgb(var(--brand));font-family:'Space Grotesk'}
+.ctype .ct{font-weight:600;margin:6px 0 4px;font-size:14px}
+.ctype .cd{font-size:12px;color:rgb(var(--tertiary))}
+.htu li{margin:3px 0 3px 18px;color:rgb(var(--secondary));font-size:13px}
+.htu h3{font-size:15px;margin:14px 0 5px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgb(var(--brand));color:#111;
+  padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:200;opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.show{opacity:1}
+.drop{width:100%;border:2px dashed rgb(var(--line));border-radius:14px;padding:34px;text-align:center;color:rgb(var(--tertiary));
+  font-size:13px;background:rgb(var(--card2));cursor:pointer}
+.drop:hover,.drop.drag{border-color:rgb(var(--brand));color:rgb(var(--brand))}
+.dfile{font-size:12px;color:rgb(var(--tertiary));margin-top:12px;display:flex;align-items:center;gap:8px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001s!important;transition-duration:.001s!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ================= 左：侧栏 ================= -->
+  <aside class="side" id="side">
+    <div class="side-top">
+      <span class="logo">HSK<b>-Coach</b></span>
+      <button class="fold" id="foldBtn" title="折叠侧栏">‹</button>
+    </div>
+    <div class="side-scroll">
+      <div class="resident" title="本地 AI 助教 · 随图谱共同生长">
+        <div class="av">HS</div>
+        <div class="mt"><div class="t">AI 助教</div><div class="s">本地图谱感知助手</div></div>
+        <span class="chip">local</span>
+      </div>
+
+      <div class="hd"><span>会话</span><span class="sep"></span></div>
+      <div id="sessionList"></div>
+      <div class="sbtn add" id="newSess">＋ 新建会话</div>
+
+      <div class="hd"><span>学习动线</span><span class="sep"></span></div>
+      <div class="sbtn" id="actReview"><span class="ic">▶</span>开始复习<span class="bdg" id="rvCount">—</span></div>
+      <div class="sbtn" id="actReport"><span class="ic">◎</span>AI 学习报告</div>
+      <div class="sbtn" id="actDoc"><span class="ic">▤</span>阅读材料<span class="bdg">txt/md</span></div>
+
+      <div class="spr"></div>
+    </div>
+    <div class="side-bot">
+      <div class="sbtn" id="actSettings"><span class="ic">⚙</span>设置</div>
+      <div class="sbtn" id="actHowto"><span class="ic">?</span>怎么用</div>
+    </div>
+  </aside>
+
+  <!-- ================= 主区 ================= -->
+  <main class="main">
+    <!-- 左列：对话流 -->
+    <section class="col">
+      <div class="chat" id="chat"></div>
+      <div class="hint font-mono">Enter 换行 · Ctrl+Enter 发送</div>
+      <div class="inputrow">
+        <div class="inputbox">
+          <textarea id="text" rows="1" placeholder="说一句话、问一个知识点，或复述刚学的内容…"></textarea>
+          <button class="send" id="send" title="发送 (Ctrl+Enter)">↑</button>
+        </div>
+      </div>
+    </section>
+    <!-- 右列：图谱 -->
+    <section class="mapc">
+      <div class="maptitle">
+        <span>认知地图 · <span class="ter">横轴=HSK 级 纵轴=掌握度 大小=错误 描边=待复习</span></span>
+        <span class="legend">
+          <span><i style="background:rgb(var(--sem-vocab))"></i>词汇</span>
+          <span><i style="background:rgb(var(--sem-grammar))"></i>语法</span>
+          <span><i style="background:rgb(var(--sem-pragma))"></i>语用</span>
+          <span><i style="background:rgb(var(--sem-char))"></i>汉字</span>
+          <span id="mapCount"></span>
+        </span>
+      </div>
+      <div class="mapwrap">
+        <svg id="map"></svg>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ================= 设置弹窗 ================= -->
+<div class="overlay" id="settingsOvl" style="position:fixed">
+  <div class="modal">
+    <button class="close" data-close="settingsOvl">×</button>
+    <ul class="modal-nav" id="settingsNav">
+      <h4>设置</h4>
+      <li data-tab="color" class="active">界面主题</li>
+      <li data-tab="model">模型</li>
+      <li data-tab="api">API Key</li>
+      <li data-tab="lang">语言</li>
+      <li data-tab="shortcuts">快捷键</li>
+    </ul>
+    <div class="modal-body" id="settingsBody"></div>
+  </div>
+</div>
+
+<!-- ================= 怎么用 ================= -->
+<div class="overlay" id="howtoOvl">
+  <div class="modal">
+    <button class="close" data-close="howtoOvl">×</button>
+    <ul class="modal-nav"><h4>怎么用</h4><li class="active">HSK-AI-Coach 怎么用</li></ul>
+    <div class="modal-body htu">
+      <h3>灵动的卡片，锚定你的图谱</h3>
+      <p class="sec" style="font-size:13px">每张成果卡的右上角（悬停浮现）有分支动作。它们不是任意发散——只指向图谱里<b class="a">已确认的关联方向</b>，灰掉的按钮说明图谱里还没有这条边。</p>
+      <div class="ctypes">
+        <div class="ctype"><div class="ar">↗</div><div class="ct">子卡深挖</div><div class="cd">沿图谱的「关联/混淆边」往下钻一个面，继承上游主题并染色。</div></div>
+        <div class="ctype"><div class="ar">→</div><div class="ct">相邻角度</div><div class="cd">原知识点延伸到相关的<b class="a">另一知识点</b>（有边才可用）。</div></div>
+        <div class="ctype"><div class="ar">↓</div><div class="ct">沿待复习</div><div class="cd">跳到该知识点当前<b class="a">待复习态</b>，顺势出一道巩固练习。</div></div>
+      </div>
+      <h3>Smart Annotation</h3>
+      <ul><li>回答里的<b class="a">高亮下划线名词</b>点一下 → 右侧图谱定位到对应知识点。</li></ul>
+      <h3>学习动线</h3>
+      <ul>
+        <li><b>▶ 开始复习</b>：拉取待复习知识点，出一道针对性练习。</li>
+        <li><b>◎ AI 学习报告</b>：基于画像（常错点），读出一段时间的薄弱总结。</li>
+      </ul>
+      <h3>侧栏</h3>
+      <ul>
+        <li><b>会话</b>：每个会话独立上下文，切换会自动记住位置（URL 深链）。</li>
+        <li><b>阅读材料</b>：上传/粘贴 txt 或 md，让 AI 抽取其中文知识点。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 阅读材料 ================= -->
+<div class="overlay" id="docOvl">
+  <div class="modal closeit" style="padding:24px;width:min(620px,92vw);height:auto">
+    <button class="close" data-close="docOvl">×</button>
+    <h3 class="font-space" style="font-size:18px;margin-bottom:6px">导入材料，抽取中文点</h3>
+    <p class="ter" style="font-size:12.5px;margin-bottom:16px">当前支持 <b class="a">txt / markdown / 粘贴文本</b>；PDF/Word/OCR 后续版本。</p>
+    <div class="drop" id="docDrop">点击或拖入 .txt / .md 文件<small class="ter" style="display:block;margin-top:6px">或直接粘贴文本到下方</small></div>
+    <div class="field" style="margin-top:14px"><textarea id="docText" style="width:100%;min-height:150px;background:rgb(var(--input));border:1px solid rgb(var(--line));border-radius:10px;padding:12px;color:rgb(var(--primary));font-family:inherit" placeholder="粘贴中文/英中对照段落…"></textarea></div>
+    <button class="mini-btn" id="docParse" style="margin-top:6px">开始解析</button>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const toast=t=>{const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1600);};
+
+/* ================= 图谱静态数据（演示：把字句一组） ================= */
+const NODES={
+ '把字句':{lp:2,mastery:.35,err:3,types:'语法', x:180,y:120,r:21, lv:2, rev:true},
+ '了':{lp:2,mastery:.7,err:1,types:'语法', x:120,y:190,r:15, lv:2},
+ '被字句':{lp:3,mastery:.15,err:2,types:'语法', x:250,y:120,r:18, lv:3, rev:true},
+ '量词':{lp:1,mastery:.85,err:1,types:'词汇', x:380,y:80,r:15, lv:1},
+ '苹果':{lp:1,mastery:.9,err:0,types:'词汇', x:320,y:180,r:13, lv:1},
+ '语序':{lp:2,mastery:.4,err:2,types:'语法', x:300,y:250,r:16, lv:2},
+};
+const EDGES=[
+ ['把字句','了'],['把字句','语序'],['把字句','被字句'],['了','量词'],['语序','量词'],['语序','苹果']
+];
+const TYPE_COLOR={语法:()=>'rgb(var(--sem-grammar))',词汇:()=>'rgb(var(--sem-vocab))',语用:()=>'rgb(var(--sem-pragma))',汉字:()=>'rgb(var(--sem-char))'};
+function drawMap(){
+  const s=$('map');const W=s.clientWidth||700,H=s.clientHeight||500;s.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  s.innerHTML='';
+  ['1','2','3','4'].forEach(lv=>{const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',(lv-1)*130+20);t.setAttribute('y',H-14);t.textContent='HSK '+lv;t.setAttribute('class','lv-label');
+    t.setAttribute('text-anchor','middle');s.appendChild(t);});
+  EDGES.forEach(([a,b])=>{
+    if(!NODES[a]||!NODES[b])return;
+    const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',NODES[a].x+ (NODES[a].r));l.setAttribute('y1',NODES[a].y);
+    l.setAttribute('x2',NODES[b].x- (NODES[b].r));l.setAttribute('y2',NODES[b].y-8);
+    l.setAttribute('class','edge');l.setAttribute('data-a',a);l.setAttribute('data-b',b);s.appendChild(l);});
+  Object.entries(NODES).forEach(([id,n])=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');g.setAttribute('class','node');g.dataset.id=id;
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',n.x);c.setAttribute('cy',n.y);c.setAttribute('r',n.r);
+    c.setAttribute('fill',TYPE_COLOR[n.types]());c.setAttribute('opacity',.85);
+    if(n.rev){c.setAttribute('stroke','rgb(var(--sem-warn))');c.setAttribute('stroke-width',2.5);}
+    g.appendChild(c);
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',n.x);t.setAttribute('y',n.y+n.r+14);t.textContent=id;t.setAttribute('text-anchor','middle');t.setAttribute('class','nl');
+    g.appendChild(t);
+    g.onclick=()=>selectNode(id);
+    s.appendChild(g);
+  });
+  $('mapCount').textContent=Object.keys(NODES).length+' 节点';
+}
+function neighbors(id){const nb=new Set();EDGES.forEach(([a,b])=>{if(a===id)nb.add(b);if(b===id)nb.add(a);});return nb;}
+function selectNode(id){
+  const s=$('map');
+  s.querySelectorAll('.node').forEach(n=>n.classList.toggle('sel',n.dataset.id===id));
+  s.querySelectorAll('.edge').forEach(l=>{
+    const touch=l.dataset.a===id||l.dataset.b===id;
+    l.classList.toggle('lit',touch);
+  });
+  if(id)toast('定位：'+id);
+}
+window.addEventListener('resize',drawMap);
+
+/* ================= Smart Annotation 释义词典 ================= */
+const DICT={'把字句':'V+…+结果补语，强调对宾语的处理。','了':'表完成/变化（这里是动态助词）。','量词':'名量搭配：一个/个、一本/本…','语序':'中文修饰语在前、中心语在后。','被字句':'受事提至句首的被动结构。'};
+function showTip(e,text,title){const t=$('tooltip');t.innerHTML=`<div class="tt">${esc(title)}</div><div>${esc(text)}</div>`;
+  t.style.left=(e.clientX+14)+'px';t.style.top=(e.clientY+10)+'px';t.classList.add('show');}
+function hideTip(){$('tooltip').classList.remove('show');}
+document.addEventListener('mousemove',e=>{if(!$('tooltip').classList.contains('show'))return;
+  const t=$('tooltip'),r=t.getBoundingClientRect();
+  t.style.left=Math.min(e.clientX+14,innerWidth-r.width-10)+'px';t.style.top=Math.min(e.clientY+10,innerHeight-r.height-10)+'px';});
+
+/* ================= 对话渲染（模拟数据 + 分支 + 注解） ================= */
+const chat=$('chat');
+function addNode(html){const d=document.createElement('div');d.innerHTML=html.trim();const n=d.firstChild;chat.appendChild(n);return n;}
+function banishEmpty(){const e=chat.querySelector('.empty');if(e)e.remove();}
+function annotate(html){ // 把已知名词包成可点注解
+  return html.replace(/(把字句|被字句|量词|语序|苹果)/g,(w)=>`<span class="note-c" data-note="${w}">${w}</span>`);
+}
+const NODEKS={'把字句':['把字句','被字句','语序'],'了':['了']};
+function kpNote(){ // 绑定注解点击 → 图谱定位 + 释义
+  chat.querySelectorAll('.note-c').forEach(el=>{
+    if(el._bound)return;el._bound=true;
+    const w=el.dataset.note;
+    el.onmouseenter=e=>{showTip(e,DICT[w]||'',w);};
+    el.onmouseleave=hideTip;
+    el.onclick=e=>{e.stopPropagation();selectNode(w);};
+  });
+}
+function toolsFor(id,parentCard){ // 分支动作：锚定图谱权威边；无方向置灰
+  const nb=neighbors(id);
+  const parts=[
+    ['↗','sc',nb.size?'Sub-card 深挖':'无关联边',nb.size],
+    ['→','dv',nb.size?'相邻角度':'无关联边',nb.size],
+    ['↓','br',NODES[id]&&NODES[id].rev?'沿待复习':'非待复习',NODES[id]&&NODES[id].rev],
+    ['🗑','del','删除',true],
+  ];
+  const bar=document.createElement('div');bar.className='card-tools';
+  bar.innerHTML=parts.map(([glyph,cls,tip,on])=>`<button class="tool ${on?'':'off'}" data-k="${cls}" title="${tip}">${glyph}</button>`).join('');
+  bar.querySelector('[data-k="sc"]').onclick=()=>{
+    const t=addNode(`<div class="turn child"><div class="card"><span class="proj-badge">↗ 子卡 · ${esc(id)}</span>
+      <div class="label">深挖 · ${esc(id)} 的关联面</div><div class="expl">沿图谱关联边继续往下——例如从「${esc(id)}」看「${esc(id)}」如何与<b>语序</b>交织。</div></div></div>`);
+    t.scrollIntoView({block:'center'});toast('创建子卡：'+id);
+  };
+  bar.querySelector('[data-k="dv"]').onclick=()=>{
+    const nbs=[...nb].filter(x=>NODES[x]).slice(0,2).join('、')||'—';
+    const t=addNode(`<div class="turn child"><div class="card"><span class="proj-badge">→ 相邻 · ${esc(id)}</span>
+      <div class="label">相邻角度展开</div><div class="expl">从「${esc(id)}」切到相邻知识点 <b class="a">${esc(nbs)}</b>。</div></div></div>`);
+    t.scrollIntoView({block:'center'});toast('相邻展开：'+nbs);
+  };
+  bar.querySelector('[data-k="br"]').onclick=()=>{
+    const t=addNode(`<div class="turn child"><div class="card"><span class="proj-badge">↓ 沿待复习 · ${esc(id)}</span>
+      <div class="label">顺势巩固练习</div><div class="expl">该知识点当前为<b class="a">待复习</b>态：先给一句，让你确认后再看讲解。</div></div></div>`);
+    t.scrollIntoView({block:'center'});toast('沿待复习：'+id);
+  };
+  bar.querySelector('[data-k="del"]').onclick=()=>{parentCard.remove();toast('已删除本卡片');};
+  return bar;
+}
+function makeTurn(html){const t=addNode(`<div class="turn">${html}</div>`);return t;}
+
+function renderSample(){
+  banishEmpty();
+  // 回合①：偏误识别
+  const u=addNode(`<div class="msg-user">我想买苹果很多。我想把字句用在聊天里。</div>`);
+  u.scrollIntoView({block:'nearest',behavior:'smooth'});
+  const card=`<div class="card" data-kp="把字句">
+      <div class="label">偏误识别</div>
+      <div class="head"><span class="tag" style="background:rgb(var(--sem-grammar)/.2);color:rgb(var(--sem-grammar))">语法-语序</span>
+        <span class="frag" style="color:rgb(var(--sem-err))">苹果很多</span><span class="corr">→ 很多苹果</span></div>
+      <div class="meta"><span>图谱：confirmed · kp:把字句</span><span>置信 0.92</span></div>
+      <div class="kp-row"><span class="kp" data-go="把字句">· 把字句（待复习）</span></div>
+    </div>`;
+  const t=makeTurn(card);
+  t.querySelector('.card').appendChild(toolsFor('把字句',t));
+  // 回合②：费曼讲解（Smart Annotation）
+  const t2=makeTurn(`<div class="ai-text">简单说，<span class="note-c" data-note="把字句">把字句</span>是你用手把东西挪动时说出来的结构：<b>“把＋宾语＋动词＋结果”</b>。想让它更自然，试试从<span class="note-c" data-note="量词">量词</span>、<span class="note-c" data-note="语序">语序</span>两条边一起看。</div>
+    <div class="card" data-kp="把字句"><div class="label">费曼讲解</div><div class="expl">「把」引出受事宾语，动词后常带结果或方位补语。请看：<b class="a">把门关上</b>、<b class="a">把书放桌上</b>。</div>
+      <div class="kp-row"><span class="kp" data-go="把字句">· 把字句</span><span class="kp" data-go="了">· 了</span><span class="kp" data-go="语序">· 语序</span></div></div>`);
+  t2.querySelector('.card').appendChild(toolsFor('把字句',t2));
+  // 回合③：复述验证 + 低置信区（语义色区分）
+  const t3=makeTurn(`<div class="ai-text">很不错。来复述一遍：把这三个要点用自己的话讲给「把字句」。</div>
+    <div class="card"><div class="label">复述验证 · 部分覆盖</div>
+      <div class="head"><span class="tag" style="background:rgb(var(--sem-warn)/.2);color:rgb(var(--sem-warn))">部分覆盖 1/3</span></div>
+      <div class="kp-row"><span class="kp" data-go="把字句">· 把字句（未覆盖）</span><span class="kp" data-go="了">· 了 ✓</span><span class="kp" data-go="语序">· 语序（未覆盖）</span></div>
+    </div>
+    <div class="card"><div class="label">复述验证 · 通过 ✓</div><div class="expl" style="color:rgb(var(--sem-ok))">覆盖完整，理解到位。</div></div>
+    <div class="uc">另有 1 处低置信候选（待确认）：<b>“很多苹果”可否省“很”</b> —— 未直接写入图谱，等你确认。</div>`);
+  // 绑定注解 & KP 点击 → 图谱定位
+  kpNote();
+  chat.querySelectorAll('.kp').forEach(el=>{if(el._b)return;el._b=true;el.onclick=()=>selectNode(el.dataset.go);});
+  drawMap();
+  updateReviewCount();
+}
+chat.addEventListener('click',e=>{if(e.target.closest('[data-go]'))selectNode(e.target.closest('[data-go]').dataset.go);});
+
+/* ================= 侧栏：会话 ================= */
+let sessions=[{id:'sess1',name:'把字句专题'},{id:'sess2',name:'上班族邮件入门'},{id:'sess3',name:'量词与名词搭配'}];
+let cur='sess1';
+function renderSessions(){
+  const L=$('sessionList');L.innerHTML='';
+  sessions.forEach(s=>{
+    const d=document.createElement('div');d.className='sbtn';d.dataset.id=s.id;
+    d.innerHTML=`<span class="ic">${s.id===cur?'●':'○'}</span><span>${esc(s.name)}</span><span class="bdg">${s.id===cur?'当前':''}</span>`;
+    d.onclick=()=>{cur=s.id;renderSessions();const u=new URL(location);u.searchParams.set('conversation',s.id);history.replaceState(null,'',u);toast('会话：'+s.name);};
+    L.appendChild(d);
+  });
+}
+$('newSess').onclick=()=>{const n='会话 '+(sessions.length+1);sessions.push({id:'sess'+Date.now(),name:n});cur=sessions[sessions.length-1].id;renderSessions();toast('已新建：'+n);};
+
+/* ================= 学习动线 ================= */
+function updateReviewCount(){const rv=Object.values(NODES).filter(n=>n.rev).length;$('rvCount').textContent=rv+' 项';
+  $('actReview').onclick=()=>{
+    banishEmpty();
+    const nbs=Object.keys(NODES).filter(id=>NODES[id].rev);
+    const t=makeTurn(`<div class="card dong-card"><div class="dk">▶</div><div class="dm">
+      <div class="t">开始复习 · ${esc(nbs.join('、'))}</div>
+      <div class="s">2 个知识点待巩固 · 先出 1 道题</div></div>
+      <button class="mini-btn">先读一题</button></div>
+      <div class="card" data-kp="被字句"><div class="label">巩固练习 · 把字句</div>
+      <div class="expl">把下面的句子改写成含补语的结构：<b class="a">“他把门关。”→ ________</b></div></div>`);
+    t.querySelector('.card').appendChild(toolsFor('把字句',t));
+    drawMap();toast('复习动线已开');
+  };
+}
+$('actReport').onclick=()=>{
+  banishEmpty();
+  makeTurn(`<div class="card dong-card"><div class="dk">◎</div><div class="dm">
+    <div class="t">AI 学习报告 · 近一周</div>
+    <div class="s">基于画像：常错 3 项 · 涉及 2 个知识点</div></div></div>
+    <div class="card"><div class="label">薄弱点 · 按画像 common_errors</div>
+      <div class="expl">• <b class="a">语序</b>：常错 2 次，集中在“主语放错位置”。<br>
+      • <b class="a">把字句</b>：接近待复习阈值，建议今日加固。<br>
+      • <b class="a">量词</b>：稳定，可迁移到新场景。</div>
+      <div class="meta">数据来源：memory_&lt;learner&gt;.json › profile.common_errors</div></div>`);
+  drawMap();toast('已生成报告');
+};
+$('actDoc').onclick=()=>{$('docOvl').classList.add('show');};
+$('docParse').onclick=()=>{
+  const v=$('docText').value.trim();$('docOvl').classList.remove('show');
+  if(!v){toast('先粘贴点文本');return;}
+  banishEmpty();
+  makeTurn(`<div class="card"><div class="label">已解析材料 · 3 块</div><div class="expl">${annotate(esc(v.slice(0,120)))}…</div>
+    <details class="ev"><summary>其余 2 块，含中文点抽取</summary><div class="ev-list"><div class="ev-item">块2 命中知识点：<span class="kp" data-go="把字句">把字句</span></div></div></details></div>`);
+  kpNote();drawMap();toast('解析完成');
+};
+
+/* ================= 主题 / 设置 ================= */
+const THEMES=[['Default','荧光绿','19 228 37','16 16 16'],['Midnight','午夜蓝','135 206 250','9 14 23'],
+ ['Default-Purple','暗紫','178 38 224','16 16 16'],['Default-Blue','暗蓝','50 120 250','16 16 16'],
+ ['Default-Orange','暗橙','255 113 4','16 16 16'],['Warm','暖橙','244 95 40','242 234 219'],
+ ['Sakura','樱花','163 104 200','228 240 250'],['Memphis','孟菲斯','223 107 140','250 248 243'],['Default','荧光绿2','19 228 37','16 16 16']];
+const settingsBody={
+ color:()=>{const g=THEMES.map(([k,n,b,bg])=>`
+   <div class="theme-swatch" data-th="${k}"><div class="dot" style="background:rgb(${bg});outline:2px solid rgb(${b})"></div><div class="nm">${k} · ${n}</div></div>`).join('');
+   return `<h3>界面主题</h3><p class="ter" style="font-size:12.5px;margin-bottom:14px">只改强调色 + 背景色，其余由深浅 token 派生。</p><div class="theme-grid">${g}</div><div class="field" style="margin-top:16px"><label>品牌强调色</label><input type="text" value="当前：${document.documentElement.dataset.theme}"></div>`;},
+ model:()=>`<h3>模型</h3>${['对话模型','推理/纠错模型'].map(t=>`<div class="field"><label>${t}</label><select><option>DeepSeek（默认）</option><option>Qwen</option></select></div>`).join('')}`,
+ api:()=>`<h3>API Key</h3><div class="field"><label>DEEPSEEK_API_KEY</label><input type="text" placeholder="sk-…（存 .env，不入库）"></div><div class="field"><label>QWEN_API_KEY</label><input type="text" placeholder="（可选）"></div><p class="ter" style="font-size:12px">无 Key 时对话会明确报错并给配置步骤（A3 fail-loud）。</p>`,
+ lang:()=>`<h3>语言</h3><div class="field"><label>界面语言</label><select><option>简体中文</option><option>English</option></select></div>`,
+ shortcuts:()=>`<h3>快捷键</h3><div class="row2"><span class="kbd">Ctrl+Enter</span><span>发送</span></div><div class="row2"><span class="kbd">Enter</span><span>换行</span></div><div class="row2"><span class="kbd">↗ → ↓</span><span>分支/相邻/待复习（锚定图谱边）</span></div><div class="row2"><span class="kbd">点击下划线词</span><span>图谱定位 + 释义</span></div>`,
+};
+function setSettingTab(k){
+  document.querySelectorAll('#settingsNav li').forEach(li=>li.classList.toggle('active',li.dataset.tab===k));
+  $('settingsBody').innerHTML=settingsBody[k]();
+  $('settingsBody').querySelectorAll('.theme-swatch').forEach(sw=>{
+    sw.onclick=()=>{document.documentElement.dataset.theme=sw.dataset.th;setSettingTab('color');toast('主题 → '+sw.dataset.th);};
+  });
+}
+$('actSettings').onclick=()=>{$('settingsOvl').classList.add('show');setSettingTab('color');};
+document.querySelectorAll('#settingsNav li').forEach(li=>li.onclick=()=>setSettingTab(li.dataset.tab));
+
+/* ================= 其余绑定 ================= */
+$('actHowto').onclick=()=>$('howtoOvl').classList.add('show');
+$('foldBtn').onclick=()=>{$('side').classList.toggle('closed');};
+document.querySelectorAll('[data-close]').forEach(x=>x.onclick=()=>$('#'+x.dataset.close).classList.remove('show'));
+document.querySelectorAll('.overlay').forEach(o=>o.onclick=e=>{if(e.target===o)o.classList.remove('show');});
+$('send').onclick=submit;
+$('text').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.ctrlKey){e.preventDefault();submit();}});
+$('text').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,150)+'px';});
+document.querySelectorAll('.chip, [data-ex]').forEach(c=>c.onclick=()=>{});
+function submit(){
+  const v=$('text').value.trim();if(!v)return;
+  $('text').value='';banishEmpty();
+  addNode(`<div class="msg-user">${esc(v)}</div>`);
+  addNode(`<div class="ai-text">（静态原型：已接收「${esc(v.slice(0,30))}…」。接入后端后这里会返回真实成果卡。）</div>`);
+  scrollChat();
+}
+function scrollChat(){chat.scrollTop=chat.scrollHeight;}
+
+/* ================= 启动 ================= */
+renderSessions();renderSample();updateReviewCount();drawMap();
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{$('text').value=c.dataset.ex;});
+</script>
+</body>
+</html>

@@ -12,6 +12,13 @@
 #   POST /api/verify   → Router.verify_rephrase() → 复述验证（契约 verify_rephrase 节）
 #   POST /api/generate → GenerationEngine.generate_unit()（费曼单元，0.16 接入，共享 graph）
 #   GET  /api/graph    → ErrorGraph.graph_snapshot()（nodes/edges/queue）
+#   GET  /api/profile  → 学习者画像 + 会话列表（0.19 前端 v2：AI 学习报告/侧栏数据源，只读）
+#   GET  /api/conversation?id= → 单会话消息历史（0.19：URL 深链恢复会话，只读）
+#   GET  /api/providers → BYOK 供应商列表（掩码，0.20）
+#   POST /api/providers → 添加供应商（0.20 BYOK：OpenAI 兼容，UI 内配置免重启）
+#   POST /api/providers/test → 连通性测试（最小 chat 请求，不落盘）
+#   POST /api/providers/default → 切换默认供应商
+#   DEL  /api/providers?id= → 删除供应商（env 虚拟供应商不可删）
 #   GET  /             → 托管 前端壳 index.html
 # 启动: python -m engine.serve [--port 8612] [--host 127.0.0.1] [--learner demo]
 # 免 Key 亦可启动：process 走 4.2 规则回退降级；图谱照常返回。
@@ -42,6 +49,15 @@ def _default_dialog_llm(messages):
     return LLMClient().chat(messages, temperature=0.3)
 
 
+def _provider_llm(provider):
+    """绑定供应商配置的 llm_call（0.20 BYOK）：请求级覆盖 settings 全局配置。"""
+    from engine.llm.client import LLMClient
+    cfg = {"base_url": provider["base_url"], "api_key": provider["api_key"],
+           "model": provider["model"]}
+    client = LLMClient()
+    return lambda messages: client.chat(messages, temperature=0.3, config=cfg)
+
+
 def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=None,
                  memory_root: str = "data"):
     """工厂构造 handler，闭包捕获 Router（每个请求共享同一图谱实例）。
@@ -58,7 +74,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
         _index_dir = index_dir
         _lock = lock
         _generation = generation
-        _planner = None
+        _planners = {}   # provider_id -> Planner（0.20 BYOK：按供应商缓存；"__mock__"=注入路径）
         _dialog_llm = dialog_llm
         _memory_root = memory_root
         _memories = {}   # learner_id -> LearnerMemory（M5 多轮记忆）
@@ -81,22 +97,32 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             self.__class__._generation = g
             return g
 
-        def _get_planner(self):
-            """懒建/取 Planner（唯一对话入口）：共享 router 的图谱与三引擎实例（单一来源）。"""
-            if self.__class__._planner is not None:
-                return self.__class__._planner
+        def _get_planner(self, provider=None):
+            """懒建/取 Planner（唯一对话入口）：共享 router 的图谱与三引擎实例（单一来源）。
+            0.20 BYOK：按 provider id 缓存（planner 无会话状态，历史每次显式传入，按供应商分实例安全）；
+            注入 mock（测试）路径 → 单实例，provider 维度被 mock 覆盖。"""
             from planner.loop import Planner
             from skills import build_registry
-            r = self._router
-            reg = build_registry(graph=r.graph,
-                                 generation=self._get_generation(),
-                                 recognizer=getattr(r, "recognizer", None),
-                                 explainer=getattr(r, "explainer", None),
-                                 verifier=getattr(r, "verifier", None))
-            p = Planner(reg,
-                        llm_call=self.__class__._dialog_llm or _default_dialog_llm)
-            self.__class__._planner = p
-            return p
+
+            def _build(llm_call):
+                r = self._router
+                reg = build_registry(graph=r.graph,
+                                     generation=self._get_generation(),
+                                     recognizer=getattr(r, "recognizer", None),
+                                     explainer=getattr(r, "explainer", None),
+                                     verifier=getattr(r, "verifier", None))
+                return Planner(reg, llm_call=llm_call)
+
+            cache = self.__class__._planners
+            if self.__class__._dialog_llm is not None:
+                if "__mock__" not in cache:
+                    cache["__mock__"] = _build(self.__class__._dialog_llm)
+                return cache["__mock__"]
+            pid = provider["id"] if provider else "__default__"
+            if pid not in cache:
+                cache[pid] = _build(_provider_llm(provider) if provider
+                                    else _default_dialog_llm)
+            return cache[pid]
 
         def _get_memory(self, learner_id: str):
             """按 learner_id 缓存 LearnerMemory 实例（M5：服务端记忆为多轮上下文唯一权威源）。"""
@@ -288,15 +314,28 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             learner_id = str((payload.get("learner_id") or "")).strip() or \
                 self._router.learner_id
             conversation_id = str((payload.get("conversation_id") or "")).strip() or "default"
+            provider_id = str((payload.get("provider_id") or "")).strip()
 
-            # fail-loud：真实 LLM 路径必须先有 Key（mock 注入路径跳过）
+            # fail-loud：真实 LLM 路径必须先有可用供应商（mock 注入路径跳过）
+            provider = None
             if self.__class__._dialog_llm is None:
-                from config import settings
-                _, api_key, _ = settings.get_llm_config()
-                if not api_key:
+                from engine import providers as prov
+                if provider_id:
+                    provider = next(
+                        (p for p in prov.effective_providers(self._memory_root)
+                         if p["id"] == provider_id), None)
+                    if provider is None:
+                        self._send_json({
+                            "error": "未知模型供应商（可能已被删除），"
+                                     "请在输入框左上角重新选择",
+                            "code": "unknown_provider"}, 400)
+                        return
+                else:
+                    provider = prov.resolve_provider(self._memory_root, None)
+                if provider is None or not provider.get("api_key"):
                     self._send_json({
-                        "error": "自由对话需要 LLM API Key：复制 .env.example 为 .env，"
-                                 "填入 DEEPSEEK_API_KEY（或 QWEN_API_KEY）后重启服务",
+                        "error": "自由对话需要 LLM API Key：在「设置 → 模型密钥」添加供应商，"
+                                 "或复制 .env.example 为 .env 填入 DEEPSEEK_API_KEY 后重启服务",
                         "code": "llm_not_configured"}, 400)
                     return
 
@@ -312,7 +351,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                         self._router.graph, wb.ledger)
                 except Exception:  # noqa: BLE001
                     profile_summary = ""
-                res = self._get_planner().run(
+                res = self._get_planner(provider).run(
                     user_input, history=history, learner_id=learner_id,
                     profile_summary=profile_summary)
                 # M8 两段式·账本侧：识别命中→observation_error；复述 pass→concept_confirmed
@@ -329,6 +368,12 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 # 写回记忆：user 必记；assistant 回复非空才记（fallback 文案也记，多轮不断档）
                 reply = str(res.get("text") or "")
                 mem.append(conversation_id, "user", user_input)
+                # 会话标题（0.19 前端 v2）：首条消息自动设为标题（仿 Explore 卡片标题取自提问）
+                if not history:
+                    try:
+                        mem.touch(conversation_id, title=user_input[:18])
+                    except Exception:  # noqa: BLE001
+                        pass
                 if reply:
                     mem.append(conversation_id, "assistant", reply,
                                metadata={"skills": res.get("used_skills", []),
@@ -343,6 +388,8 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 "dialog_version": "v1",
                 "learner_id": learner_id,
                 "conversation_id": conversation_id,
+                "provider": ({"id": provider["id"], "name": provider["name"],
+                              "model": provider["model"]} if provider else None),
                 "text": res.get("text", ""),
                 "used_skills": res.get("used_skills", []),
                 "steps": res.get("steps", 0),
@@ -356,7 +403,9 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
         def do_POST(self):
             parsed = urlparse(self.path)
             path = parsed.path.rstrip("/")
-            if path in ("/api/process", "/api/verify", "/api/generate", "/api/dialog"):
+            if path in ("/api/process", "/api/verify", "/api/generate", "/api/dialog",
+                        "/api/providers", "/api/providers/test",
+                        "/api/providers/default"):
                 try:
                     length = int(self.headers.get("Content-Length", 0))
                     raw = self.rfile.read(length) if length else b"{}"
@@ -393,20 +442,230 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 except Exception as e:
                     self._send_json({"error": f"dialog failed: {e}"}, 500)
                 return
+            if path == "/api/providers":
+                try:
+                    self._do_api_providers_add(payload)
+                except Exception as e:
+                    self._send_json({"error": f"providers add failed: {e}"}, 500)
+                return
+            if path == "/api/providers/test":
+                try:
+                    self._do_api_providers_test(payload)
+                except Exception as e:
+                    self._send_json({"error": f"providers test failed: {e}"}, 500)
+                return
+            if path == "/api/providers/default":
+                try:
+                    self._do_api_providers_default(payload)
+                except Exception as e:
+                    self._send_json({"error": f"providers default failed: {e}"}, 500)
+                return
+            self.send_error(404)
+
+        def do_DELETE(self):
+            parsed = urlparse(self.path)
+            path = parsed.path.rstrip("/")
+            if path == "/api/providers":
+                try:
+                    self._do_api_providers_delete(parsed)
+                except Exception as e:
+                    self._send_json({"error": f"providers delete failed: {e}"}, 500)
+                return
             self.send_error(404)
 
         def do_GET(self):
             parsed = urlparse(self.path)
-            if parsed.path.rstrip("/") == "/api/graph":
+            path = parsed.path.rstrip("/")
+            if path == "/api/graph":
                 with self._lock:
                     snap = self._router.graph.graph_snapshot()
                 self._send_json(snap)
+                return
+            if path == "/api/profile":
+                self._do_api_profile(parsed)
+                return
+            if path == "/api/conversation":
+                self._do_api_conversation(parsed)
+                return
+            if path == "/api/providers":
+                self._do_api_providers_list()
                 return
             # 静态：根 → index.html
             rel = parsed.path or "/"
             if rel == "/" or rel == "":
                 rel = "/index.html"
             self._send_static(rel)
+
+        def _do_api_profile(self, parsed):
+            """只读画像 + 会话列表（0.19 前端 v2：AI 学习报告 / 侧栏数据源）。
+            - common_errors：live facts（graph×ledger 实时汇合，与每轮写回同源）
+            - profile：落盘画像原块（level/native_lang 及历史 common_errors 兜底）
+            - sessions：按 updated_at 降序，仅元信息不含 messages（防载荷膨胀）
+            - stats：图谱/复习/惯犯计数（报告卡头部数据）"""
+            qs = parse_qs(parsed.query)
+            learner_id = (qs.get("learner") or [""])[0].strip() or \
+                self._router.learner_id
+            with self._lock:
+                from engine.memory.summarize import (
+                    build_profile_summary, build_profile_facts)
+                mem = self._get_memory(learner_id)
+                wb = self._get_writeback(learner_id)
+                profile = mem.get_profile()
+                try:
+                    facts = build_profile_facts(self._router.graph, wb.ledger)
+                except Exception:  # noqa: BLE001
+                    facts = []
+                try:
+                    summary_text = build_profile_summary(
+                        self._router.graph, wb.ledger)
+                except Exception:  # noqa: BLE001
+                    summary_text = ""
+                sessions = []
+                # serve 单进程：缓存实例即权威（与 dialog 写回同源），无需重读盘
+                raw_sessions = mem._load().get("sessions", {})
+                for sid, sess in raw_sessions.items():
+                    sessions.append({
+                        "id": sid,
+                        "title": str(sess.get("title") or ""),
+                        "status": str(sess.get("status") or "active"),
+                        "updated_at": int(sess.get("updated_at") or 0),
+                        "message_count": len(sess.get("messages", [])),
+                    })
+                sessions.sort(key=lambda s: s["updated_at"], reverse=True)
+                snap = self._router.graph.graph_snapshot()
+                queue = snap.get("queue", [])
+                try:
+                    offenders = [f["knowledge_point"] for f in facts
+                                 if f.get("repeat_offender")]
+                except Exception:  # noqa: BLE001
+                    offenders = []
+                self._send_json({
+                    "learner_id": learner_id,
+                    "profile": profile,
+                    "common_errors": facts,
+                    "summary_text": summary_text,
+                    "sessions": sessions,
+                    "stats": {
+                        "graph_nodes": len(snap.get("nodes", {})),
+                        "graph_edges": len(snap.get("edges", [])),
+                        "review_count": len(queue),
+                        "repeat_offenders": offenders,
+                    },
+                })
+
+        def _do_api_conversation(self, parsed):
+            """只读单会话消息历史（0.19：URL 深链 ?conversation=<id> 恢复会话）。
+            只透 user/assistant 的 {role, content}，不暴露 metadata 内部项。"""
+            qs = parse_qs(parsed.query)
+            conversation_id = ((qs.get("id") or [""])[0] or "default").strip()
+            learner_id = (qs.get("learner") or [""])[0].strip() or \
+                self._router.learner_id
+            with self._lock:
+                mem = self._get_memory(learner_id)
+                msgs = mem.get_history(conversation_id, window=200)
+            self._send_json({
+                "conversation_id": conversation_id,
+                "messages": [
+                    {"role": m.get("role"), "content": m.get("content", "")}
+                    for m in msgs if m.get("role") in ("user", "assistant")],
+            })
+
+        # ---------- BYOK 供应商管理（0.20：OpenAI 兼容多供应商，UI 内配置免重启） ----------
+
+        def _do_api_providers_list(self):
+            """供应商列表（api_key 掩码，响应绝不含完整 Key）。
+            default_id = 实际生效默认（store 显式默认 → env → 首个）。"""
+            from engine import providers as prov
+            with self._lock:
+                plist = [prov.masked(p)
+                         for p in prov.effective_providers(self._memory_root)]
+                default = prov.resolve_provider(self._memory_root, None)
+            self._send_json({
+                "providers": plist,
+                "default_id": default["id"] if default else None,
+            })
+
+        def _do_api_providers_add(self, payload):
+            from engine import providers as prov
+            name = str(payload.get("name") or "").strip()
+            base_url = str(payload.get("base_url") or "").strip()
+            api_key = str(payload.get("api_key") or "").strip()
+            model = str(payload.get("model") or "").strip()
+            if not (name and base_url and api_key and model):
+                self._send_json({"error": "name/base_url/api_key/model 均为必填"}, 400)
+                return
+            with self._lock:
+                store = prov.load_store(self._memory_root)
+                p = prov.new_provider(name, base_url, api_key, model)
+                store["providers"].append(p)
+                # 无 env 默认且未设显式默认 → 首个添加者自动成为默认
+                if not store.get("default_id") and not prov.env_provider():
+                    store["default_id"] = p["id"]
+                prov.save_store(self._memory_root, store)
+            self._send_json({"ok": True, "provider": prov.masked(p)})
+
+        def _do_api_providers_test(self, payload):
+            """连通性测试：支持按 id（已存供应商/env）或直接传字段（先测后存）。"""
+            from engine import providers as prov
+            pid = str(payload.get("id") or "").strip()
+            if pid:
+                with self._lock:
+                    provider = next(
+                        (p for p in prov.effective_providers(self._memory_root)
+                         if p["id"] == pid), None)
+                if provider is None:
+                    self._send_json({"error": "未知供应商 id"}, 404)
+                    return
+            else:
+                base_url = str(payload.get("base_url") or "").strip()
+                api_key = str(payload.get("api_key") or "").strip()
+                model = str(payload.get("model") or "").strip()
+                if not (base_url and api_key and model):
+                    self._send_json(
+                        {"error": "需提供 id，或 base_url/api_key/model 三字段"}, 400)
+                    return
+                provider = {"base_url": base_url, "api_key": api_key,
+                            "model": model}
+            # 测试调用在锁外：网络 IO 不持有服务锁
+            result = prov.test_provider(provider["base_url"],
+                                        provider["api_key"], provider["model"])
+            self._send_json(result)
+
+        def _do_api_providers_default(self, payload):
+            from engine import providers as prov
+            pid = str(payload.get("id") or "").strip()
+            with self._lock:
+                store = prov.load_store(self._memory_root)
+                if pid == prov.ENV_PROVIDER_ID:
+                    store["default_id"] = None   # 回落 env 默认
+                elif any(p["id"] == pid for p in store["providers"]):
+                    store["default_id"] = pid
+                else:
+                    self._send_json({"error": "未知供应商 id"}, 404)
+                    return
+                prov.save_store(self._memory_root, store)
+            self._send_json({"ok": True, "default_id": pid})
+
+        def _do_api_providers_delete(self, parsed):
+            from engine import providers as prov
+            qs = parse_qs(parsed.query)
+            pid = (qs.get("id") or [""])[0].strip()
+            if not pid:
+                self._send_json({"error": "缺少 id 参数"}, 400)
+                return
+            with self._lock:
+                store = prov.load_store(self._memory_root)
+                before = len(store["providers"])
+                store["providers"] = [p for p in store["providers"]
+                                      if p["id"] != pid]
+                if len(store["providers"]) == before:
+                    self._send_json(
+                        {"error": "未知供应商（.env 供应商不可删除，请编辑 .env）"}, 404)
+                    return
+                if store.get("default_id") == pid:
+                    store["default_id"] = None
+                prov.save_store(self._memory_root, store)
+            self._send_json({"ok": True})
 
     return H
 
@@ -431,6 +690,8 @@ def main():
     print("  POST /api/verify    复述验证（key_points + restatement）")
     print("  POST /api/generate  费曼讲解/练习单元（unit_type=explain|practice）")
     print("  GET  /api/graph     图谱 nodes/edges/queue")
+    print("  GET  /api/profile   学习者画像 + 会话列表（AI 学习报告/侧栏，只读）")
+    print("  GET  /api/conversation?id=  单会话消息历史（URL 深链恢复，只读）")
     print("  GET  /              前端壳页面（若 web/index.html 存在）")
     print("  Ctrl+C 停止")
     try:

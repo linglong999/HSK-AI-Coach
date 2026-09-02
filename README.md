@@ -6,7 +6,7 @@
 **一句话定位：领域层费曼偏误纠错引擎，让 AI 真正理解"中文学习者错在哪、为什么错、怎么讲才懂"。**
 
 - **零第三方依赖**：运行时只用 Python 标准库，clone 即跑
-- **API Key 自备**：默认 DeepSeek，可一键切换 Qwen
+- **API Key 自备（BYOK）**：默认 DeepSeek（已评测校准）；也可在界面「设置 → 模型密钥」直接添加任意 OpenAI 兼容供应商（Qwen/GLM/Kimi/Ollama…），即时生效免重启
 - **全程可评测**：黄金句集 + 评测脚本 + 多轮实验记录，每个指标都可复跑核验
 
 ---
@@ -29,7 +29,7 @@ cp .env.example .env
 python -m unittest discover tests -v
 ```
 
-**32 个测试全部 PASS** 即说明链路完整（识别/讲解/图谱/降级兜底/前端服务层，全部 mock，不调 LLM 不花钱）。当前主支已扩至 **229 个测试**。
+**32 个测试全部 PASS** 即说明链路完整（识别/讲解/图谱/降级兜底/前端服务层，全部 mock，不调 LLM 不花钱）。当前主支已扩至 **260 个测试**。
 
 ### 3. 跑起来
 
@@ -50,9 +50,16 @@ python -m examples.demo
 python -m engine.serve          # 浏览器打开 http://127.0.0.1:8612
 ```
 
-零依赖 HTTP 服务（仅标准库），原生 JS+SVG 单页，**无需安装前端依赖**。**左右布局**：左侧对话流 + 单输入框（偏误卡 → 费曼讲解卡 → 学习成果卡），右侧认知地图 + 复习队列。交互闭环：输入中文 → planner 自由调度技能 → 成果卡渲染 → 认知地图生长 / 复习队列。**隐藏内部工具轨迹**，只显示转译后的学习成果卡。
+零依赖 HTTP 服务（仅标准库），原生 JS+SVG 单页，**无需安装前端依赖**。**v2（Explore 化改造）**：
+- **左侧栏**：常驻 AI 助教 + 会话列表（首条消息自动命名，独立上下文，URL 深链 `?conversation=` 可收藏回访）+ 学习动线（开始复习 / AI 学习报告 / 阅读材料）
+- **中央对话画布**（全宽，内容居中限宽）：偏误卡 → 费曼讲解卡 → 学习成果卡；卡片悬停出现分支动作 **↗ 深挖 / → 相邻 / ↓ 待复习**——全部**锚定图谱权威边**（无权威边的方向置灰，守住"图谱唯一权威、无自由发散"）
+- **认知地图独立视图**：仅经侧栏「◈ 认知地图」进入，全屏呈现（横轴 HSK 等级 × 纵轴掌握度 + 复习队列）；对话流内点知识点（下划线名词/报告行/复习项）自动跳入地图并定位节点
+- **Smart Annotation**：AI 回复中你图谱里已有的知识点带下划线，点击在地图定位
+- **两套主题**（孟菲斯 / 暖橙）：单强调色 + 灰阶，语义色（KP 类型四色 / 偏误红绿）不随主题降级
+- **BYOK 模型密钥**（0.20）：「设置 → 模型密钥」添加任意 OpenAI 兼容供应商（测试连通/设默认/删除，即时生效）；输入框左上角按会话切换模型（DeepSeek 已按 M6 评测校准，其他模型未评测）
+- **隐藏内部工具轨迹**，只显示转译后的学习成果卡
 
-**自由对话（`/api/dialog`，planner 唯一入口）需 LLM Key**：未配置 `DEEPSEEK_API_KEY` 时前端直接报错并给出配置指引（fail-loud，不静默降级）。仅用确定性纠错闭环（`/api/process`）时可不配 Key，识别自动降级为规则回退、一行不崩（见 "降级策略"）。API 采用**契约化 JSON**（对话契约见 `datasets/docs/0.17-统一能力契约与架构总纲.md`，纠错契约见 `datasets/docs/JSON-接缝契约-v1.md`）。
+**自由对话（`/api/dialog`，planner 唯一入口）需 LLM Key**：未配置任何供应商时前端直接报错并给出配置指引（fail-loud，不静默降级）——两种配置方式：① `.env` 填 `DEEPSEEK_API_KEY` 后重启；② 界面「设置 → 模型密钥」添加任意 OpenAI 兼容供应商（即时生效）。仅用确定性纠错闭环（`/api/process`）时可不配 Key，识别自动降级为规则回退、一行不崩（见 "降级策略"）。API 采用**契约化 JSON**（对话契约见 `datasets/docs/0.17-统一能力契约与架构总纲.md`，纠错契约见 `datasets/docs/JSON-接缝契约-v1.md`，前端 v2 见 `datasets/docs/0.19-前端v2-Explore化改造.md`）。
 
 ## 两种使用模式
 
@@ -97,7 +104,9 @@ python -m engine.serve          # 浏览器打开 http://127.0.0.1:8612
                               │
               ┌───────────────▼──────────────┐
               │  serve.py /api/dialog /api/process  │←── web/index.html
-              │  /api/graph /api/verify /api/generate │
+               │  /api/graph /api/verify /api/generate│
+               │  /api/profile /api/conversation     │
+               │  /api/providers (BYOK 模型密钥)     │
               └──────────────────────────────┘
 ```
 
@@ -149,7 +158,7 @@ HSK-AI-Coach/
 │   ├── demo_loop.py            # 模式一单命令入口
 │   ├── graph/error_graph.py    # 偏误图谱（确定性数据层）
 │   └── llm/client.py           # LLM 客户端（DeepSeek/Qwen + 退避重试）
-├── web/index.html              # 前端壳（左右布局：左对话流+右认知地图/复习队列）
+├── web/index.html              # 前端壳（对话画布全宽 + 认知地图独立视图[侧栏入口]）
 ├── eval/                       # M6 自由对话评测（黄金集 15 例 / judge / 实跑记录）
 ├── datasets/
 │   ├── knowledge_points_v1_4.json   # HSK1-4 知识点清单（骨架版）
@@ -157,7 +166,7 @@ HSK-AI-Coach/
 │   ├── HSK1-4_字表词表_GF0025-2021.xlsx  # 官方词表原始文件（来源：国家标准 GF0025-2021）
 │   └── eval/                    # 黄金集 / 评测脚本 / 结果 / 实验记录
 ├── examples/                    # demo / demo_file
-├── tests/                       # 229 个测试（免 Key，全 mock）
+├── tests/                       # 240 个测试（免 Key，全 mock）
 └── run_eval*.py                 # 3.1/3.2/3.3 评测入口
 ```
 
@@ -181,6 +190,7 @@ HSK-AI-Coach/
 - [x] M9: 最小可运行闭环 + 降级兜底
 - [x] M10: 前端壳（认知地图 + 费曼对话的交互界面）
 - [x] 0.17: 架构反转转正 —— planner 自由 ReAct 为唯一对话入口（`/api/dialog`），router 拆散为自由技能，全部能力收敛到统一 Skill 协议；前端壳切左右布局 + 学习成果卡
+- [x] 0.20: BYOK 模型密钥 —— 界面内添加任意 OpenAI 兼容供应商（即时生效免重启），输入框按会话切换模型；json_mode 400 自动降级兜底（详见 `datasets/docs/0.20-BYOK模型密钥与模型选择.md`）
 - [ ] M11: 参数标定（aging/mastery 等间隔复习参数）+ 评测集扩集（汉字/词汇/语用）
 
 ## License
