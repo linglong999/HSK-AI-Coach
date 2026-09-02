@@ -155,6 +155,7 @@ HSK-AI-Coach/
 │   ├── verifier.py             # 验证引擎（逐点判定 + 规则聚合）
 │   ├── file_mode.py            # 模式二：文件讲解两路分流
 │   ├── serve.py                # 零依赖 HTTP 服务层（/api/dialog /api/process /api/graph…）
+│   ├── providers.py            # BYOK 模型供应商存储/掩码/连通测试（0.20）
 │   ├── demo_loop.py            # 模式一单命令入口
 │   ├── graph/error_graph.py    # 偏误图谱（确定性数据层）
 │   └── llm/client.py           # LLM 客户端（DeepSeek/Qwen + 退避重试）
@@ -166,7 +167,7 @@ HSK-AI-Coach/
 │   ├── HSK1-4_字表词表_GF0025-2021.xlsx  # 官方词表原始文件（来源：国家标准 GF0025-2021）
 │   └── eval/                    # 黄金集 / 评测脚本 / 结果 / 实验记录
 ├── examples/                    # demo / demo_file
-├── tests/                       # 240 个测试（免 Key，全 mock）
+├── tests/                       # 260 个测试（免 Key，全 mock；含 0.19 profile/深链 11 个、0.20 providers/BYOK 20 个）
 └── run_eval*.py                 # 3.1/3.2/3.3 评测入口
 ```
 
@@ -190,6 +191,7 @@ HSK-AI-Coach/
 - [x] M9: 最小可运行闭环 + 降级兜底
 - [x] M10: 前端壳（认知地图 + 费曼对话的交互界面）
 - [x] 0.17: 架构反转转正 —— planner 自由 ReAct 为唯一对话入口（`/api/dialog`），router 拆散为自由技能，全部能力收敛到统一 Skill 协议；前端壳切左右布局 + 学习成果卡
+- [x] 0.19: 前端 v2 Explore 化改造 —— 卡片画布（分支动作锚定图谱权威边）/ 认知地图独立视图 / 智慧批注 / URL 深链 / AI 学习报告卡 / 孟菲斯+暖橙双主题（详见 `datasets/docs/0.19-前端v2-Explore化改造.md`）
 - [x] 0.20: BYOK 模型密钥 —— 界面内添加任意 OpenAI 兼容供应商（即时生效免重启），输入框按会话切换模型；json_mode 400 自动降级兜底（详见 `datasets/docs/0.20-BYOK模型密钥与模型选择.md`）
 - [ ] M11: 参数标定（aging/mastery 等间隔复习参数）+ 评测集扩集（汉字/词汇/语用）
 
