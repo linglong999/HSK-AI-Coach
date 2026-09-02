@@ -1,7 +1,7 @@
 # HSK-AI-Coach
 
 > 一个基于**费曼教学法**、面向 HSK 3.0 中文学习的**偏误纠错引擎**。
-> "三个认知引擎（识别/讲解/验证）+ 偏误图谱数据层 + 轻路由"架构，完成"识别偏误 → 费曼式讲解 → 复述验证 → 图谱沉淀 → 间隔复习"的完整闭环。
+> "planner 自由 ReAct 编排 + 统一 Skill 注册表（识别/讲解/验证/图谱…）+ 偏误图谱数据层"架构，完成"识别偏误 → 费曼式讲解 → 复述验证 → 图谱沉淀 → 间隔复习"的完整闭环。
 
 **一句话定位：领域层费曼偏误纠错引擎，让 AI 真正理解"中文学习者错在哪、为什么错、怎么讲才懂"。**
 
@@ -29,7 +29,7 @@ cp .env.example .env
 python -m unittest discover tests -v
 ```
 
-**32 个测试全部 PASS** 即说明链路完整（识别/讲解/图谱/降级兜底/前端服务层，全部 mock，不调 LLM 不花钱）。
+**32 个测试全部 PASS** 即说明链路完整（识别/讲解/图谱/降级兜底/前端服务层，全部 mock，不调 LLM 不花钱）。当前主支已扩至 **229 个测试**。
 
 ### 3. 跑起来
 
@@ -50,9 +50,9 @@ python -m examples.demo
 python -m engine.serve          # 浏览器打开 http://127.0.0.1:8612
 ```
 
-零依赖 HTTP 服务（仅标准库），原生 JS+SVG 单页，**无需安装前端依赖**。交互闭环：输入中文 → 偏误卡（费曼讲解）→「我来复述」→ AI 逐点验证 → 认知地图生长 / 复习队列。**不配 Key 也能跑**：识别自动降级为规则回退，界面完整可用（见 "降级策略"）。
+零依赖 HTTP 服务（仅标准库），原生 JS+SVG 单页，**无需安装前端依赖**。**左右布局**：左侧对话流 + 单输入框（偏误卡 → 费曼讲解卡 → 学习成果卡），右侧认知地图 + 复习队列。交互闭环：输入中文 → planner 自由调度技能 → 成果卡渲染 → 认知地图生长 / 复习队列。**隐藏内部工具轨迹**，只显示转译后的学习成果卡。
 
-可用 Key（`DEEPSEEK_API_KEY`）时，`/api/process`、`/api/verify` 走真实 LLM；未配置时识别回退规则匹配、一行不崩。API 采用**契约化 JSON**（见 `datasets/docs/JSON-接缝契约-v1.md`）。
+**自由对话（`/api/dialog`，planner 唯一入口）需 LLM Key**：未配置 `DEEPSEEK_API_KEY` 时前端直接报错并给出配置指引（fail-loud，不静默降级）。仅用确定性纠错闭环（`/api/process`）时可不配 Key，识别自动降级为规则回退、一行不崩（见 "降级策略"）。API 采用**契约化 JSON**（对话契约见 `datasets/docs/0.17-统一能力契约与架构总纲.md`，纠错契约见 `datasets/docs/JSON-接缝契约-v1.md`）。
 
 ## 两种使用模式
 
@@ -65,31 +65,45 @@ python -m engine.serve          # 浏览器打开 http://127.0.0.1:8612
 
 ```
                      ┌──────────────┐
-   学习者输入 ──────→ │   轻路由 Router   │──────→ 复习队列（priority 排序）
+   学习者输入 ──────→ │  planner 自由 ReAct  │──────→ 自然语回复 + 技能轨迹（trace）
+                     │  （唯一对话入口）      │
                      └──────┬───────┘
-              ┌─────────────┼──────────────┐
-              ▼             ▼              ▼
-        ┌──────────┐  ┌──────────┐  ┌──────────┐
-        │ 识别引擎  │→│ 讲解引擎  │→│ 验证引擎  │
-        │ (LLM+规则)│  │ (费曼四段)│  │(逐点判定) │
-        └────┬─────┘  └──────────┘  └────┬─────┘
-             │  LLM 失败→规则回退            │ verdict 写回
-             ▼                            ▼
-        ┌─────────────────────────────────────┐
-        │      偏误图谱（确定性数据层，纯规则）      │
-        │  KP 节点 / 混淆边 / 幂等写入 / aging   │
-        └─────────────────────────────────────┘
-                        ▲
-                        │  API（契约 JSON）
-              ┌─────────┴──────────┐
-              │  serve.py（零依赖 HTTP / 标准库）│←── interface
-              └─────────┬──────────┘         web/index.html
-                        │  /api/process /api/verify /api/graph
-                        ▼              （原生 JS+SVG 认知地图）
-                    前端壳（浏览器）
+                            │ 自由选择
+                            ▼
+              ┌─────────────────────────┐
+              │   统一 Skill 注册表（9 技能）    │
+              │  identify_errors          │
+              │  explain_error            │
+              │  verify_retell            │
+              │  lookup_knowledge_point   │
+              │  retrieve_corpus          │
+              │  get_review_queue         │
+              │  generate_unit            │
+              │  web_search               │
+              │  parse_document           │
+              └────────┬────────┬─────────┘
+                       │        │
+              ┌────────▼──┐  ┌─▼──────────┐
+              │ 三引擎     │  │ 工具 / 生成  │
+              │(识别/讲解/  │  │(搜索/文档/   │
+              │  验证)     │  │ 费曼单元)    │
+              └────┬──────┘  └──────┬──────┘
+                   │                │
+                   ▼                ▼
+              ┌──────────────────────────────┐
+              │  偏误图谱（确定性数据层，纯规则）    │
+              │  KP 节点 / 混淆边 / 幂等 / aging │
+              └───────────────┬──────────────┘
+                              │
+              ┌───────────────▼──────────────┐
+              │  serve.py /api/dialog /api/process  │←── web/index.html
+              │  /api/graph /api/verify /api/generate │
+              └──────────────────────────────┘
 ```
 
 **设计要点**
+- **planner 自由 ReAct 为唯一对话入口**（`/api/dialog`），router 保留为兼容遗留 runner（`/api/process` 不变）
+- **自由在调度，约束在数据写**：planner 自由选技能，但图谱写入经 writeback 两段式 + 幂等键，防漂移
 - **LLM 只做带宽，规则做守门**：识别结果经置信度决策序列 + 确定性护栏（把字句白名单、"地"可省等）双重过滤，防过度纠正
 - **降级兜底**：LLM 网络瞬时故障自动退避重试；识别不可用时回退规则匹配（只产"待确认"候选，**绝不污染图谱**）；讲解/验证/图谱写任一环节失败，其余链路照常完成并记录 `degraded`
 - **连续验证不过自动升级**：同一知识点复述连续 2 次不过 → 降难度重讲；连续 4 次 → 建议找老师
@@ -108,32 +122,42 @@ python -m engine.serve          # 浏览器打开 http://127.0.0.1:8612
 | 复述验证（3.3，60 条） | 判定一致性 / 通过准确率 | **88.2%** / 94.4% |
 | | 流利空洞拦截率 | 93.75% |
 | 图谱数据层（3.4） | 幂等/单调性/写接口验证 | **18/18 PASS** |
+| 自由对话（M6，15 条黄金集，两轮真实实跑） | 技能轨迹命中 / 终止率 | **80%~86.7%** / **100%** |
+| | LLM-judge 达标率 / 平均步数 | **93.3%~100%** / ≤1.94 |
 
-完整"假设→改动→指标→结论"逐轮记录见 [`datasets/eval/多轮实验记录_3.6.md`](datasets/eval/多轮实验记录_3.6.md)（含 6 条方法论教训与已知残留，可作技术评审证据）。所有数字可由 `datasets/eval/*.json` 与根目录评测脚本复跑核验。
+完整"假设→改动→指标→结论"逐轮记录见 [`datasets/eval/多轮实验记录_3.6.md`](datasets/eval/多轮实验记录_3.6.md)（含 6 条方法论教训与已知残留，可作技术评审证据）。所有数字可由 `datasets/eval/*.json` 与根目录评测脚本复跑核验；自由对话指标可由 `python -m eval.run_eval_agent` 复跑（需 `.env` 配 Key；无 Key 用 `--mock --no-judge` 跑过程判据），实跑记录见 `eval/m6_real_run_20260901*.txt`。
 
 ## 项目结构
 
 ```
 HSK-AI-Coach/
 ├── config/settings.py          # 配置 + 零依赖 .env 加载器
+├── planner/
+│   └── loop.py                 # planner 自由 ReAct（唯一对话入口）+ skill 注册/调用 + trace
+├── skills/
+│   ├── registry.py             # Skill 注册表（统一协议：metadata + input/output_schema + run）
+│   └── identify_errors / explain_error / verify_retell /
+│       lookup_knowledge_point / retrieve_corpus / get_review_queue /
+│       generate_unit / web_search / parse_document   # 9 个自由技能（薄壳包引擎）
 ├── engine/
-│   ├── router.py               # 轻路由（串三引擎 + 降级分支）
+│   ├── router.py               # 兼容遗留 runner（/api/process 固定序，不进新叙事）
 │   ├── recognizer.py           # 识别引擎（LLM + 置信度决策 + 确定性护栏）
 │   ├── explainer.py            # 讲解引擎（费曼四段式）
 │   ├── verifier.py             # 验证引擎（逐点判定 + 规则聚合）
 │   ├── file_mode.py            # 模式二：文件讲解两路分流
-│   ├── serve.py                # 零依赖 HTTP 服务层（前端壳 API + 静态托管）
+│   ├── serve.py                # 零依赖 HTTP 服务层（/api/dialog /api/process /api/graph…）
 │   ├── demo_loop.py            # 模式一单命令入口
 │   ├── graph/error_graph.py    # 偏误图谱（确定性数据层）
 │   └── llm/client.py           # LLM 客户端（DeepSeek/Qwen + 退避重试）
-├── web/index.html              # M10 前端壳（原生 JS+SVG 认知地图单页）
+├── web/index.html              # 前端壳（左右布局：左对话流+右认知地图/复习队列）
+├── eval/                       # M6 自由对话评测（黄金集 15 例 / judge / 实跑记录）
 ├── datasets/
 │   ├── knowledge_points_v1_4.json   # HSK1-4 知识点清单（骨架版）
 │   ├── lexicon_hsk1_4.json          # HSK1-4 权威词表（超纲判定真源）
 │   ├── HSK1-4_字表词表_GF0025-2021.xlsx  # 官方词表原始文件（来源：国家标准 GF0025-2021）
 │   └── eval/                    # 黄金集 / 评测脚本 / 结果 / 实验记录
 ├── examples/                    # demo / demo_file
-├── tests/                       # 32 个测试（免 Key，全 mock）
+├── tests/                       # 229 个测试（免 Key，全 mock）
 └── run_eval*.py                 # 3.1/3.2/3.3 评测入口
 ```
 
@@ -156,6 +180,7 @@ HSK-AI-Coach/
 - [x] M8: 图谱验证（18/18）+ 多轮实验记录
 - [x] M9: 最小可运行闭环 + 降级兜底
 - [x] M10: 前端壳（认知地图 + 费曼对话的交互界面）
+- [x] 0.17: 架构反转转正 —— planner 自由 ReAct 为唯一对话入口（`/api/dialog`），router 拆散为自由技能，全部能力收敛到统一 Skill 协议；前端壳切左右布局 + 学习成果卡
 - [ ] M11: 参数标定（aging/mastery 等间隔复习参数）+ 评测集扩集（汉字/词汇/语用）
 
 ## License

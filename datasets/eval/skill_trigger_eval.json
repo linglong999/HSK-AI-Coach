@@ -1,0 +1,40 @@
+{
+  "layer": "skill_trigger",
+  "version": "0.1.0",
+  "desc": "验证五个内核技能被 LLM 正确触发（该调/不该调）。核心是'语义相近但触发不同技能'的真实歧义灰区。",
+  "groups": {
+    "A_no_trigger": {
+      "desc": "不该触发任何技能（精确率——防误触发）",
+      "cases": [
+        {"query": "帮我用中文点评一下这段文章", "expect": [], "why": "点评≠识别偏误"},
+        {"query": "今天北京天气怎么样", "expect": [], "why": "闲聊"},
+        {"query": "把这段话翻译成英文", "expect": [], "why": "翻译≠任何内核技能"}
+      ]
+    },
+    "B_direct_trigger": {
+      "desc": "单一技能精确触发（召回率——该调的漏调）",
+      "cases": [
+        {"query": "我想买苹果很多。", "expect": ["identify_errors"], "why": "给了整句求找错"},
+        {"query": "'把'字句是什么？", "expect": ["lookup_knowledge_point"], "why": "求知识点定义"},
+        {"query": "我最近该复习什么？", "expect": ["get_review_queue"], "why": "求个性化复习队列"}
+      ]
+    },
+    "C_full_loop": {
+      "desc": "一句话触发完整纠错闭环（识别→讲解）——连续技能链",
+      "cases": [
+        {"query": "这句话有语病吗？帮我改一下。", "expect": ["identify_errors", "explain_error"], "why": "找错+改错连问，但默认不进入复述验证"},
+        {"query": "我觉得这句子不对，你讲讲为什么。", "expect": ["identify_errors", "explain_error"], "why": "先认错，后解释——强制先识别再讲解"}
+      ]
+    },
+    "D_ambiguity": {
+      "desc": "核心歧义组——语义相近但触发不同技能（本项目最难、最该测的）",
+      "note": "判据：'有错吗/对吗'=仅识别；'为什么不对/讲讲'=识别后须讲解。动词与疑问词决定技能链深度。",
+      "cases": [
+        {"query": "这句话有错吗？", "expect": ["identify_errors"], "why": "求判断→只识别，不讲解"},
+        {"query": "这句话为什么不对？", "expect": ["identify_errors", "explain_error"], "why": "求解释→识别后必须讲解，比上一句多一步"},
+        {"query": "我写的对还是不对？", "expect": ["identify_errors"], "why": "求对错判定→先识别；若对则无需讲解"},
+        {"query": "老师，这样用对吗？", "expect": ["identify_errors"], "why": "问用法对错→识别；无问 why 不必讲解"}
+      ]
+    }
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "golden_agent_cases": [
+    {
+      "id": "c01",
+      "scenario": "偏误句",
+      "input": "我想买苹果很多。",
+      "expected_trace": ["identify_errors"],
+      "expected_answers": ["苹果", "很多"],
+      "checkable": true,
+      "max_score": 10,
+      "rubric": "指出偏误位置（数量词放错位置）、纠正正确（很多苹果）、不引入超纲内容"
+    },
+    {
+      "id": "c02",
+      "scenario": "偏误句",
+      "input": "我昨天去学校。",
+      "expected_trace": ["identify_errors"],
+      "expected_answers": [],
+      "checkable": true,
+      "max_score": 10,
+      "rubric": "若无偏误则不臆造；若认为有偏误需给出明确依据，纠正自然"
+    },
+    {
+      "id": "c03",
+      "scenario": "偏误句",
+      "input": "他把我的手机丢了。",
+      "expected_trace": ["identify_errors"],
+      "expected_answers": [],
+      "checkable": true,
+      "max_score": 10,
+      "rubric": "把字句处置式合法，不应误报；重点检验宁漏勿错护栏"
+    },
+    {
+      "id": "c04",
+      "scenario": "偏误句",
+      "input": "她跑得很快。",
+      "expected_trace": ["identify_errors"],
+      "expected_answers": [],
+      "checkable": true,
+      "max_score": 10,
+      "rubric": "得字补语结构合法，不应误报"
+    },
+    {
+      "id": "c05",
+      "scenario": "偏误句",
+      "input": "他不喜欢那个电影因为太长了。",
+      "expected_trace": ["identify_errors"],
+      "expected_answers": ["因为"],
+      "checkable": true,
+      "max_score": 10,
+      "rubric": "逗号衔接问题为隐性偏误；若识别应指出衔接，纠正自然"
+    },
+    {
+      "id": "c06",
+      "scenario": "纯提问",
+      "input": "把字句是什么？",
+      "expected_trace": ["lookup_knowledge_point"],
+      "expected_answers": ["把字句"],
+      "checkable": true,
+      "max_score": 10,
+      "rubric": "给出把字句定义/结构/例句，引用权威语料而非凭空编造"
+    },
+    {
+      "id": "c07",
+      "scenario": "纯提问",
+      "input": "“了”和“着”有什么区别？",
+      "expected_trace": ["lookup_knowledge_point"],
+      "expected_answers": ["了", "着"],
+      "checkable": true,
+      "max_score": 10,
+      "rubric": "对比两个助词的核心语义与用法，举例清晰"
+    },
+    {
+      "id": "c08",
+      "scenario": "纯提问",
+      "input": "我现在该复习什么？",
+      "expected_trace": ["get_review_queue"],
+      "expected_answers": ["复习"],
+      "checkable": false,
+      "max_score": 10,
+      "rubric": "结合复习队列给出建议；无历史时诚实说明暂无可复习内容"
+    },
+    {
+      "id": "c09",
+      "scenario": "纯提问",
+      "input": "“很多”怎么用？",
+      "expected_trace": ["lookup_knowledge_point"],
+      "expected_answers": ["很多"],
+      "checkable": true,
+      "max_score": 10,
+      "rubric": "说明很+形容词/很多+名词的用法与语序"
+    },
+    {
+      "id": "c10",
+      "scenario": "边界",
+      "input": "",
+      "expected_trace": [],
+      "expected_answers": [],
+      "checkable": false,
+      "max_score": 10,
+      "rubric": "空输入应走 fallback 或礼貌追问，不崩溃"
+    },
+    {
+      "id": "c11",
+      "scenario": "边界",
+      "input": "天气怎么样？",
+      "expected_trace": [],
+      "expected_answers": [],
+      "checkable": false,
+      "max_score": 10,
+      "rubric": "寒暄非教学问题，应直接友好回应，不误调偏误技能"
+    },
+    {
+      "id": "c12",
+      "scenario": "边界",
+      "input": "哈哈哈哈哈哈",
+      "expected_trace": [],
+      "expected_answers": [],
+      "checkable": false,
+      "max_score": 10,
+      "rubric": "无意义输入应礼貌回应，不崩溃"
+    },
+    {
+      "id": "c13",
+      "scenario": "边界",
+      "input": "帮我翻译一下这句话到英文：你好。",
+      "expected_trace": [],
+      "expected_answers": [],
+      "checkable": false,
+      "max_score": 10,
+      "rubric": "翻译请求非偏误教学，应不误调偏误技能或明确说明能力边界"
+    },
+    {
+      "id": "c14",
+      "scenario": "多轮",
+      "input": "（第一轮：我想买苹果。第二轮：那“很多”呢？）",
+      "expected_trace": ["identify_errors", "explain_error"],
+      "expected_answers": ["苹果", "很多"],
+      "checkable": false,
+      "max_score": 10,
+      "rubric": "第二轮能沿用第一轮主题（苹果量词），体现多轮记忆；动作轨迹含识别"
+    },
+    {
+      "id": "c15",
+      "scenario": "多轮",
+      "input": "（第一轮：他跑得很快。第二轮：那“跑得”对吗？）",
+      "expected_trace": ["identify_errors"],
+      "expected_answers": ["得"],
+      "checkable": false,
+      "max_score": 10,
+      "rubric": "第二轮针对同主题追问，能沿用上文并给出校验"
+    }
+  ]
+}

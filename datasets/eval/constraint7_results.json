@@ -1,0 +1,210 @@
+{
+  "layer": "rule_fallback_only（无 LLM Key，走规则回退）",
+  "rows": [
+    {
+      "cat": "A_superclass_within",
+      "sentence": "我把书放在桌子上。",
+      "level": 3,
+      "note": "把字句·处置式合法（含结果补语），护栏应不撤",
+      "errors": [],
+      "uncertain": [],
+      "beyond_level": [],
+      "false_positive": false
+    },
+    {
+      "cat": "A_superclass_within",
+      "sentence": "他被老师表扬了。",
+      "level": 3,
+      "note": "被字句·合法被动句",
+      "errors": [],
+      "uncertain": [],
+      "beyond_level": [],
+      "false_positive": false
+    },
+    {
+      "cat": "A_superclass_within",
+      "sentence": "他比小明高。",
+      "level": 3,
+      "note": "比字句·合法比较句",
+      "errors": [],
+      "uncertain": [],
+      "beyond_level": [],
+      "false_positive": false
+    },
+    {
+      "cat": "A_superclass_within",
+      "sentence": "我昨天去了学校。",
+      "level": 2,
+      "note": "了·完成体合法",
+      "errors": [],
+      "uncertain": [],
+      "beyond_level": [],
+      "false_positive": false
+    },
+    {
+      "cat": "A_superclass_within",
+      "sentence": "他看着电视。",
+      "level": 2,
+      "note": "着·持续体合法",
+      "errors": [],
+      "uncertain": [],
+      "beyond_level": [],
+      "false_positive": false
+    },
+    {
+      "cat": "A_superclass_within",
+      "sentence": "我去过北京两次。",
+      "level": 3,
+      "note": "过·经历体合法",
+      "errors": [],
+      "uncertain": [],
+      "beyond_level": [],
+      "false_positive": false
+    },
+    {
+      "cat": "A_superclass_within",
+      "sentence": "他认真地学习了。",
+      "level": 3,
+      "note": "地·状中结构合法（在_NO_DE_ADV外）",
+      "errors": [],
+      "uncertain": [],
+      "beyond_level": [],
+      "false_positive": false
+    },
+    {
+      "cat": "A_superclass_within",
+      "sentence": "她跑得很快。",
+      "level": 2,
+      "note": "得·补语结构合法",
+      "errors": [],
+      "uncertain": [],
+      "beyond_level": [],
+      "false_positive": false
+    },
+    {
+      "cat": "A_superclass_within",
+      "sentence": "这是我的书。",
+      "level": 1,
+      "note": "的·领属合法",
+      "errors": [],
+      "uncertain": [],
+      "beyond_level": [],
+      "false_positive": false
+    },
+    {
+      "cat": "A_superclass_within",
+      "sentence": "他们越来越喜欢这个城市。",
+      "level": 4,
+      "note": "越来越·合法",
+      "errors": [],
+      "uncertain": [],
+      "beyond_level": [],
+      "false_positive": false
+    },
+    {
+      "cat": "A_superclass_within",
+      "sentence": "他不高兴。",
+      "level": 1,
+      "note": "否定·合法",
+      "errors": [],
+      "uncertain": [],
+      "beyond_level": [],
+      "false_positive": false
+    },
+    {
+      "cat": "B_superclass_beyond",
+      "sentence": "阿姨很爱护小猫。",
+      "level": 2,
+      "note": "真超纲触发：阿姨/爱护=词表4级，学习者2级→4>3超纲；句式合法；预期uncertain=['阿姨','爱护']且errors=[]",
+      "errors": [],
+      "uncertain": [
+        "阿姨",
+        "爱护"
+      ],
+      "beyond_level": [
+        {
+          "word": "阿姨",
+          "level": 4
+        },
+        {
+          "word": "爱护",
+          "level": 4
+        }
+      ],
+      "false_positive": true
+    },
+    {
+      "cat": "B_superclass_beyond",
+      "sentence": "这个包裹是给妈妈的。",
+      "level": 2,
+      "note": "包裹=词表4级，2级学习者→超纲；句式合法",
+      "errors": [],
+      "uncertain": [
+        "包裹"
+      ],
+      "beyond_level": [
+        {
+          "word": "包裹",
+          "level": 4
+        }
+      ],
+      "false_positive": true
+    },
+    {
+      "cat": "B_superclass_beyond",
+      "sentence": "爸爸按时上班。",
+      "level": 2,
+      "note": "按时=词表4级，2级学习者→超纲；句式合法",
+      "errors": [],
+      "uncertain": [
+        "按时"
+      ],
+      "beyond_level": [
+        {
+          "word": "按时",
+          "level": 4
+        }
+      ],
+      "false_positive": true
+    },
+    {
+      "cat": "B_superclass_beyond",
+      "sentence": "她把照片放在背景里。",
+      "level": 1,
+      "note": "背景=词表4级，1级学习者→4>2超纲；把字句处置式合法(约束7应不撤)",
+      "errors": [],
+      "uncertain": [
+        "把",
+        "背景"
+      ],
+      "beyond_level": [
+        {
+          "word": "把",
+          "level": 3
+        },
+        {
+          "word": "背景",
+          "level": 4
+        }
+      ],
+      "false_positive": true
+    },
+    {
+      "cat": "B_superclass_beyond",
+      "sentence": "这是奶奶的宝贵礼物。",
+      "level": 1,
+      "note": "宝贵=词表4级，1级学习者→超纲；领属固定句式合法",
+      "errors": [],
+      "uncertain": [
+        "宝贵"
+      ],
+      "beyond_level": [
+        {
+          "word": "宝贵",
+          "level": 4
+        }
+      ],
+      "false_positive": true
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+{
+  "summary": {
+    "layer": "skill_trigger",
+    "metric": {
+      "trigger_precision": 1.0,
+      "trigger_recall": 1.0,
+      "overall_pass": "12/12"
+    },
+    "groups": {
+      "A_no_trigger": {
+        "cases": 3,
+        "pass": 3
+      },
+      "B_direct_trigger": {
+        "cases": 3,
+        "pass": 3
+      },
+      "C_full_loop": {
+        "cases": 2,
+        "pass": 2
+      },
+      "D_ambiguity": {
+        "cases": 4,
+        "pass": 4
+      }
+    }
+  },
+  "rows": [
+    {
+      "pass": true,
+      "kind": "precision",
+      "detail": "预测=[] 期望=[] 通过=True",
+      "group": "A_no_trigger",
+      "query": "帮我用中文点评一下这段文章",
+      "why": "点评≠识别偏误"
+    },
+    {
+      "pass": true,
+      "kind": "precision",
+      "detail": "预测=[] 期望=[] 通过=True",
+      "group": "A_no_trigger",
+      "query": "今天北京天气怎么样",
+      "why": "闲聊"
+    },
+    {
+      "pass": true,
+      "kind": "precision",
+      "detail": "预测=[] 期望=[] 通过=True",
+      "group": "A_no_trigger",
+      "query": "把这段话翻译成英文",
+      "why": "翻译≠任何内核技能"
+    },
+    {
+      "pass": true,
+      "kind": "recall",
+      "detail": "预测=['identify_errors'] 期望=['identify_errors'] 通过=True",
+      "group": "B_direct_trigger",
+      "query": "我想买苹果很多。",
+      "why": "给了整句求找错"
+    },
+    {
+      "pass": true,
+      "kind": "recall",
+      "detail": "预测=['lookup_knowledge_point'] 期望=['lookup_knowledge_point'] 通过=True",
+      "group": "B_direct_trigger",
+      "query": "'把'字句是什么？",
+      "why": "求知识点定义"
+    },
+    {
+      "pass": true,
+      "kind": "recall",
+      "detail": "预测=['get_review_queue'] 期望=['get_review_queue'] 通过=True",
+      "group": "B_direct_trigger",
+      "query": "我最近该复习什么？",
+      "why": "求个性化复习队列"
+    },
+    {
+      "pass": true,
+      "kind": "recall",
+      "detail": "预测=['explain_error', 'identify_errors'] 期望=['explain_error', 'identify_errors'] 通过=True",
+      "group": "C_full_loop",
+      "query": "这句话有语病吗？帮我改一下。",
+      "why": "找错+改错连问，但默认不进入复述验证"
+    },
+    {
+      "pass": true,
+      "kind": "recall",
+      "detail": "预测=['explain_error', 'identify_errors'] 期望=['explain_error', 'identify_errors'] 通过=True",
+      "group": "C_full_loop",
+      "query": "我觉得这句子不对，你讲讲为什么。",
+      "why": "先认错，后解释——强制先识别再讲解"
+    },
+    {
+      "pass": true,
+      "kind": "recall",
+      "detail": "预测=['explain_error', 'identify_errors'] 期望=['identify_errors'] 通过=True",
+      "group": "D_ambiguity",
+      "query": "这句话有错吗？",
+      "why": "求判断→只识别，不讲解"
+    },
+    {
+      "pass": true,
+      "kind": "recall",
+      "detail": "预测=['explain_error', 'identify_errors'] 期望=['explain_error', 'identify_errors'] 通过=True",
+      "group": "D_ambiguity",
+      "query": "这句话为什么不对？",
+      "why": "求解释→识别后必须讲解，比上一句多一步"
+    },
+    {
+      "pass": true,
+      "kind": "recall",
+      "detail": "预测=['identify_errors'] 期望=['identify_errors'] 通过=True",
+      "group": "D_ambiguity",
+      "query": "我写的对还是不对？",
+      "why": "求对错判定→先识别；若对则无需讲解"
+    },
+    {
+      "pass": true,
+      "kind": "recall",
+      "detail": "预测=['identify_errors'] 期望=['identify_errors'] 通过=True",
+      "group": "D_ambiguity",
+      "query": "老师，这样用对吗？",
+      "why": "问用法对错→识别；无问 why 不必讲解"
+    }
+  ]
+}

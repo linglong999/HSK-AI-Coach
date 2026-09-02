@@ -1,0 +1,34 @@
+﻿==============================================================
+M6 自由对话评测（agent_cases.json）
+用例总数 15
+==============================================================
+[过程判据]
+  技能轨迹命中率 : 12/15 = 80.0%
+  终止率          : 15/15 = 100.0%
+  平均步数        : 1.88 (上限 6)
+[结果判据 / LLM-judge]
+  判分达标率      : 14/15 = 93.3%（earned ≥ 80% 满分）
+==============================================================
+按用例明细:
+   1 偏误句 | trace=OK | steps=[3] | judge=9/10(P) | used=['identify_errors', 'explain_error']
+   2 偏误句 | trace=OK | steps=[2] | judge=10/10(P) | used=['identify_errors']
+   3 偏误句 | trace=OK | steps=[2] | judge=10/10(P) | used=['identify_errors']
+   4 偏误句 | trace=X | steps=[1] | judge=10/10(P) | used=[]
+       · answer: '这句话完全正确，没有偏误！你用了“跑得很快”这个结构，表示动作“跑”的程度，很标准。\n不过，既然你提到这句话，我想确认一下：你最近是不是在练习“得”字补语（比如“跑得快”“说得好”）？如果是的话，我可以帮你复习一下这个知识点，或者给你出个小'
+   5 偏误句 | trace=OK | steps=[3] | judge=6/10(F) | used=['identify_errors', 'explain_error']
+       · answer: '我帮你分析一下这句话的偏误。你写的是“那个电影”，但这里应该用“那部电影”。你知道为什么吗？\n你这句话里有一个小偏误哦！"那个电影"应该改成"那部电影"。因为"电影"要用量词"部"，就像我们说"一本书""一台电脑"一样，每个东西都有自己固定'
+       · judge评语: 助教正确识别了量词偏误并给出纠正，但未识别逗号衔接这一隐性偏误，且讲解方式偏重提问而非直接说明。
+       · 待改进: 未指出逗号衔接问题，应说明'因为'前需加逗号使句子更流畅
+       · 待改进: 讲解中提问过多，应更直接地给出知识点总结
+   6 纯提问 | trace=OK | steps=[2] | judge=8/10(P) | used=['lookup_knowledge_point', 'retrieve_corpus']
+   7 纯提问 | trace=OK | steps=[2] | judge=9/10(P) | used=['lookup_knowledge_point', 'lookup_knowledge_point', 'retrieve_corpus']
+   8 纯提问 | trace=OK | steps=[2] | judge=10/10(P) | used=['get_review_queue']
+   9 纯提问 | trace=OK | steps=[2] | judge=9/10(P) | used=['lookup_knowledge_point', 'retrieve_corpus']
+  10 边界 | trace=OK | steps=[1] | judge=10/10(P) | used=[]
+  11 边界 | trace=OK | steps=[1] | judge=8/10(P) | used=[]
+  12 边界 | trace=OK | steps=[1] | judge=10/10(P) | used=[]
+  13 边界 | trace=OK | steps=[1] | judge=10/10(P) | used=[]
+  14 多轮 | trace=X | steps=[2, 3] | judge=8/10(P) | used=['identify_errors', 'identify_errors']
+       · answer: '你问“那‘很多’呢？”——我猜你是想让我看看“我买了很多苹果”这句话对不对，对吗？\n\n这句话**完全正确**，没有偏误！🎉 你用了“动词 + 了 + 很多 + 名词”的结构，非常地道。\n\n不过，我想提醒你一个你**最近常犯的小错误**：你有'
+  15 多轮 | trace=X | steps=[1, 3] | judge=8/10(P) | used=['lookup_knowledge_point']
+       · answer: '你问得很好！“跑得”单独用是不完整的，它后面必须接一个补语来说明跑得怎么样。我先查一下这个知识点的标准解释，再给你详细讲讲。\n你问得很好！“跑得”本身不是一个完整的表达，它后面必须跟一个补语（通常是形容词或短语）来说明“跑”得怎么样。比如：'

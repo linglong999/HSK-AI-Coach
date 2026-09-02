@@ -1,0 +1,28 @@
+{
+  "purpose": "constraint7_coverage_regression",
+  "test_layer": "rule_fallback_only（无 LLM Key，走规则回退）",
+  "baseline": "golden_v1_4.json clean_fp_rate=0.0（含把/被/比已验证）",
+  "meta_note": "v2 修复盲区：原 B 类使用 OOV 词(漫步)或高等级学习者(3/4级)+宽容相邻一级(>learner+1)导致超纲未触发，B 实际退化为纲内复检。本轮 B 类改为『低等级学习者(1/2级)+词表内确定4级词』，使其正触发超纲分支。判定口径：A 类(纲内合法)应 errors=[] 且 uncertain=[]；B 类(真超纲合法)应 errors=[]（不误报 confirmed，宁漏勿错不污染图谱）且 uncertain 命中超纲词(beyond_level 非空)——超纲只产提示、绝不产确认，且 rule_fallback 无 LLM 仅验规则回退层，LLM 约束7层仍需有 Key 复检",
+  "categories": {
+    "A_superclass_within": [
+      {"sentence": "我把书放在桌子上。", "level": 3, "note": "把字句·处置式合法（含结果补语），护栏应不撤"},
+      {"sentence": "他被老师表扬了。",  "level": 3, "note": "被字句·合法被动句"},
+      {"sentence": "他比小明高。",     "level": 3, "note": "比字句·合法比较句"},
+      {"sentence": "我昨天去了学校。", "level": 2, "note": "了·完成体合法"},
+      {"sentence": "他看着电视。",     "level": 2, "note": "着·持续体合法"},
+      {"sentence": "我去过北京两次。", "level": 3, "note": "过·经历体合法"},
+      {"sentence": "他认真地学习了。", "level": 3, "note": "地·状中结构合法（在_NO_DE_ADV外）"},
+      {"sentence": "她跑得很快。",     "level": 2, "note": "得·补语结构合法"},
+      {"sentence": "这是我的书。",     "level": 1, "note": "的·领属合法"},
+      {"sentence": "他们越来越喜欢这个城市。", "level": 4, "note": "越来越·合法"},
+      {"sentence": "他不高兴。",       "level": 1, "note": "否定·合法"}
+    ],
+    "B_superclass_beyond": [
+      {"sentence": "阿姨很爱护小猫。", "level": 2, "note": "真超纲触发：阿姨/爱护=词表4级，学习者2级→4>3超纲；句式合法；预期uncertain=['阿姨','爱护']且errors=[]"},
+      {"sentence": "这个包裹是给妈妈的。", "level": 2, "note": "包裹=词表4级，2级学习者→超纲；句式合法"},
+      {"sentence": "爸爸按时上班。", "level": 2, "note": "按时=词表4级，2级学习者→超纲；句式合法"},
+      {"sentence": "她把照片放在背景里。", "level": 1, "note": "背景=词表4级，1级学习者→4>2超纲；把字句处置式合法(约束7应不撤)"},
+      {"sentence": "这是奶奶的宝贵礼物。", "level": 1, "note": "宝贵=词表4级，1级学习者→超纲；领属固定句式合法"}
+    ]
+  }
+}

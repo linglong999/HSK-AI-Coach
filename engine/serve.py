@@ -1,13 +1,21 @@
 # ============================================================
-# 前端壳 HTTP 服务层（M10）
+# 前端壳 HTTP 服务层（M10）+ 唯一对话入口（0.17 统一骨架）
 # 零第三方依赖：仅 Python 标准库 http.server。
-# 暴露四类入口给前端壳（原生 JS+SVG）：
-#   POST /api/process   → Router.process(text) → 契约 v1 result（JSON-接缝契约-v1.md）
-#   POST /api/verify    → Router.verify_rephrase() → 复述验证（契约 verify_rephrase 节）
-#   GET  /api/graph     → ErrorGraph.graph_snapshot()（nodes/edges/queue）
-#   GET  /              → 托管 前端壳 index.html
+# 暴露入口给前端壳（原生 JS+SVG）：
+#   POST /api/dialog   → Planner 自由 ReAct（0.17 唯一对话入口，共享 skill 注册表）
+#                        + M5 多轮记忆（0.18 接入项①）：服务端 LearnerMemory 权威，
+#                        按 conversation_id 注入历史并写回落盘（data/memory_<learner>.json）
+#                        + M8 画像/惯犯（0.18 接入项③）：常错点摘要注入 system；
+#                        trace 编排 ledger 两段式事件（data/ledger_<learner>.json）；
+#                        常错点 facts 汇合 M5 profile.common_errors
+#   POST /api/process  → Router.process(text) → 契约 v1 result（兼容遗留 runner）
+#   POST /api/verify   → Router.verify_rephrase() → 复述验证（契约 verify_rephrase 节）
+#   POST /api/generate → GenerationEngine.generate_unit()（费曼单元，0.16 接入，共享 graph）
+#   GET  /api/graph    → ErrorGraph.graph_snapshot()（nodes/edges/queue）
+#   GET  /             → 托管 前端壳 index.html
 # 启动: python -m engine.serve [--port 8612] [--host 127.0.0.1] [--learner demo]
-# 免 Key 亦可启动：process 走 4.2 规则回退降级，契约 degraded[] 记录；图谱照常返回。
+# 免 Key 亦可启动：process 走 4.2 规则回退降级；图谱照常返回。
+# /api/dialog 需 LLM Key（A3 决策：无 Key 直接报错，不静默降级）；generate 无 Key 结构化 degraded。
 # ============================================================
 
 import argparse
@@ -28,10 +36,20 @@ from engine.router import Router
 _INDEX_DIR = os.path.join(_PROJECT_ROOT, "web")
 
 
-def make_handler(router: Router, index_dir: str):
+def _default_dialog_llm(messages):
+    """planner 的默认 LLM 调用（无静默降级：网络/Key 异常如实上抛，由上层报错）。"""
+    from engine.llm.client import LLMClient
+    return LLMClient().chat(messages, temperature=0.3)
+
+
+def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=None,
+                 memory_root: str = "data"):
     """工厂构造 handler，闭包捕获 Router（每个请求共享同一图谱实例）。
     ThreadingHTTPServer 每请求一线程 → 用一把锁串行化整个闭环
-    （process/verify 是多步读写组合，仅靠图谱内部锁防不住交错）。"""
+    （process/verify 是多步读写组合，仅靠图谱内部锁防不住交错）。
+    generation: 可选 GenerationEngine；默认 None 懒建（共享 router.graph + Writeback）。
+    dialog_llm: 可选 planner llm_call 注入（测试 mock；None → 真实 LLMClient.chat）。
+    memory_root: LearnerMemory 落盘根目录（默认 data/；测试注入临时目录）。"""
 
     lock = threading.RLock()
 
@@ -39,9 +57,122 @@ def make_handler(router: Router, index_dir: str):
         _router = router
         _index_dir = index_dir
         _lock = lock
+        _generation = generation
+        _planner = None
+        _dialog_llm = dialog_llm
+        _memory_root = memory_root
+        _memories = {}   # learner_id -> LearnerMemory（M5 多轮记忆）
+        _writebacks = {}   # learner_id -> Writeback（M8 事件账本/两段式）
 
         def log_message(self, fmt, *args):
             sys.stderr.write("  [serve] " + fmt % args + "\n")
+
+        def _get_generation(self):
+            """懒建/取共享 GenerationEngine（复用 router.graph，practice 走两段式写回）。
+            免 Key 也不崩：generate_unit 内部将 LLM 失败降级为结构化 degraded。"""
+            if self._generation is not None:
+                return self.__class__._generation
+            from engine.generation.generator import GenerationEngine
+            from engine.memory.writeback import Writeback
+            g = GenerationEngine(
+                graph=self._router.graph,
+                writeback=Writeback(graph=self._router.graph,
+                                    learner_id=self._router.learner_id))
+            self.__class__._generation = g
+            return g
+
+        def _get_planner(self):
+            """懒建/取 Planner（唯一对话入口）：共享 router 的图谱与三引擎实例（单一来源）。"""
+            if self.__class__._planner is not None:
+                return self.__class__._planner
+            from planner.loop import Planner
+            from skills import build_registry
+            r = self._router
+            reg = build_registry(graph=r.graph,
+                                 generation=self._get_generation(),
+                                 recognizer=getattr(r, "recognizer", None),
+                                 explainer=getattr(r, "explainer", None),
+                                 verifier=getattr(r, "verifier", None))
+            p = Planner(reg,
+                        llm_call=self.__class__._dialog_llm or _default_dialog_llm)
+            self.__class__._planner = p
+            return p
+
+        def _get_memory(self, learner_id: str):
+            """按 learner_id 缓存 LearnerMemory 实例（M5：服务端记忆为多轮上下文唯一权威源）。"""
+            mem = self.__class__._memories.get(learner_id)
+            if mem is None:
+                from engine.memory.learner_memory import LearnerMemory
+                mem = LearnerMemory(learner_id, root=self._memory_root)
+                self.__class__._memories[learner_id] = mem
+            return mem
+
+        def _get_writeback(self, learner_id: str):
+            """按 learner_id 缓存 Writeback（M8：ledger 事件账本 + 两段式确认）。"""
+            wb = self.__class__._writebacks.get(learner_id)
+            if wb is None:
+                from engine.memory.writeback import Writeback
+                wb = Writeback(graph=self._router.graph,
+                               learner_id=learner_id, root=self._memory_root)
+                self.__class__._writebacks[learner_id] = wb
+            return wb
+
+        def _writeback_ledger_events(self, wb, trace, user_input: str) -> list:
+            """M8 两段式·账本侧（从 planner trace 编排）：
+            - 识别命中（identify_errors ok）→ ledger observation_error（惯犯判定数据源）
+            - 复述验证 pass（verify_retell verdict=pass）→ on_confirmed 记 concept_confirmed
+            图谱侧写入已在技能内完成（identify→ingest_error / verify→ingest_verdict），
+            此处只补事件账本；单条失败降级不阻塞对话。
+            确认对象：同轮识别的 KP 优先；跨轮（上轮识别讲解、本轮复述通过）时
+            从账本推导"最近观察过且其后无确认"的 KP 兜底（复述验证的是最近讲解，
+            讲解对象即最近未确认偏误；宁紧勿滥，倒序最多 3 个）。"""
+            notices = []
+            round_kps = []
+            for t in trace or []:
+                if not t.get("ok"):
+                    continue
+                name = t.get("name")
+                result = t.get("result") or {}
+                if name == "identify_errors":
+                    for err in result.get("errors", []):
+                        kp = err.get("knowledge_point_id")
+                        if not kp:
+                            continue
+                        round_kps.append(kp)
+                        try:
+                            wb.ledger.record("observation_error", kp,
+                                             signature=err.get("fragment", ""),
+                                             evidence=user_input)
+                        except Exception as e:  # noqa: BLE001
+                            notices.append({"stage": "ledger_write",
+                                            "reason": str(e), "fatal": False})
+                elif name == "verify_retell" and result.get("verdict") == "pass":
+                    kps = round_kps or self._unconfirmed_recent_kps(wb.ledger)
+                    for kp in dict.fromkeys(kps):
+                        try:
+                            wb.on_confirmed(kp, evidence="复述验证通过")
+                        except Exception as e:  # noqa: BLE001
+                            notices.append({"stage": "ledger_write",
+                                            "reason": str(e), "fatal": False})
+            return notices
+
+        @staticmethod
+        def _unconfirmed_recent_kps(ledger, limit: int = 3) -> list:
+            """账本推导：最近观察过、且其后无确认事件的 KP（按观察顺序倒序）。
+            供跨轮确认侧兜底；事件顺序用列表下标判定（同秒 ts 不可靠）。"""
+            events = ledger.recent()
+            last_obs, last_conf = {}, {}
+            for i, e in enumerate(events):
+                kp = e.get("kp_id")
+                if not kp:
+                    continue
+                if e.get("kind") in ("observation_error", "repeated_error"):
+                    last_obs[kp] = i
+                elif e.get("kind") == "concept_confirmed":
+                    last_conf[kp] = i
+            pending = [kp for kp, i in last_obs.items() if i > last_conf.get(kp, -1)]
+            pending.sort(key=lambda kp: last_obs[kp], reverse=True)
+            return pending[:limit]
 
         def _send_json(self, obj, status=200):
             body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
@@ -101,10 +232,131 @@ def make_handler(router: Router, index_dir: str):
                     event_key=f"web#{restatement}")  # 稳定 key：实体本身（原则4）
             self._send_json(out)
 
+        def _do_api_generate(self, payload: dict):
+            # 生成费曼单元（逻辑统一，错误由 generate_unit 结构化为 degraded，非 500）
+            unit_type = str((payload.get("unit_type") or "")).strip()
+            if unit_type not in ("explain", "practice"):
+                self._send_json({
+                    "ok": False, "status": "degraded",
+                    "message": f"unsupported unit_type: {unit_type}（仅 explain/practice 首发）",
+                    "unit": None, "diagnostics": [], "attempts": 0}, 400)
+                return
+
+            kp = str((payload.get("knowledge_point_id") or "")).strip()
+            fragment = str((payload.get("fragment") or "")).strip()
+            targets_errors = payload.get("targets_errors") or []
+            # practice：命中已确认偏误 → 两段式写回图谱（write_back=True）
+            if unit_type == "practice" and kp and not targets_errors:
+                targets_errors = [{"fragment": fragment,
+                                   "knowledge_point_id": kp}]
+
+            context = {
+                "for_keypoint": str(payload.get("for_keypoint") or ""),
+                "teaching_objective": str(payload.get("teaching_objective") or ""),
+                "curriculum_at": payload.get("curriculum_at") or (("kp:" + kp) if kp else ""),
+                "previous_speech": str(payload.get("previous_speech") or ""),
+                "all_titles": payload.get("all_titles") or [],
+                "language_directive": str(payload.get("language_directive") or ""),
+                "self_language": str(payload.get("self_language") or "zh"),
+                "for_keypoints": payload.get("for_keypoints") or ([kp] if kp else []),
+                "targets_errors": targets_errors,
+                "task_kind": str(payload.get("task_kind") or "mcq"),
+            }
+            with self._lock:  # 与 process/verify 同锁，串行化图谱读写
+                out = self._get_generation().generate_unit(
+                    unit_type, context, max_repairs=1,
+                    write_back=(unit_type == "practice"))
+                out["graph"] = self._router.graph.graph_snapshot()
+            self._send_json(out)
+
+        def _do_api_dialog(self, payload: dict):
+            # 唯一对话入口：Planner 自由 ReAct（0.17）+ M5 多轮记忆（0.18 接入项①）
+            #   + M8 画像/惯犯（0.18 接入项③）。
+            # A1：trace 转译为学习成果卡；A3：无 Key 直接报错（fail-loud），不静默降级。
+            # 记忆策略：服务端 LearnerMemory 为多轮上下文唯一权威源——
+            #   读：to_llm_history(conversation_id) 注入 planner（前端透传 history 不再使用）；
+            #   写：本轮 user + assistant 回复（含 fallback 文案）追加落盘。
+            # 画像策略（M8）：build_profile_summary 进 system；trace 编排 ledger 事件
+            #   （识别命中→observation_error，复述 pass→concept_confirmed）；
+            #   build_profile_facts 写回 mem.profile.common_errors（图谱×账本×记忆三线汇合）。
+            # conversation_id 语义（已定决策 2026-09-01）：同一次对话复用同一 id 延续上下文，
+            #   切换知识点/隔天开新 id；不传 → "default"。
+            user_input = str((payload.get("text") or "")).strip()
+            if not user_input:
+                self._send_json({"error": "empty text"}, 400)
+                return
+            learner_id = str((payload.get("learner_id") or "")).strip() or \
+                self._router.learner_id
+            conversation_id = str((payload.get("conversation_id") or "")).strip() or "default"
+
+            # fail-loud：真实 LLM 路径必须先有 Key（mock 注入路径跳过）
+            if self.__class__._dialog_llm is None:
+                from config import settings
+                _, api_key, _ = settings.get_llm_config()
+                if not api_key:
+                    self._send_json({
+                        "error": "自由对话需要 LLM API Key：复制 .env.example 为 .env，"
+                                 "填入 DEEPSEEK_API_KEY（或 QWEN_API_KEY）后重启服务",
+                        "code": "llm_not_configured"}, 400)
+                    return
+
+            with self._lock:
+                from engine.memory.summarize import (
+                    build_profile_summary, build_profile_facts)
+                mem = self._get_memory(learner_id)
+                wb = self._get_writeback(learner_id)
+                history = mem.to_llm_history(conversation_id)
+                # M8 画像注入：常错点/惯犯摘要进 system（含本轮前全部图谱+账本状态）
+                try:
+                    profile_summary = build_profile_summary(
+                        self._router.graph, wb.ledger)
+                except Exception:  # noqa: BLE001
+                    profile_summary = ""
+                res = self._get_planner().run(
+                    user_input, history=history, learner_id=learner_id,
+                    profile_summary=profile_summary)
+                # M8 两段式·账本侧：识别命中→observation_error；复述 pass→concept_confirmed
+                m8_notices = self._writeback_ledger_events(
+                    wb, res.get("trace", []), user_input)
+                # M8 汇合 M5：常错点结构化 facts 写回长期记忆 profile 块
+                try:
+                    facts = build_profile_facts(self._router.graph, wb.ledger)
+                    if facts:
+                        mem.update_profile(common_errors=facts)
+                except Exception as e:  # noqa: BLE001
+                    m8_notices.append({"stage": "profile_writeback",
+                                       "reason": str(e), "fatal": False})
+                # 写回记忆：user 必记；assistant 回复非空才记（fallback 文案也记，多轮不断档）
+                reply = str(res.get("text") or "")
+                mem.append(conversation_id, "user", user_input)
+                if reply:
+                    mem.append(conversation_id, "assistant", reply,
+                               metadata={"skills": res.get("used_skills", []),
+                                         "fallback": bool(res.get("fallback", False))})
+                graph_snapshot = self._router.graph.graph_snapshot()
+            degraded = m8_notices  # 账本/画像写入失败降级（非致命）
+            if res.get("fallback"):
+                degraded.append({"stage": "planner",
+                                 "reason": f"planner fallback: {res.get('reason', 'unterminated')}",
+                                 "fatal": False})
+            out = {
+                "dialog_version": "v1",
+                "learner_id": learner_id,
+                "conversation_id": conversation_id,
+                "text": res.get("text", ""),
+                "used_skills": res.get("used_skills", []),
+                "steps": res.get("steps", 0),
+                "fallback": bool(res.get("fallback", False)),
+                "trace": res.get("trace", []),
+                "degraded": degraded,
+                "graph": graph_snapshot,
+            }
+            self._send_json(out)
+
         def do_POST(self):
             parsed = urlparse(self.path)
             path = parsed.path.rstrip("/")
-            if path == "/api/process":
+            if path in ("/api/process", "/api/verify", "/api/generate", "/api/dialog"):
                 try:
                     length = int(self.headers.get("Content-Length", 0))
                     raw = self.rfile.read(length) if length else b"{}"
@@ -112,6 +364,7 @@ def make_handler(router: Router, index_dir: str):
                 except Exception:
                     self._send_json({"error": "invalid json body"}, 400)
                     return
+            if path == "/api/process":
                 try:
                     self._do_api_process(payload)
                 except Exception as e:
@@ -119,17 +372,26 @@ def make_handler(router: Router, index_dir: str):
                 return
             if path == "/api/verify":
                 try:
-                    length = int(self.headers.get("Content-Length", 0))
-                    raw = self.rfile.read(length) if length else b"{}"
-                    payload = json.loads(raw or b"{}")
-                except Exception:
-                    self._send_json({"error": "invalid json body"}, 400)
-                    return
-                try:
                     self._do_api_verify(payload)
                 except Exception as e:
                     # 验证引擎无规则回退（2.3）：如实报错，不伪造 verdict
                     self._send_json({"error": f"verify failed: {e}"}, 500)
+                return
+            if path == "/api/generate":
+                try:
+                    self._do_api_generate(payload)
+                except Exception as e:
+                    # 生成引擎内部已结构化为 degraded；此处兜底防 HTTP 500
+                    self._send_json({
+                        "ok": False, "status": "degraded",
+                        "message": f"generate failed: {e}",
+                        "unit": None, "diagnostics": [], "attempts": 0}, 500)
+                return
+            if path == "/api/dialog":
+                try:
+                    self._do_api_dialog(payload)
+                except Exception as e:
+                    self._send_json({"error": f"dialog failed: {e}"}, 500)
                 return
             self.send_error(404)
 
@@ -162,8 +424,12 @@ def main():
         print("[serve] 将仅提供 API（/api/process /api/graph），静态页待 M10 生成 web/index.html")
     httpd = ThreadingHTTPServer((args.host, args.port), make_handler(router, _INDEX_DIR))
     print(f"HSK-AI-Coach 前端壳：http://{args.host}:{args.port}  (learner={args.learner})")
+    print("  POST /api/dialog   自由对话（planner 唯一入口，需 LLM Key）")
+    print("                      入参 text / learner_id / conversation_id")
+    print("                      多轮记忆服务端持久化：同 conversation_id 延续上下文")
     print("  POST /api/process   纠错闭环（契约 v1 JSON）")
     print("  POST /api/verify    复述验证（key_points + restatement）")
+    print("  POST /api/generate  费曼讲解/练习单元（unit_type=explain|practice）")
     print("  GET  /api/graph     图谱 nodes/edges/queue")
     print("  GET  /              前端壳页面（若 web/index.html 存在）")
     print("  Ctrl+C 停止")
