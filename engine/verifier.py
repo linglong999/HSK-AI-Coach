@@ -98,10 +98,11 @@ class Verifier:
     def verify(self, explanation: str, key_points: list, restatement: str,
                history: str = "", uncertain: bool = False,
                bias_ref: Optional[dict] = None, event_key: Optional[str] = None,
-               commit_graph: bool = True) -> dict:
+               commit_graph: bool = True, native_lang: str = "") -> dict:
         """验证复述覆盖度（2.3 v0.3）。
         key_points: 2.2 输出的显式要点（[{id,text}]），唯一来源。
         bias_ref + event_key: 写回图谱所需；commit_graph=False 时不写（纯评测）。
+        native_lang: 0.21 讲解反馈语言（非 zh → 英文反馈，中文要点保留）。
         返回：LLM 逐点判定 + 规则聚合 verdict + 降级建议 + 写回状态。
         """
         kp_str = "\n".join(f"- [{p.get('id')}] {p.get('text')}" for p in key_points) \
@@ -131,7 +132,8 @@ class Verifier:
                                "total_points": len(key_points), "coverage_ratio": 0.0,
                                "degraded": True}, raw={}, key_points=key_points,
                               bias_ref=bias_ref, uncertain=uncertain,
-                              event_key=event_key, commit_graph=commit_graph)
+                              event_key=event_key, commit_graph=commit_graph,
+                              native_lang=native_lang)
 
         judgements = raw.get("point_judgements", [])
         if not isinstance(judgements, list):
@@ -141,11 +143,12 @@ class Verifier:
 
         result = self._wrap(agg, raw=raw, key_points=key_points, bias_ref=bias_ref,
                             uncertain=uncertain, event_key=event_key,
-                            commit_graph=commit_graph, flowery=flowery)
+                            commit_graph=commit_graph, flowery=flowery,
+                            native_lang=native_lang)
         return result
 
     def _wrap(self, agg: dict, raw: dict, key_points: list, bias_ref, uncertain,
-              event_key, commit_graph, flowery: bool = False) -> dict:
+              event_key, commit_graph, flowery: bool = False, native_lang: str = "") -> dict:
         verdict = agg["verdict"]
         # 连续失败计数（§四 连续失败口径，按任务分键）：verdict∈{partial,fail} 计+1，pass 清零
         skey = self._streak_key(bias_ref)
@@ -160,14 +163,21 @@ class Verifier:
             action = "suggest_teacher"
         elif consecutive_fail >= self.N_RETRY:
             action = "retry_simpler"
-        # 引导反馈（fail/partial → 提示重试；规则层不参与判定）
+        # 引导反馈（fail/partial → 提示重试；规则层不参与判定）0.21：native_lang 非 zh → 英文反馈
+        is_en = bool(native_lang and native_lang.lower() != "zh")
         if verdict == "pass":
-            feedback = "理解到位。可以试着用这个知识点造一个新句子。"
+            feedback = ("Good. You covered the key point. "
+                        "Try making a new sentence with it." if is_en
+                        else "理解到位。可以试着用这个知识点造一个新句子。")
         elif verdict == "partial":
-            feedback = "意思对了一些，但还有要点没覆盖到。再看一眼下面的引导问题：\n" \
-                       + self._prompt_for_missing(key_points, raw)
+            head = ("You got part of it right, but some key points were not covered. "
+                    "Think about how to say these in Chinese:" if is_en
+                    else "意思对了一些，但还有要点没覆盖到。再看一眼下面的引导问题：\n")
+            feedback = head + self._prompt_for_missing(key_points, raw, is_en=is_en)
         else:
-            feedback = "这次没有覆盖到要点。我们换个更简单的角度再讲一次。"
+            feedback = ("This time the key point was not covered. "
+                        "Let me explain again from a simpler angle." if is_en
+                        else "这次没有覆盖到要点。我们换个更简单的角度再讲一次。")
         # 写回图谱（§四 写回 / 2.4 写接口）：uncertain 分流由 ingest_verdict 内部处理
         write_status = None
         if commit_graph and self.graph is not None and bias_ref is not None:
@@ -190,12 +200,17 @@ class Verifier:
         }
 
     @staticmethod
-    def _prompt_for_missing(key_points: list, raw: dict) -> str:
-        """为未覆盖的要点生成引导问题（提示语二次生成归属后续；MVP 用规则模板）"""
+    def _prompt_for_missing(key_points: list, raw: dict, is_en: bool = False) -> str:
+        """为未覆盖的要点生成引导问题（提示语二次生成归属后续；MVP 用规则模板）。
+        0.21：is_en → 英文引导，中文要点保留。"""
         miss = []
         for j in raw.get("point_judgements", []):
             if not j.get("is_covered"):
                 miss.append(j.get("text", ""))
         if miss:
+            if is_en:
+                return "Please say: " + "；".join(f'"{m}"' for m in miss[:2]) + ". How would you express these correctly in Chinese?"
             return "请想一想：" + "；".join(f"「{m}」这块怎么说？" for m in miss[:2])
+        if is_en:
+            return "Please try to restate what we just learned in your own words, in Chinese."
         return "请试着用自己的话把刚才学的再说一遍。"

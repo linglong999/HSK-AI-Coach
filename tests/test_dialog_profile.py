@@ -53,7 +53,8 @@ class FakeVerifier:
         self.verdict = verdict
 
     def verify(self, explanation="", key_points=None, restatement="",
-               uncertain=False, bias_ref=None, event_key=None, commit_graph=True):
+               uncertain=False, bias_ref=None, event_key=None, commit_graph=True,
+               native_lang=""):
         return {
             "point_judgements": [{"id": "k1", "judgement": "covered"}],
             "verdict": self.verdict,

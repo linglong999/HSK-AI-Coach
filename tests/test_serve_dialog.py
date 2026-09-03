@@ -206,7 +206,9 @@ class DialogTraceTest(unittest.TestCase):
 class PlannerTraceTest(unittest.TestCase):
 
     def test_trace_on_success_and_fallback(self):
-        reg = build_registry(graph=ErrorGraph("plan_trace"))
+        # recognizer 注入替身：识别器未注入时会真调 DeepSeek（.env 有 Key 时隐性花钱）
+        reg = build_registry(graph=ErrorGraph("plan_trace"),
+                             recognizer=FakeRecognizer())
         # 成功路径：action + text
         p = Planner(reg, llm_call=ScriptLLM([
             '[{"type":"action","name":"identify_errors","params":{"text":"x"}}]',

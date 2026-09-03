@@ -132,9 +132,23 @@ class ParseRetryTest(unittest.TestCase):
         self.assertEqual(r["reason"], "parse")
 
 
+class _FakeRecognizer:
+    """固定返回一个已确认偏误（免 LLM：识别器未注入时会真调 DeepSeek，违反单测隔离铁律）"""
+
+    def recognize(self, text, level=3, native_lang=""):
+        return {
+            "errors": [{
+                "fragment": "苹果很多", "correction": "很多苹果",
+                "type": "语法-语序", "type_confident": True, "confidence": 0.9,
+                "knowledge_point_id": "kp-order-many", "uncertain": False,
+            }],
+            "uncertain": [], "degraded": [],
+        }
+
+
 class PlannerLoopTest(unittest.TestCase):
     def setUp(self):
-        self.reg = build_registry()
+        self.reg = build_registry(recognizer=_FakeRecognizer())
 
     def test_agent_calls_skill_then_text(self):
         def mock_llm(messages):

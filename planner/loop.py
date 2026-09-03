@@ -61,6 +61,68 @@ GLOBAL_RULES = (
     "（可调 get_review_queue 取详情）。无画像则忽略本条。"
 )
 
+# 0.21 英文版全局规则：native_lang 非 zh 时生效。
+# 语言策略（调研主流中文学习产品 + 教学法共识"结构化双语、母语脚手架渐褪出"）：
+#   教学层（对学习者说的话、讲解说理）用英文；内容载体（被检查的中文句、修正句、
+#   例句、词汇）永远保持中文——英文是"帮助理解中文的外壳"，不翻译掉要学的中文。
+GLOBAL_RULES_EN = (
+    "You are an HSK Chinese tutor for English-native learners, focused on "
+    "error-driven teaching and Feynman-style understanding. Rules:\n"
+    "1) Output only one JSON array as plain text (no extra prose, no code fences).\n"
+    "2) Each array item is an object with exactly two legal shapes, field names verbatim:\n"
+    '   Call a skill: {"type": "action", "name": "skill_name", "params": {params}}\n'
+    '   Speak to the user: {"type": "text", "content": "natural English"}\n'
+    '   Example: [{"type": "action", "name": "identify_errors", "params": {"text": "我想买苹果很多。"}}, '
+    '{"type": "text", "content": "Let me check this sentence for errors."}]\n'
+    "3) Skill selection:\n"
+    "   - Judge a sentence for errors → identify_errors (params: text=the sentence)\n"
+    "   - Explain an identified error → explain_error (params: error=the error object "
+    "returned by identification)\n"
+    "   - Learner restates an explanation for checking → verify_retell (params: "
+    "explanation/key_points taken from the preceding explanation result, "
+    "restatement=the restatement text)\n"
+    "   - Look up a knowledge point definition/level → lookup_knowledge_point "
+    "(params: keyword)\n"
+    "   - Retrieve authoritative corpus snippets / example sentences / vocabulary "
+    "(incl. this learner's past error patterns) → retrieve_corpus (params: query, "
+    "top_k optional); for knowledge questions prefer retrieval and cite the returned "
+    "source (e.g. \"per the knowledge-point list · 把字句\") instead of answering from "
+    "memory; if retrieval misses, say so honestly — never fabricate sources\n"
+    "   - View review schedule → get_review_queue\n"
+    "   - Generate a Feynman explanation unit → generate_unit (params: "
+    "unit_type=explain, context={for_keypoint})\n"
+    "   - Generate consolidation practice → generate_unit (params: unit_type=practice, "
+    "context={for_keypoints, targets_errors})\n"
+    "   - Supplement with web material → web_search (params: query); parse "
+    "learner-provided material → parse_document (params: text)\n"
+    "4) Skill results are fed back as tool_result; you may keep calling skills or give "
+    "the final text.\n"
+    "5) After an explanation, invite the learner to restate it in their own words "
+    "(Feynman check; call verify_retell once they do).\n"
+    "6) When unsure or no skill is needed, just give text directly.\n"
+    "7) If the system prompt includes a [Learner profile] (common errors / repeat "
+    "offenders / review reminders): when touching a related knowledge point, point out "
+    "their high-frequency errors (e.g. \"you often get X wrong lately\"); at the opening "
+    "or closing of the conversation, if reviews are due, proactively raise a review "
+    "reminder (you may call get_review_queue for details). Ignore this rule if no "
+    "profile is attached.\n"
+    "8) LANGUAGE POLICY (critical): speak to the learner in natural English — the "
+    "teaching layer. All target-language content — the sentence being checked, error "
+    "fragments, corrections, corrected sentences, examples, and vocabulary — stays in "
+    "Chinese. English is the explanation shell; Chinese is the content being learned. "
+    "Never replace the Chinese with English-only text."
+)
+
+# 0.21：native_lang 由系统确定性注入这些技能参数（语言是系统约束，不依赖 LLM 自觉传参）
+# generate_unit 走 context.self_language/language_directive（引擎既有字段），其余走 native_lang
+LANG_INJECTED_SKILLS = ("explain_error", "verify_retell", "generate_unit")
+
+# 0.21 EN 模式生成单元的语言指令（英壳 + 中文内容载体，与规则 8 同口径）
+_LANG_DIRECTIVE_EN = (
+    "Teaching layer (explanations, instructions, feedback) in natural English; "
+    "all target-language content (examples, sentences, vocabulary) stays in Chinese."
+)
+
 
 class Planner:
     def __init__(self, registry, llm_call: Optional[Callable[[List[Dict]], str]] = None,
@@ -81,12 +143,15 @@ class Planner:
 
     def run(self, user_input: str, history: Optional[List[Dict]] = None,
             learner_id: str = "default",
-            profile_summary: Optional[str] = None) -> Dict[str, Any]:
+            profile_summary: Optional[str] = None,
+            native_lang: str = "") -> Dict[str, Any]:
         """主循环。返回含 text / used_skills / steps / fallback 的结果。
         profile_summary（M8）：常错点/惯犯摘要，非空时拼进 system 供个性化教学；
-        由上层 serve 从 build_profile_summary(graph, ledger) 计算，planner 不自取。"""
+        由上层 serve 从 build_profile_summary(graph, ledger) 计算，planner 不自取。
+        native_lang（0.21）：非 zh → 英文全局规则/降级文案，并确定性注入
+        explain_error / verify_retell 参数（教学层英文，中文内容载体不变）。"""
         history = history or []
-        system = self._build_system(profile_summary or "")
+        system = self._build_system(profile_summary or "", native_lang=native_lang)
         messages: List[Dict] = [{"role": "system", "content": system}]
         messages.extend(history)
         messages.append({"role": "user", "content": user_input})
@@ -99,7 +164,7 @@ class Planner:
         parse_retries = 0
 
         def _fail(reason: str, partial: str = "") -> Dict[str, Any]:
-            fb = fallback_reply(reason, partial_text=partial)
+            fb = fallback_reply(reason, partial_text=partial, native_lang=native_lang)
             fb["used_skills"] = used
             fb["trace"] = trace
             fb["steps"] = step + 1
@@ -116,12 +181,15 @@ class Planner:
                 # 协议直答（实测多轮长讲解场景），喂回格式错误给一次重试机会
                 if parse_retries < 1:
                     parse_retries += 1
-                    messages.append({
-                        "role": "user",
-                        "content": f"[format_error] 你的上一条输出无法解析为 JSON 数组"
-                                   f"（{e}）。请严格按规则 2 的格式重新输出，不要输出"
-                                   f"任何 JSON 以外的文字。",
-                    })
+                    if native_lang and native_lang.lower() != "zh":
+                        retry_msg = (f"[format_error] Your previous output could not be "
+                                     f"parsed as a JSON array ({e}). Re-output strictly in "
+                                     f"the rule-2 format, with no text outside the JSON.")
+                    else:
+                        retry_msg = (f"[format_error] 你的上一条输出无法解析为 JSON 数组"
+                                     f"（{e}）。请严格按规则 2 的格式重新输出，不要输出"
+                                     f"任何 JSON 以外的文字。")
+                    messages.append({"role": "user", "content": retry_msg})
                     continue
                 # 二次仍失败：若为自然语言文本（非 JSON 残片），当 text 兜底
                 # （显式标记 protocol_degraded，不静默透传；JSON 残片则 fallback）
@@ -141,6 +209,11 @@ class Planner:
                 elif t == "action":
                     name = it.get("name", "")
                     params = it.get("params", {}) or {}
+                    # 0.21 语言注入：教学层语言是系统约束，确定性写入参数而非靠
+                    # LLM 自觉传参（在 trace 记录前注入，保证轨迹反映实际下发参数）
+                    if (native_lang and name in LANG_INJECTED_SKILLS
+                            and isinstance(params, dict)):
+                        params = self._inject_lang(name, params, native_lang)
                     res = self._dispatch_action(name, params)
                     used.append(name)
                     trace.append({
@@ -175,14 +248,45 @@ class Planner:
         return out
 
     # ---------------- 内部 ----------------
-    def _build_system(self, profile_summary: str = "") -> str:
+    @staticmethod
+    def _inject_lang(name: str, params: Dict[str, Any],
+                     native_lang: str) -> Dict[str, Any]:
+        """0.21 语言注入：教学层语言由系统确定性写入技能参数，不依赖 LLM 自觉。
+        explain_error/verify_retell → 顶层 native_lang；generate_unit → EN 时注入
+        context.self_language + language_directive（引擎既有语言字段，zh 是引擎默认不动）。"""
+        if name == "generate_unit":
+            if native_lang.lower() == "zh":
+                return params   # 引擎默认即中文，无需注入
+            ctx = params.get("context")
+            if isinstance(ctx, dict):
+                new_ctx = dict(ctx)
+                if not new_ctx.get("self_language"):
+                    new_ctx["self_language"] = native_lang
+                if not new_ctx.get("language_directive"):
+                    new_ctx["language_directive"] = _LANG_DIRECTIVE_EN
+                return {**params, "context": new_ctx}
+            # LLM 平铺 context 字段的变体（skill.run 兼容平铺形态）：顶层补
+            if not params.get("self_language"):
+                return {**params, "self_language": native_lang,
+                        "language_directive": _LANG_DIRECTIVE_EN}
+            return params
+        if not params.get("native_lang"):
+            return {**params, "native_lang": native_lang}
+        return params
+
+    def _build_system(self, profile_summary: str = "",
+                      native_lang: str = "") -> str:
+        is_en = bool(native_lang and native_lang.lower() != "zh")
+        rules = GLOBAL_RULES_EN if is_en else GLOBAL_RULES
         compact = "\n".join(
             f"- {s['name']}: {s['summary']}（触发: {s['triggers_hint']}）"
             for s in self.registry.list_all()
         )
-        system = f"{GLOBAL_RULES}\n\n【可用技能清单】\n{compact}"
+        system = f"{rules}\n\n【可用技能清单】\n{compact}"
         if profile_summary:
-            system += f"\n\n【学习者画像】（结合画像个性化教学）\n{profile_summary}"
+            header = ("[Learner profile] (personalize the teaching accordingly)"
+                      if is_en else "【学习者画像】（结合画像个性化教学）")
+            system += f"\n\n{header}\n{profile_summary}"
         return system
 
     def _dispatch_action(self, name: str, params: Dict[str, Any]) -> Dict[str, Any]:

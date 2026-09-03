@@ -10,14 +10,24 @@
 
 from typing import Dict, Any
 
+# 0.21 双语降级文案：native_lang 非 zh → 英文（面向英语母语学习者）
+_MSG_MAP_ZH = {
+    "parse": "我没能整理出一个可执行的回复，请把问题换种说法再问我一次。",
+    "max_steps": "这个话题我继续展开意义不大，我们先在上面这里确认一下，你再告诉我下一步。",
+    "skill_error": "我在处理时遇到了一个内部问题，请稍后再试。",
+}
+_MSG_MAP_EN = {
+    "parse": "I couldn't put together a usable reply. Could you rephrase that and ask again?",
+    "max_steps": "This topic isn't worth stretching further. Let's confirm what we have above, then you tell me the next step.",
+    "skill_error": "I hit an internal problem while processing. Please try again in a moment.",
+}
 
-def fallback_reply(reason: str, partial_text: str = "") -> Dict[str, Any]:
+
+def fallback_reply(reason: str, partial_text: str = "",
+                   native_lang: str = "") -> Dict[str, Any]:
     """构造降级回复。返回一个对用户安全、不含已失败技能结果的稳定对象。"""
-    msg_map = {
-        "parse": "我没能整理出一个可执行的回复，请把问题换种说法再问我一次。",
-        "max_steps": "这个话题我继续展开意义不大，我们先在上面这里确认一下，你再告诉我下一步。",
-        "skill_error": "我在处理时遇到了一个内部问题，请稍后再试。",
-    }
+    is_en = bool(native_lang and native_lang.lower() != "zh")
+    msg_map = _MSG_MAP_EN if is_en else _MSG_MAP_ZH
     text = msg_map.get(reason, msg_map["parse"])
     return {
         "text": text,

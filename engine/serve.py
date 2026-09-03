@@ -315,6 +315,9 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 self._router.learner_id
             conversation_id = str((payload.get("conversation_id") or "")).strip() or "default"
             provider_id = str((payload.get("provider_id") or "")).strip()
+            # 0.21 教学层语言：前端语言开关上送；缺省回落启动参数 --lang（Router.native_lang）
+            native_lang = str((payload.get("native_lang") or "")).strip().lower() or \
+                str(getattr(self._router, "native_lang", "") or "")
 
             # fail-loud：真实 LLM 路径必须先有可用供应商（mock 注入路径跳过）
             provider = None
@@ -353,7 +356,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                     profile_summary = ""
                 res = self._get_planner(provider).run(
                     user_input, history=history, learner_id=learner_id,
-                    profile_summary=profile_summary)
+                    profile_summary=profile_summary, native_lang=native_lang)
                 # M8 两段式·账本侧：识别命中→observation_error；复述 pass→concept_confirmed
                 m8_notices = self._writeback_ledger_events(
                     wb, res.get("trace", []), user_input)
@@ -675,9 +678,10 @@ def main():
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=8612)
     ap.add_argument("--learner", default="demo", help="学习者 id → data/graph_<id>.json")
+    ap.add_argument("--lang", default="en", help="讲解/纠错语言：en(英壳+中例句,默认) 或 zh(全中文)")
     args = ap.parse_args()
 
-    router = Router(learner_id=args.learner, native_lang="英语", user_level="HSK3")
+    router = Router(learner_id=args.learner, native_lang=args.lang, user_level="HSK3")
     if not os.path.isdir(_INDEX_DIR):
         print(f"[serve] 前端壳目录不存在：{_INDEX_DIR}")
         print("[serve] 将仅提供 API（/api/process /api/graph），静态页待 M10 生成 web/index.html")

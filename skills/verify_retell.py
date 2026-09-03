@@ -29,6 +29,7 @@ class VerifyRetellSkill(Skill):
             "key_points": "必填，讲解产出的要点[{id,text}]，覆盖集唯一来源",
             "restatement": "必填，学习者复述文本",
             "event_key": "可选，幂等键（写回图谱用）",
+            "native_lang": "可选，讲解反馈语言（planner 0.21 自动注入；非 zh → 英文反馈）",
         },
         "output": "对齐 2.3 schema：point_judgements[] + verdict(pass/partial/fail) + covered/total + 写回状态",
     }
@@ -39,6 +40,7 @@ class VerifyRetellSkill(Skill):
             "key_points": {"type": "array"},
             "restatement": {"type": "string"},
             "event_key": {"type": "string"},
+            "native_lang": {"type": "string"},
         },
         "required": ["explanation", "key_points", "restatement"],
     }
@@ -91,6 +93,7 @@ class VerifyRetellSkill(Skill):
                 restatement=restatement,
                 event_key=event_key,
                 commit_graph=True,
+                native_lang=str(context.get("native_lang", "") or ""),
             )
         except Exception as e:
             return {"point_judgements": [], "verdict": "partial", "covered_points": 0,

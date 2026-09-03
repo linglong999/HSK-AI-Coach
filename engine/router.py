@@ -151,10 +151,12 @@ class Router:
     def verify_rephrase(self, explanation: str, key_points: list, restatement: str,
                         uncertain: bool = False, bias_ref: Optional[dict] = None,
                         event_key: str = "") -> dict:
-        """复述验证（2.3 v0.3）：逐点判定 + 规则聚合 + 写回图谱"""
+        """复述验证（2.3 v0.3）：逐点判定 + 规则聚合 + 写回图谱。
+        0.21：反馈语言跟随 Router.native_lang（教学层语言，中文要点/判定逻辑不变）。"""
         return self.verifier.verify(explanation, key_points, restatement,
                                     uncertain=uncertain, bias_ref=bias_ref,
-                                    event_key=event_key, commit_graph=True)
+                                    event_key=event_key, commit_graph=True,
+                                    native_lang=self.native_lang)
 
     def get_review_queue(self):
         """委托图谱读接口：按 priority 降序的可复习 KP 列表"""

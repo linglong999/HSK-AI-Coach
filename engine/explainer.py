@@ -16,6 +16,9 @@ if _PROJECT_ROOT not in sys.path:
 
 from engine.llm.client import LLMClient, JSONStrictError
 
+# 讲解语言策略（0.21 · 面向英语母语学习者）：
+#   native_lang=="en"（或任意非 zh）时，讲解用"英文解释外壳 + 中文例句/正确句"（脚手架式双语，参考主流中文学习产品）。
+#   其余（含空）保持全中文讲解。语义色/知识要点内容本身永远中文（中文内容载体不变）。
 SYSTEM_PROMPT = """【角色】你是一名 HSK 中文教学专家，擅长用"费曼学习法"讲解——像教给一个完全不懂的人那样：少术语、多例子、讲清为什么。
 
 【任务】针对下面的偏误，生成一段 ≤150 字的讲解，严格按四段组织：
@@ -48,13 +51,56 @@ SYSTEM_PROMPT = """【角色】你是一名 HSK 中文教学专家，擅长用"�
 【输出格式】严格 JSON（key_points 带 id，来自候选或编排层注入）：
 {{"explanation": "四段式讲解正文", "key_points": [{{"id": "kp-1", "text": "要点1"}}], "keywords": ["关键词1", "关键词2"], "uncertain_note": "待确认提示（无则空字符串）", "free_generated": false}}"""
 
+# 面向英语母语学习者的讲解骨架：英文解释外壳 + 中文例句/正确句（0.21）
+SYSTEM_PROMPT_EN = """[Role] You are an HSK Chinese teaching expert. You use the Feynman method: explain to the learner as if from scratch — few terms, concrete examples, always the "why".
 
-def _fallback_explanation(error: dict) -> dict:
-    """JSON 连续失败后的降级：返回模板文案（对齐 2.2 §三：降级模板，不静默透传坏结果）"""
+[Task] For the error below, produce a learner-facing explanation ≤150 words, strictly in four parts:
+① What is wrong: point out the problematic Chinese phrase.
+② Why it is wrong: explain the mechanism the Chinese way (Feynman style — minimal jargon, say why).
+③ Better way: give the corrected, complete Chinese sentence (required — never diagnose without giving the fix).
+④ Example: give one natural Chinese example using the correct pattern.
+Then pick 3 core key_points from the candidates and 1-3 deep-dive keywords.
+
+LANGUAGE RULE: Write the explanation shell in English (the learner's native language). Keep all target-language content — the corrected sentence, the example, and the Chinese usage rule terms — in Chinese (with pinyin only if helpful). Never translate Chinese grammar into English tense labels.
+
+[Context]
+- Original sentence: {sentence}
+- Error: {fragment} → correction: {correction}
+- Error type: {type}
+- Learner: HSK {level}, native language {native_language}
+- Uncertain: {uncertain} (true → open with "This judgment is tentative.")
+- Beyond level: {beyond_level} (true → keep it simpler, note "beyond your level")
+- Graph history (may be empty): {learner_history} (if the point was missed repeatedly, explain more specifically WHY it keeps recurring)
+- Candidate points: {candidate_points}
+
+[Constraints]
+1. English explanation shell; Chinese for correct sentences, examples, and usage-rule terms.
+2. Explain the "why", not just the right answer.
+3. End with a light open-ended nudge to let the learner think — don't finish it for them.
+4. Keep it simple for beyond-level content.
+5. Always give a full corrected Chinese sentence; if the original is ambiguous, say which reading you corrected, then give the fix.
+6. key_points must come only from the candidates; if candidates are empty you may propose your own points but must set free_generated=true.
+7. Chinese grammar terms stay Chinese (量词, 补语, 语气词…); do not map them to English tense/syntax labels.
+
+[Output] Strict JSON (key_points carry ids):
+{{"explanation": "English explanation with Chinese examples.", "key_points": [{{"id": "kp-1", "text": "English positive point with Chinese example if helpful"}}], "keywords": ["keyword1", "keyword2"], "uncertain_note": "tentative note or empty", "free_generated": false}}"""
+
+
+def _fallback_explanation(error: dict, native_lang: str = "") -> dict:
+    """JSON 连续失败后的降级：返回模板文案（对齐 2.2 §三：降级模板，不静默透传坏结果）。
+    0.21：native_lang 非 zh → 英文降级文案（中文修正句保留）。"""
     frag = error.get("fragment", "")
     corr = error.get("correction", "")
+    if native_lang and native_lang.lower() != "zh":
+        explanation = (
+            f'The phrase "{frag}" is not quite natural here. '
+            f'A more idiomatic Chinese way to say it is "{corr}". '
+            f"Read and compare the corrected sentence a few times."
+        )
+    else:
+        explanation = f"「{frag}」这里不太对，更地道的说法是「{corr}」。可以对照这句多练几遍。"
     return {
-        "explanation": f"「{frag}」这里不太对，更地道的说法是「{corr}」。可以对照这句多练几遍。",
+        "explanation": explanation,
         "key_points": [],
         "keywords": [],
         "uncertain_note": "",
@@ -122,7 +168,22 @@ class Explainer:
             f"候选要点：\n{cand_str}"
         )
 
-        filled_system = SYSTEM_PROMPT.format(
+        # 0.21：native_lang 非 zh → 英文讲解骨架（英壳+中例句）；否则中文。
+        is_en = bool(native_lang and native_lang.lower() != "zh")
+        filled_system = SYSTEM_PROMPT_EN if is_en else SYSTEM_PROMPT
+
+        if is_en:
+            user_prompt = (
+                f"Original sentence: {sentence}\n"
+                f"Error: {fragment} → correction: {correction}\n"
+                f"Error type: {etype}\nLearner: HSK {user_level}, "
+                f"native language {native_lang}\n"
+                f"Uncertain: {uncertain} | Beyond level: {beyond}\n"
+                f"Graph history: {learner_history or '(empty)'}\n"
+                f"Candidate points:\n{cand_str}"
+            )
+
+        filled_system = filled_system.format(
             sentence=sentence, fragment=fragment, correction=correction, type=etype,
             level=user_level, native_language=native_lang or "未知", uncertain=uncertain,
             beyond_level=beyond, learner_history=learner_history or "（空）",
@@ -133,7 +194,7 @@ class Explainer:
             raw = self.client.chat_json_strict(filled_system, user_prompt, temperature=0.4)
         except JSONStrictError:
             # 降级：模板文案，不静默透传坏结果（2.2 §三）
-            return _fallback_explanation(error)
+            return _fallback_explanation(error, native_lang)
 
         # key_points 必须带 id；候选非空但没选到候选内的点 → 记为 free_generated 供 3.3 评估
         kps = raw.get("key_points", [])

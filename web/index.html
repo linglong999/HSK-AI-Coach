@@ -419,40 +419,40 @@
   <aside class="side" id="side">
     <div class="side-top">
       <span class="logo">HSK<b>-Coach</b></span>
-      <button class="fold" id="foldBtn" title="折叠侧栏" aria-label="折叠侧栏">‹</button>
+      <button class="fold" id="foldBtn" title="折叠侧栏" aria-label="折叠侧栏" data-i18n-title="foldSide" data-i18n-aria="foldSide">‹</button>
     </div>
     <div class="side-scroll">
-      <div class="resident" id="resident" title="本地图谱感知助教 · 点击查看怎么用">
+      <div class="resident" id="resident" title="本地图谱感知助教 · 点击查看怎么用" data-i18n-title="aiTutorTip">
         <div class="av">AI</div>
-        <div class="mt"><div class="t">AI 助教</div><div class="s">本地图谱感知 · 偏误驱动</div></div>
+        <div class="mt"><div class="t" data-i18n="aiTutor">AI 助教</div><div class="s" data-i18n="aiTutorSub">本地图谱感知 · 偏误驱动</div></div>
         <span class="chip">local</span>
       </div>
 
-      <div class="hd"><span>会话</span><span class="sep"></span><span class="ct" id="sessCount"></span></div>
+      <div class="hd"><span data-i18n="sessions">会话</span><span class="sep"></span><span class="ct" id="sessCount"></span></div>
       <div id="sessionList"></div>
-      <div class="sbtn add" id="newSess">＋ 新建会话</div>
+      <div class="sbtn add" id="newSess" data-i18n="newSession">＋ 新建会话</div>
 
-      <div class="hd"><span>学习动线</span><span class="sep"></span></div>
-      <div class="sbtn" id="actMap"><span class="ic">◈</span>认知地图<span class="bdg" id="mapBadge"></span></div>
-      <div class="sbtn" id="actReview"><span class="ic">▶</span>开始复习<span class="bdg" id="rvCount">—</span></div>
-      <div class="sbtn" id="actReport"><span class="ic">◎</span>AI 学习报告</div>
-      <div class="sbtn" id="actDoc"><span class="ic">▤</span>阅读材料<span class="bdg">txt/md</span></div>
+      <div class="hd"><span data-i18n="learnPath">学习动线</span><span class="sep"></span></div>
+      <div class="sbtn" id="actMap"><span class="ic">◈</span><span data-i18n="cogMap">认知地图</span><span class="bdg" id="mapBadge"></span></div>
+      <div class="sbtn" id="actReview"><span class="ic">▶</span><span data-i18n="startReview">开始复习</span><span class="bdg" id="rvCount">—</span></div>
+      <div class="sbtn" id="actReport"><span class="ic">◎</span><span data-i18n="aiReport">AI 学习报告</span></div>
+      <div class="sbtn" id="actDoc"><span class="ic">▤</span><span data-i18n="readingMat">阅读材料</span><span class="bdg">txt/md</span></div>
     </div>
     <div class="side-bot">
-      <div class="status" id="status"><span class="dot"></span><span id="statusText">连接中…</span></div>
-      <div class="sbtn" id="actSettings"><span class="ic">⚙</span>设置</div>
-      <div class="sbtn" id="actHowto"><span class="ic">?</span>怎么用</div>
+      <div class="status" id="status"><span class="dot"></span><span id="statusText" data-i18n="connecting">连接中…</span></div>
+      <div class="sbtn" id="actSettings"><span class="ic">⚙</span><span data-i18n="settings">设置</span></div>
+      <div class="sbtn" id="actHowto"><span class="ic">?</span><span data-i18n="howto">怎么用</span></div>
     </div>
   </aside>
-  <button class="side-open" id="sideOpen" title="展开侧栏" aria-label="展开侧栏">»</button>
+  <button class="side-open" id="sideOpen" title="展开侧栏" aria-label="展开侧栏" data-i18n-title="expandSide" data-i18n-aria="expandSide">»</button>
 
   <!-- ================= 主区 ================= -->
   <main>
     <section class="left">
       <div class="chat" id="chat">
         <div class="empty" id="emptyState">
-          <h2>开始你的第一句</h2>
-          <p>直接对话：写一句中文让它找错、问一个语法点、复述刚学的内容检验理解。<br>
+          <h2 data-i18n="startFirst">开始你的第一句</h2>
+          <p data-i18n-html="emptyIntro">直接对话：写一句中文让它找错、问一个语法点、复述刚学的内容检验理解。<br>
              你的每次偏误都会沉淀到认知地图（侧栏「◈ 认知地图」随时查看），切换会话上下文互不干扰。</p>
           <div class="chips">
             <button class="chip" data-ex="我想买苹果很多。">✍ 我想买苹果很多。</button>
@@ -461,25 +461,25 @@
           </div>
         </div>
       </div>
-      <div class="hint mono">Enter 换行 · Ctrl+Enter 发送</div>
+      <div class="hint mono" data-i18n="inputHint">Enter 换行 · Ctrl+Enter 发送</div>
       <div class="inputrow">
         <div class="inputbox">
-          <button class="model-pick" id="modelPick" title="选择模型（设置 → 模型密钥 可添加供应商）"><span class="dot"></span><span id="modelPickName">默认模型</span> ▾</button>
-          <textarea id="text" rows="1" placeholder="说一句话、问一个知识点，或复述刚学的内容…" aria-label="输入对话内容"></textarea>
-          <button class="send" id="send" title="发送 (Ctrl+Enter)" aria-label="发送">↑</button>
+          <button class="model-pick" id="modelPick" title="选择模型（设置 → 模型密钥 可添加供应商）" data-i18n-title="modelPickTitle"><span class="dot"></span><span id="modelPickName">默认模型</span> ▾</button>
+          <textarea id="text" rows="1" placeholder="说一句话、问一个知识点，或复述刚学的内容…" data-i18n-ph="inputPh" aria-label="输入对话内容"></textarea>
+          <button class="send" id="send" title="发送 (Ctrl+Enter)" aria-label="发送" data-i18n-title="sendTitle">↑</button>
         </div>
       </div>
     </section>
 
     <section class="right">
       <div class="maptitle">
-        <button class="back-chat" id="backChat">‹ 返回对话</button>
-        <span>认知地图 · 横轴=HSK 等级 纵轴=掌握度 大小=错误次数 描边=待复习</span>
+        <button class="back-chat" id="backChat" data-i18n="backChat">‹ 返回对话</button>
+        <span data-i18n="mapTitle">认知地图 · 横轴=HSK 等级 纵轴=掌握度 大小=错误次数 描边=待复习</span>
         <span class="maplegend">
-          <span><i style="background:rgb(var(--kp-vocab))"></i>词汇</span>
-          <span><i style="background:rgb(var(--kp-grammar))"></i>语法</span>
-          <span><i style="background:rgb(var(--kp-pragma))"></i>语用</span>
-          <span><i style="background:rgb(var(--kp-char))"></i>汉字</span>
+          <span><i style="background:rgb(var(--kp-vocab))"></i><span data-i18n="lgVocab">词汇</span></span>
+          <span><i style="background:rgb(var(--kp-grammar))"></i><span data-i18n="lgGrammar">语法</span></span>
+          <span><i style="background:rgb(var(--kp-pragma))"></i><span data-i18n="lgPragma">语用</span></span>
+          <span><i style="background:rgb(var(--kp-char))"></i><span data-i18n="lgChar">汉字</span></span>
           <span id="mapCount"></span>
         </span>
       </div>
@@ -487,10 +487,10 @@
         <svg id="map" role="img" aria-label="知识点认知地图"></svg>
         <div class="map-empty" id="mapEmpty" style="display:none">
           <div class="big">◎</div>
-          <div>地图还是空的 —— 回到对话输入第一个句子，地图开始生长</div>
+          <div data-i18n="mapEmpty">地图还是空的 —— 回到对话输入第一个句子，地图开始生长</div>
         </div>
       </div>
-      <div class="queue"><h4><span>复习队列 · priority 降序（点击定位）</span></h4><div id="queue"></div></div>
+      <div class="queue"><h4><span data-i18n="queueTitle">复习队列 · priority 降序（点击定位）</span></h4><div id="queue"></div></div>
     </section>
   </main>
 </div>
@@ -500,11 +500,12 @@
   <div class="modal">
     <button class="close" data-close="settingsOvl" aria-label="关闭">×</button>
     <ul class="modal-nav" id="settingsNav">
-      <h4>设置</h4>
-      <li data-tab="theme" class="active">界面主题</li>
-      <li data-tab="llm">模型密钥</li>
-      <li data-tab="keys">快捷键</li>
-      <li data-tab="about">关于</li>
+      <h4 data-i18n="settings">设置</h4>
+      <li data-tab="theme" class="active" data-i18n="tabTheme">界面主题</li>
+      <li data-tab="llm" data-i18n="tabLLM">模型密钥</li>
+      <li data-tab="lang" data-i18n="tabLang">语言</li>
+      <li data-tab="keys" data-i18n="tabKeys">快捷键</li>
+      <li data-tab="about" data-i18n="tabAbout">关于</li>
     </ul>
     <div class="modal-body" id="settingsBody"></div>
   </div>
@@ -514,27 +515,27 @@
 <div class="overlay" id="howtoOvl">
   <div class="modal">
     <button class="close" data-close="howtoOvl" aria-label="关闭">×</button>
-    <ul class="modal-nav"><h4>怎么用</h4><li class="active">HSK-AI-Coach</li></ul>
+    <ul class="modal-nav"><h4 data-i18n="howtoH">怎么用</h4><li class="active">HSK-AI-Coach</li></ul>
     <div class="modal-body htu">
-      <h3>灵动的卡片，锚定你的图谱</h3>
-      <p class="sub">每张偏误卡右上角（悬停浮现）有分支动作。它们不是任意发散——只指向<b class="a">图谱里已确认的权威边</b>，灰掉的按钮说明图谱里还没有这条边。守住"图谱唯一权威，无自由发散"。</p>
+      <h3 data-i18n="htu1T">灵动的卡片，锚定你的图谱</h3>
+      <p class="sub" data-i18n-html="htu1S">每张偏误卡右上角（悬停浮现）有分支动作。它们不是任意发散——只指向<b class="a">图谱里已确认的权威边</b>，灰掉的按钮说明图谱里还没有这条边。守住"图谱唯一权威，无自由发散"。</p>
       <div class="ctypes">
-        <div class="ctype"><div class="ar">↗</div><div class="ct">子卡深挖</div><div class="cd">对已确认知识点请 AI 费曼式深入讲解：核心规则、常见用法和易错点。</div></div>
-        <div class="ctype"><div class="ar">→</div><div class="ct">相邻角度</div><div class="cd">沿图谱<b>混淆边</b>切到相邻知识点，讲两者区别与联系（你容易混的）。</div></div>
-        <div class="ctype"><div class="ar">↓</div><div class="ct">沿待复习</div><div class="cd">该知识点在复习队列时可用：直接出针对性巩固练习。</div></div>
+        <div class="ctype"><div class="ar">↗</div><div class="ct" data-i18n="htuDig">子卡深挖</div><div class="cd" data-i18n="htuDigD">对已确认知识点请 AI 费曼式深入讲解：核心规则、常见用法和易错点。</div></div>
+        <div class="ctype"><div class="ar">→</div><div class="ct" data-i18n="htuAdj">相邻角度</div><div class="cd" data-i18n-html="htuAdjD">沿图谱<b>混淆边</b>切到相邻知识点，讲两者区别与联系（你容易混的）。</div></div>
+        <div class="ctype"><div class="ar">↓</div><div class="ct" data-i18n="htuRv">沿待复习</div><div class="cd" data-i18n="htuRvD">该知识点在复习队列时可用：直接出针对性巩固练习。</div></div>
       </div>
       <h3>Smart Annotation</h3>
-      <ul><li>AI 回答里的<b class="a">下划线名词</b>（你图谱里已有的知识点）点一下 → 自动进入认知地图并定位该节点。</li></ul>
-      <h3>学习动线（左侧栏）</h3>
+      <ul><li data-i18n-html="htu2L">AI 回答里的<b class="a">下划线名词</b>（你图谱里已有的知识点）点一下 → 自动进入认知地图并定位该节点。</li></ul>
+      <h3 data-i18n="htu3T">学习动线（左侧栏）</h3>
       <ul>
-        <li><b>▶ 开始复习</b>：拉取复习队列，对最需要复习的知识点出一道针对性练习。</li>
-        <li><b>◎ AI 学习报告</b>：基于画像（常错点/惯犯）生成数据报告——只读事实，不编造。</li>
-        <li><b>▤ 阅读材料</b>：粘贴文本或上传 txt/md，让 AI 解析并讲解其中的中文知识点。</li>
+        <li data-i18n-html="htu3a"><b>▶ 开始复习</b>：拉取复习队列，对最需要复习的知识点出一道针对性练习。</li>
+        <li data-i18n-html="htu3b"><b>◎ AI 学习报告</b>：基于画像（常错点/惯犯）生成数据报告——只读事实，不编造。</li>
+        <li data-i18n-html="htu3c"><b>▤ 阅读材料</b>：粘贴文本或上传 txt/md，让 AI 解析并讲解其中的中文知识点。</li>
       </ul>
-      <h3>会话</h3>
+      <h3 data-i18n="htu4T">会话</h3>
       <ul>
-        <li>每个会话独立上下文（互不串扰），切换会话同步到网址（可收藏/回访恢复）。</li>
-        <li>会话标题自动取自你的第一句话；图谱和画像跨会话共享（这是"你"的长期记忆）。</li>
+        <li data-i18n="htu4a">每个会话独立上下文（互不串扰），切换会话同步到网址（可收藏/回访恢复）。</li>
+        <li data-i18n="htu4b">会话标题自动取自你的第一句话；图谱和画像跨会话共享（这是"你"的长期记忆）。</li>
       </ul>
     </div>
   </div>
@@ -544,14 +545,14 @@
 <div class="overlay" id="docOvl">
   <div class="modal small">
     <button class="close" data-close="docOvl" aria-label="关闭">×</button>
-    <h3>阅读材料 → 抽取中文知识点</h3>
-    <p class="sub">当前支持<b class="a">粘贴文本 / .txt / .md</b>（PDF / Word / OCR 后续版本）。材料将作为对话发给 AI 助教解析。</p>
-    <label class="filebtn">选择 .txt / .md 文件<input type="file" id="docFile" accept=".txt,.md,.markdown,text/plain,text/markdown"></label>
-    <textarea class="docfield" id="docText" placeholder="粘贴中文 / 英中对照段落、邮件、课文…"></textarea>
+    <h3 data-i18n="docTitleModal">阅读材料 → 抽取中文知识点</h3>
+    <p class="sub" data-i18n-html="docSub">当前支持<b class="a">粘贴文本 / .txt / .md</b>（PDF / Word / OCR 后续版本）。材料将作为对话发给 AI 助教解析。</p>
+    <label class="filebtn"><span data-i18n="docFileBtn">选择 .txt / .md 文件</span><input type="file" id="docFile" accept=".txt,.md,.markdown,text/plain,text/markdown"></label>
+    <textarea class="docfield" id="docText" placeholder="粘贴中文 / 英中对照段落、邮件、课文…" data-i18n-ph="docPh"></textarea>
     <div class="charct" id="charCt">0 / 6000 字</div>
     <div style="display:flex;gap:10px;margin-top:14px;align-items:center">
-      <button class="kp" id="docParse" style="font-size:13px;padding:7px 16px">开始解析</button>
-      <span class="charct">解析结果以"材料解析卡"出现在对话流中</span>
+      <button class="kp" id="docParse" style="font-size:13px;padding:7px 16px" data-i18n="docParse">开始解析</button>
+      <span class="charct" data-i18n="docNote">解析结果以"材料解析卡"出现在对话流中</span>
     </div>
   </div>
 </div>
@@ -575,11 +576,296 @@ const state={
   providers:[],          // BYOK 供应商列表（GET /api/providers，0.20）
   defaultProvider:null,  // 服务端实际生效的默认供应商 id
   providerId:(()=>{try{return localStorage.getItem('hsk-provider')||''}catch(e){return ''}})(),
+  lang:(()=>{try{const l=localStorage.getItem('hsk-lang');return (l==='zh'||l==='en')?l:'en'}catch(e){return 'en'}})(),
 };
+
+/* ============================================================
+ * i18n（0.21 · 界面+讲解英文化）
+ * 语言分层铁律：教学层（界面/讲解/纠错反馈）跟随语言开关；
+ * 内容载体（被检查的中文句、修正句、例句、词汇、知识点名）永远是中文。
+ * ============================================================ */
+const I18N={
+en:{
+  docTitle:'HSK-AI-Coach · Free dialog · Cognitive map',
+  aiTutor:'AI Tutor', aiTutorSub:'Local graph-aware · error-driven', aiTutorTip:'Local graph-aware tutor · click for how-to',
+  sessions:'Sessions', learnPath:'Learn', newSession:'＋ New session',
+  cogMap:'Cognitive map', startReview:'Start review', aiReport:'AI study report', readingMat:'Reading material',
+  settings:'Settings', howto:'How to use', foldSide:'Collapse sidebar', expandSide:'Expand sidebar',
+  connecting:'Connecting…', disconnected:'Service not connected',
+  startFirst:'Start with your first sentence',
+  emptyIntro:'Talk directly: type a Chinese sentence to have it checked, ask about a grammar point, or retell what you just learned to test your understanding.<br>Every error you make settles onto the cognitive map (open it anytime from the sidebar).',
+  inputHint:'Enter = new line · Ctrl+Enter = send',
+  inputPh:'Type a Chinese sentence, ask about a knowledge point, or retell what you just learned…',
+  sendTitle:'Send (Ctrl+Enter)',
+  modelPickTitle:'Choose model (add providers in Settings → Model keys)',
+  defaultModel:'Default model',
+  backChat:'‹ Back to chat',
+  mapTitle:'Cognitive map · X = HSK level, Y = mastery, size = error count, ring = due for review',
+  lgVocab:'Vocab', lgGrammar:'Grammar', lgPragma:'Pragmatics', lgChar:'Characters',
+  mapEmpty:'The map is empty — go back to chat and type your first sentence; the map starts growing from it',
+  queueTitle:'Review queue · by priority (click to locate)',
+  nodes:'nodes', node:'node', mastered:'Mastered', toConsolidate:'To consolidate',
+  tipLevel:'Level', tipMastery:'Mastery', tipErrors:'Errors', tipPrio:'Review priority', tipTimes:'×',
+  pend0:'Thinking…', pend1:'Analyzing the sentence…', pend2:'Fetching the explanation…', pend3:'Wrapping up the reply…',
+  lblIdentify:'Error identified', errTag:'Error', graphQ:'Graph', conf:'conf',
+  cleanTitle:'No high-confidence errors found in this sentence',
+  cleanSub:'Keep typing to practice', cleanSubUc:'; {n} low-confidence candidate(s) queued as tentative',
+  ucStrip:'{n} low-confidence candidate(s) (tentative, not written to the graph): ',
+  degradedIdentify:'Recognition degraded: ',
+  lblExplain:'Feynman explanation', explainFail:'Explanation failed: ', explainDegraded:'Explanation engine degraded: content may be incomplete',
+  lblVerify:'Retell check', vPass:'Pass ✓', vPartial:'Partial', vFail:'Not covered ✗',
+  vCov:'Points covered', vRatio:'coverage', evidenceAt:'Shown in: ',
+  vHollow:'⚠ Fluent but hollow: the retelling flows but does not land on the key points',
+  vDegraded:'⚠ Verify engine degraded: conservative verdict this round (not point-by-point LLM)',
+  aRetry:'AI suggests re-explaining this from a simpler angle',
+  aTeacher:'Same point missed {n} times in a row — consider asking a real teacher',
+  lblLookup:'Knowledge points', lookupErr:'Knowledge point lookup: ', unnamed:'(unnamed)',
+  lblReview:'Review plan', noReview:'Nothing due for review', items:'items',
+  genFail:'Generation failed', genNA:'Generation unit unavailable', diagnostics:'Diagnostics · {n} attempt(s)',
+  lblPractice:'Practice', lblUnit:'Feynman unit', unitKps:'Key points (target knowledge)',
+  taskKind:'Task type', qCount:'questions', forbidden:'Will not appear this round (guardrails)',
+  duration:'Suggested time', moreBlocks:'… {n} more block(s)',
+  lblSources:'Sources · {n} (click to expand)', noTitle:'(no title)',
+  lblCorpus:'Corpus · {n} (click to expand)', srcKp:'Knowledge-point list', srcLex:'HSK lexicon', srcGraph:'Your graph', inGraph:' · your weak spot',
+  lblParsed:'Parsed material · {n} block(s) (click to expand)',
+  digTitle:'Deep dive: ask the AI to explain this knowledge point in depth', digOff:'No such node in the graph (unconfirmed — cannot dig)',
+  digPrompt:'Please give a Feynman-style deep explanation of 「{name}」: core rules, common uses, and common pitfalls.',
+  digBadge:'↗ Deep dive · ',
+  adjTitle:'Adjacent angle: follow a confusion edge in the graph', adjOff:'No related edge (unconfirmed in the graph — cannot branch)',
+  poNeighbors:'Pick an adjacent knowledge point (confusion edge)',
+  adjPrompt:'I often confuse 「{a}」 and 「{b}」. Please explain their difference and connection.',
+  adjBadge:'→ Adjacent · ',
+  rvTitle:'Due for review: generate targeted practice', rvOff:'This knowledge point is not in the review queue',
+  rvPrompt:'Please give me one targeted practice item for 「{name}」 (a practice unit) and start it.',
+  rvBadge:'↓ Review · ',
+  delTitle:'Remove this card (graph unaffected)', delToast:'Card removed (graph unaffected)',
+  nSessions:'{n}', newSessPending:'New session · not started', nMsgs:'{n} msgs',
+  restored:'Session restored ({n} messages) · result cards are not persisted; this is the text log',
+  newSessionToast:'New session created',
+  reviewPrompt:'What should I review now? Pull my review queue and give me one targeted practice item for the point that most needs review.',
+  reviewBadge:'▶ Start review',
+  reportFail:'Report failed to load: ',
+  repTitle:'AI study report', repGraph:'Graph', repNodes:'nodes', repReview:'Due', repItems:'items', repEdges:'Confusion edges', repOffenders:'Repeat offenders',
+  repWarn:'⚠ Repeat-offender points: {list} — prioritize these today',
+  repOff:'Repeat ×{n}', repRep:'Missed {n}×', repEmpty:'No profile data yet — chat a bit more, write a few sentences, and your errors will settle into this report automatically.',
+  repStored:'(Historical snapshot: nothing due in the current review queue)',
+  repSrc:'Data source: error graph × event ledger × long-term memory (read-only, not LLM-generated)',
+  repLatest:'Latest evidence: ',
+  docTitleModal:'Reading material → extract Chinese knowledge points',
+  docSub:'Currently supports <b class="a">pasted text / .txt / .md</b> (PDF / Word / OCR in a later version). The material is sent to the AI tutor as a message for parsing.',
+  docFileBtn:'Choose a .txt / .md file', docPh:'Paste a Chinese / EN–ZH paragraph, email, textbook text…',
+  charCt:'{n} / 6000 chars', charOver:' (excess will be truncated)', docParse:'Parse now',
+  docNote:'The parsed result appears in the chat as a "material parsed" card',
+  docToastLoaded:'Loaded {name}', docToastFail:'Failed to read the file', docToastEmpty:'Paste text or choose a file first',
+  docPrompt:'Please parse this material, find the Chinese knowledge points in it and explain them:\n\n',
+  docBadge:'▤ Reading material',
+  mmTitle:'Model', mmPick:'Choose model', mmNone:'No provider yet → open "Model keys"', mmFollow:'Follow server default', mmCur:' · current',
+  mmToastSet:'Model → {name}', mmToastDefault:'Model → server default',
+  errConn:'Cannot reach the service — is python -m engine.serve running?',
+  errReq:'Request failed: ',
+  errLLMBody:'Free dialog needs an LLM API key.',
+  errLlmHint:'Two ways: ① Settings → Model keys, add a provider (OpenAI-compatible, takes effect immediately); ② copy .env.example to .env, fill in DEEPSEEK_API_KEY, restart the service',
+  errUnknownBody:'Unknown model provider (it may have been deleted). Pick the model again at the input box top-left.',
+  errUnknownHint:'This provider may have been deleted — pick the model again',
+  errGraph:'Failed to load the graph: ',
+  annotateTitle:'Click to locate this knowledge point on the map',
+  tabTheme:'Theme', tabLLM:'Model keys', tabKeys:'Shortcuts', tabAbout:'About', tabLang:'Language',
+  themeH:'Interface theme', themeSub:'Two themes (same lightness, different accent). Switching only swaps tokens; semantic colors (graph types / error green-red) stay.',
+  themeMemphis:'Memphis', themeWarm:'Warm orange', themeToast:'Theme → {name}',
+  langH:'Language / 语言',
+  langSub:'Interface & explanations language. The teaching layer follows this choice; Chinese sentences, examples and vocabulary always stay Chinese — they are what you learn.',
+  langEn:'English', langZh:'中文', langToast:'Language → {name}',
+  llmH:'Model keys (BYOK)',
+  llmNote:'Unified <b>OpenAI-compatible protocol</b>: DeepSeek / Qwen / GLM / Kimi / local Ollama all work. Takes <b>effect immediately</b> after adding — no restart needed. Keys are stored locally in <b>data/llm_providers.json</b> (gitignored, never uploaded). <b>DeepSeek is calibrated by the M6 evaluation (80% pass); other models are unevaluated</b> — protocol adherence may vary.',
+  llmLoading:'Loading…', llmAdd:'＋ Add provider', llmName:'Name (e.g. GLM-4)', llmModel:'Model name (e.g. glm-4-plus)',
+  llmUrl:'Base URL (e.g. https://open.bigmodel.cn/api/paas/v4)', llmKey:'API Key (stored locally only)',
+  llmBtnAdd:'Add', llmBtnTest:'Test first', llmHint:'Type the model name manually (see each provider\u2019s docs); use "Test first" to verify before saving.',
+  keysSend:'Send', keysNewline:'New line', keysCards:'Card branch actions (hover a card\u2019s top-right; anchored to authoritative graph edges)',
+  keysAnno:'Smart annotation → locate the knowledge point on the map', keysUrl:'URL parameter carries the current session (bookmarkable / restorable)',
+  aboutLi1:'HSK-AI-Coach · frontend shell v2 (0.19)',
+  aboutLi2:'Architecture: planner free ReAct as the single dialog entry (dialog contract v1)',
+  aboutLi3:'Data: error graph as the single authority · two-phase write-back · server-side multi-turn memory (per session)',
+  aboutLi4:'Zero third-party dependencies: Python stdlib + vanilla JS/SVG, single-file offline',
+  aboutLi5:'Cards grow along authoritative graph edges (↗ deep dive → adjacent ↓ review), no free branching',
+  provEmpty:'No providers yet — no key in .env and none added in the UI. Add one below to start chatting (DeepSeek is the evaluated default choice).',
+  provDefault:'Default', provTest:'Test', provSetDef:'Set default', provUnsetDef:'Unset default', provDel:'Delete',
+  provTesting:'Testing…', provOkMs:'✓ {n}ms', provFail:'✕ Failed', provToastFail:'Test failed: ',
+  provToastEnv:'Fell back to the .env default', provToastDef:'Default provider switched', provToastOpFail:'Operation failed: ',
+  provConfirmDel:'Delete this provider? Sessions using it fall back to the default model.',
+  provToastDeleted:'Deleted', provToastDelFail:'Delete failed: ',
+  provTestOk:'Connected ({n}ms)', provTestFail:'Connection failed: ', provUnknownErr:'unknown error',
+  provAllRequired:'All four fields are required', provAdding:'Adding…', provToastAdded:'Provider added (effective immediately; switch at the input box top-left)',
+  provToastAddFail:'Add failed: ',
+  statusFmt:'{id} · {n} nodes · {c}',
+  howtoH:'How to use', htuMain:'HSK-AI-Coach',
+  htu1T:'Lively cards, anchored to your graph',
+  htu1S:'Each error card has branch actions at its top-right (on hover). They are not free branching — they point only along <b class="a">authoritative edges already confirmed in the graph</b>; grayed-out buttons mean that edge does not exist yet. This keeps "the graph is the single authority, no free branching."',
+  htuDig:'Deep dive', htuDigD:'Ask the AI for a Feynman-style deep explanation of a confirmed knowledge point: core rules, common uses, pitfalls.',
+  htuAdj:'Adjacent angle', htuAdjD:'Follow a <b>confusion edge</b> in the graph to a neighboring point; explains the difference and connection (the ones you mix up).',
+  htuRv:'Along review', htuRvD:'Available when the point is in the review queue: get targeted consolidation practice.',
+  htu2T:'Smart Annotation', htu2L:'Click an <b class="a">underlined term</b> in an AI reply (a knowledge point already in your graph) → jumps into the cognitive map and locates that node.',
+  htu3T:'Study flows (left sidebar)',
+  htu3a:'<b>▶ Start review</b>: pulls the review queue and gives one targeted practice item for the point that needs it most.',
+  htu3b:'<b>◎ AI study report</b>: a data report built from your profile (common errors / repeat offenders) — read-only facts, no fabrication.',
+  htu3c:'<b>▤ Reading material</b>: paste text or upload txt/md and let the AI parse and explain the Chinese knowledge points in it.',
+  htu4T:'Sessions',
+  htu4a:'Each session has its own context (no cross-talk); switching a session syncs to the URL (bookmarkable / restorable).',
+  htu4b:'Session titles are taken from your first message; the graph and profile are shared across sessions — this is "your" long-term memory.',
+},
+zh:{
+  docTitle:'HSK-AI-Coach · 自由对话 · 认知地图',
+  aiTutor:'AI 助教', aiTutorSub:'本地图谱感知 · 偏误驱动', aiTutorTip:'本地图谱感知助教 · 点击查看怎么用',
+  sessions:'会话', learnPath:'学习动线', newSession:'＋ 新建会话',
+  cogMap:'认知地图', startReview:'开始复习', aiReport:'AI 学习报告', readingMat:'阅读材料',
+  settings:'设置', howto:'怎么用', foldSide:'折叠侧栏', expandSide:'展开侧栏',
+  connecting:'连接中…', disconnected:'服务未连接',
+  startFirst:'开始你的第一句',
+  emptyIntro:'直接对话：写一句中文让它找错、问一个语法点、复述刚学的内容检验理解。<br>你的每次偏误都会沉淀到认知地图（侧栏「◈ 认知地图」随时查看）。',
+  inputHint:'Enter 换行 · Ctrl+Enter 发送',
+  inputPh:'说一句话、问一个知识点，或复述刚学的内容…',
+  sendTitle:'发送 (Ctrl+Enter)',
+  modelPickTitle:'选择模型（设置 → 模型密钥 可添加供应商）',
+  defaultModel:'默认模型',
+  backChat:'‹ 返回对话',
+  mapTitle:'认知地图 · 横轴=HSK 等级 纵轴=掌握度 大小=错误次数 描边=待复习',
+  lgVocab:'词汇', lgGrammar:'语法', lgPragma:'语用', lgChar:'汉字',
+  mapEmpty:'地图还是空的 —— 回到对话输入第一个句子，地图开始生长',
+  queueTitle:'复习队列 · priority 降序（点击定位）',
+  nodes:'节点', node:'节点', mastered:'已掌握', toConsolidate:'待巩固',
+  tipLevel:'等级', tipMastery:'掌握度', tipErrors:'错误', tipPrio:'复习优先级', tipTimes:'次',
+  pend0:'正在思考…', pend1:'正在分析句子…', pend2:'正在调取讲解…', pend3:'正在整理回复…',
+  lblIdentify:'偏误识别', errTag:'偏误', graphQ:'图谱', conf:'置信',
+  cleanTitle:'这句话没有发现高置信偏误',
+  cleanSub:'继续输入保持练习', cleanSubUc:'；{n} 处低置信候选已进入待确认队列',
+  ucStrip:'另有 {n} 处低置信候选（待确认，不直接写入图谱）：',
+  degradedIdentify:'识别降级：',
+  lblExplain:'费曼讲解', explainFail:'讲解失败：', explainDegraded:'讲解引擎降级：内容可能不完整',
+  lblVerify:'复述验证', vPass:'通过 ✓', vPartial:'部分覆盖', vFail:'未覆盖 ✗',
+  vCov:'要点覆盖', vRatio:'覆盖率', evidenceAt:'落实于：',
+  vHollow:'⚠ 流利但空洞：复述顺，但没有落实到具体要点',
+  vDegraded:'⚠ 验证引擎降级：本次为保守判定（非逐点 LLM 判定）',
+  aRetry:'AI 建议换更简单的讲法重新讲一遍',
+  aTeacher:'同一要点连续未通过 {n} 次，建议找真人老师答疑',
+  lblLookup:'知识点', lookupErr:'知识点查询：', unnamed:'（未命名）',
+  lblReview:'复习安排', noReview:'暂无到期复习项', items:'项',
+  genFail:'生成失败', genNA:'生成单元不可用', diagnostics:'诊断 · {n} 次尝试（稳定 code）',
+  lblPractice:'巩固练习', lblUnit:'费曼讲解单元', unitKps:'要点（正向知识）',
+  taskKind:'任务类型', qCount:'题量', forbidden:'本回合不会犯（护栏）',
+  duration:'建议时长', moreBlocks:'… 其余 {n} 块略',
+  lblSources:'参考来源 · {n} 条（点击展开）', noTitle:'（无标题）',
+  lblCorpus:'语料检索 · {n} 条（点击展开）', srcKp:'知识点清单', srcLex:'HSK词表', srcGraph:'该生图谱', inGraph:' · 该生常错',
+  lblParsed:'已解析材料 · {n} 块（点击展开）',
+  digTitle:'子卡深挖：请 AI 深入讲解该知识点', digOff:'图谱中无此节点（未确认，不可深挖）',
+  digPrompt:'请用费曼式讲解深入讲一下「{name}」：核心规则、常见用法和易错点。',
+  digBadge:'↗ 深挖 · ',
+  adjTitle:'相邻角度：沿图谱混淆边展开', adjOff:'无关联边（图谱未确认，不可发散）',
+  poNeighbors:'沿混淆边选择相邻知识点',
+  adjPrompt:'我容易混淆「{a}」和「{b}」，请讲讲它们的区别和联系。',
+  adjBadge:'→ 相邻 · ',
+  rvTitle:'沿待复习：出针对性巩固练习', rvOff:'该知识点不在复习队列',
+  rvPrompt:'请针对「{name}」出一道巩固练习（practice 单元）并开始。',
+  rvBadge:'↓ 待复习 · ',
+  delTitle:'删除本卡片（不影响图谱）', delToast:'已移除卡片（不影响图谱）',
+  nSessions:'{n}', newSessPending:'新会话 · 未开始', nMsgs:'{n} 条',
+  restored:'已恢复会话（{n} 条消息）· 成果卡不随会话持久，此处为文本记录',
+  newSessionToast:'已新建会话',
+  reviewPrompt:'我该复习什么了？请拉取我的复习队列，并对最需要复习的知识点给我一道针对性练习。',
+  reviewBadge:'▶ 开始复习',
+  reportFail:'报告加载失败：',
+  repTitle:'AI 学习报告', repGraph:'图谱', repNodes:'节点', repReview:'待复习', repItems:'项', repEdges:'混淆边', repOffenders:'惯犯',
+  repWarn:'⚠ 惯犯知识点：{list} —— 建议今日优先巩固',
+  repOff:'惯犯 ×{n}', repRep:'撞错 {n} 次', repEmpty:'暂无画像数据 —— 先和助教多聊几句、写几个句子，你的偏误会自动沉淀成报告。',
+  repStored:'（历史快照：当前复习队列无到期项）',
+  repSrc:'数据来源：偏误图谱 × 事件账本 × 长期记忆（只读，非 LLM 生成）',
+  repLatest:'最近证据：',
+  docTitleModal:'阅读材料 → 抽取中文知识点',
+  docSub:'当前支持<b class="a">粘贴文本 / .txt / .md</b>（PDF / Word / OCR 后续版本）。材料将作为对话发给 AI 助教解析。',
+  docFileBtn:'选择 .txt / .md 文件', docPh:'粘贴中文 / 英中对照段落、邮件、课文…',
+  charCt:'{n} / 6000 字', charOver:'（超出将截断）', docParse:'开始解析',
+  docNote:'解析结果以"材料解析卡"出现在对话流中',
+  docToastLoaded:'已载入 {name}', docToastFail:'文件读取失败', docToastEmpty:'先粘贴文本或选择文件',
+  docPrompt:'请解析这份材料，找出其中的中文知识点并讲解：\n\n',
+  docBadge:'▤ 阅读材料',
+  mmTitle:'模型', mmPick:'选择模型', mmNone:'尚未配置供应商 → 前往「模型密钥」', mmFollow:'跟随默认（服务端）', mmCur:' ·当前',
+  mmToastSet:'模型 → {name}', mmToastDefault:'模型 → 跟随服务端默认',
+  errConn:'无法连接服务（python -m engine.serve 是否在运行？）',
+  errReq:'请求失败：',
+  errLLMBody:'自由对话需要配置 LLM API Key。',
+  errLlmHint:'两种方法：① 设置 → 模型密钥，添加供应商（OpenAI 兼容，即时生效）；② 复制 .env.example 为 .env，填入 DEEPSEEK_API_KEY 后重启服务',
+  errUnknownBody:'未知模型供应商（可能已被删除），请在输入框左上角重新选择',
+  errUnknownHint:'该供应商可能已被删除，请重新选择模型',
+  errGraph:'无法加载图谱：',
+  annotateTitle:'点击在地图定位',
+  tabTheme:'界面主题', tabLLM:'模型密钥', tabKeys:'快捷键', tabAbout:'关于', tabLang:'语言',
+  themeH:'界面主题', themeSub:'两套主题（深浅相同、强调色不同），切换只换 token，语义色（图谱类型/偏误红绿）保持不变。',
+  themeMemphis:'孟菲斯', themeWarm:'暖橙', themeToast:'主题 → {name}',
+  langH:'语言 / Language',
+  langSub:'界面与讲解语言。教学层跟随此选择；中文句子、例句、词汇永远保持中文——那才是你要学的内容。',
+  langEn:'English', langZh:'中文', langToast:'语言 → {name}',
+  llmH:'模型密钥（BYOK）',
+  llmNote:'统一 <b>OpenAI 兼容协议</b>：DeepSeek / Qwen / GLM / Kimi / 本地 Ollama 均可。添加后<b>即时生效</b>，无需重启服务；Key 存于本机 <b>data/llm_providers.json</b>（已 gitignore，不会上传）。<b>DeepSeek 已按 M6 评测校准（80% 达标），其他模型未评测</b>——协议遵循度可能下降。',
+  llmLoading:'加载中…', llmAdd:'＋ 添加供应商', llmName:'名称（如 GLM-4）', llmModel:'模型名（如 glm-4-plus）',
+  llmUrl:'Base URL（如 https://open.bigmodel.cn/api/paas/v4）', llmKey:'API Key（仅存本机）',
+  llmBtnAdd:'添加', llmBtnTest:'先测试连通', llmHint:'模型名手动填写，请参考各供应商官方文档；「先测试连通」验证后再保存。',
+  keysSend:'发送', keysNewline:'换行', keysCards:'卡片分支动作（悬停卡片右上角，锚定图谱权威边）',
+  keysAnno:'Smart Annotation → 地图定位知识点', keysUrl:'网址参数携带当前会话（可收藏/回访恢复）',
+  aboutLi1:'HSK-AI-Coach · 前端壳 v2（0.19）',
+  aboutLi2:'架构：planner 自由 ReAct 唯一对话入口（dialog 契约 v1）',
+  aboutLi3:'数据：偏误图谱唯一权威 · 两段式写回 · 服务端多轮记忆（按会话）',
+  aboutLi4:'零第三方依赖：Python 标准库 + 原生 JS/SVG，单文件可离线',
+  aboutLi5:'卡片沿图谱权威边生长（↗深挖 →相邻 ↓待复习），无自由发散',
+  provEmpty:'还没有任何供应商 —— .env 未配置 Key，也未在界面添加。在下方表单添加即可开始对话（DeepSeek 为已评测默认选择）。',
+  provDefault:'默认', provTest:'测试', provSetDef:'设为默认', provUnsetDef:'取消默认', provDel:'删除',
+  provTesting:'测试中…', provOkMs:'✓ {n}ms', provFail:'✕ 连通失败', provToastFail:'测试失败：',
+  provToastEnv:'已回落 .env 默认', provToastDef:'默认供应商已切换', provToastOpFail:'操作失败：',
+  provConfirmDel:'确认删除该供应商？已选它的会话将回落默认模型。',
+  provToastDeleted:'已删除', provToastDelFail:'删除失败：',
+  provTestOk:'连通成功（{n}ms）', provTestFail:'连通失败：', provUnknownErr:'未知错误',
+  provAllRequired:'四个字段都必填', provAdding:'添加中…', provToastAdded:'已添加供应商（即时生效，输入框左上角可切换）',
+  provToastAddFail:'添加失败：',
+  statusFmt:'{id} · {n} 节点 · {c}',
+  howtoH:'怎么用', htuMain:'HSK-AI-Coach',
+  htu1T:'灵动的卡片，锚定你的图谱',
+  htu1S:'每张偏误卡右上角（悬停浮现）有分支动作。它们不是任意发散——只指向<b class="a">图谱里已确认的权威边</b>，灰掉的按钮说明图谱里还没有这条边。守住"图谱唯一权威，无自由发散"。',
+  htuDig:'子卡深挖', htuDigD:'对已确认知识点请 AI 费曼式深入讲解：核心规则、常见用法和易错点。',
+  htuAdj:'相邻角度', htuAdjD:'沿图谱<b>混淆边</b>切到相邻知识点，讲两者区别与联系（你容易混的）。',
+  htuRv:'沿待复习', htuRvD:'该知识点在复习队列时可用：直接出针对性巩固练习。',
+  htu2T:'Smart Annotation', htu2L:'AI 回答里的<b class="a">下划线名词</b>（你图谱里已有的知识点）点一下 → 自动进入认知地图并定位该节点。',
+  htu3T:'学习动线（左侧栏）',
+  htu3a:'<b>▶ 开始复习</b>：拉取复习队列，对最需要复习的知识点出一道针对性练习。',
+  htu3b:'<b>◎ AI 学习报告</b>：基于画像（常错点/惯犯）生成数据报告——只读事实，不编造。',
+  htu3c:'<b>▤ 阅读材料</b>：粘贴文本或上传 txt/md，让 AI 解析并讲解其中的中文知识点。',
+  htu4T:'会话',
+  htu4a:'每个会话独立上下文（互不串扰），切换会话同步到网址（可收藏/回访恢复）。',
+  htu4b:'会话标题自动取自你的第一句话；图谱和画像跨会话共享（这是"你"的长期记忆）。',
+}
+};
+let LANG=state.lang;
+function t(k){const d=I18N[LANG]||I18N.en;return (k in d)?d[k]:(I18N.en[k]||k);}
+function tf(k,map){return t(k).replace(/\{(\w+)\}/g,(m,n)=>(map&&n in map)?map[n]:m);}
+function applyLang(){
+  document.documentElement.lang=LANG;
+  document.title=t('docTitle');
+  document.querySelectorAll('[data-i18n]').forEach(e=>{e.textContent=t(e.dataset.i18n);});
+  document.querySelectorAll('[data-i18n-html]').forEach(e=>{e.innerHTML=t(e.dataset.i18nHtml);});
+  document.querySelectorAll('[data-i18n-ph]').forEach(e=>{e.placeholder=t(e.dataset.i18nPh);});
+  document.querySelectorAll('[data-i18n-title]').forEach(e=>{e.title=t(e.dataset.i18nTitle);});
+  document.querySelectorAll('[data-i18n-aria]').forEach(e=>{e.setAttribute('aria-label',t(e.dataset.i18nAria));});
+  renderSessions();renderMap();renderQueue();renderModelPick();
+  if(typeof updateCharCt==='function')updateCharCt();
+  if($('settingsOvl').classList.contains('show')&&curTab)renderSettingsTab(curTab);
+}
+function setLang(l){
+  LANG=(l==='zh')?'zh':'en';
+  state.lang=LANG;
+  try{localStorage.setItem('hsk-lang',LANG);}catch(e){}
+  applyLang();
+}
 let graph=null;
 let selectedNode=null;
 let bornIds=new Set();
 let kpVocab=[];          // Smart Annotation 词表：[{id,name}]（来自图谱节点名）
+let curTab='theme';      // 设置弹窗当前 tab（applyLang 翻开时需重渲染）
 const chat=$('chat');
 
 // ============ 通用 ============
@@ -594,7 +880,7 @@ function timeShort(ts){const d=new Date(ts*1000);const p=n=>String(n).padStart(2
 async function api(url,body){
   let r;
   try{ r=await fetch(url,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:undefined); }
-  catch(e){ throw new Error('无法连接服务（python -m engine.serve 是否在运行？）'); }
+  catch(e){ throw new Error(t('errConn')); }
   let data=null;
   try{ data=await r.json(); }catch(e){ /* 保持 null */ }
   if(!r.ok){ const err=new Error((data&&data.error)?data.error:('HTTP '+r.status)); err.code=data&&data.code; throw err; }
@@ -610,11 +896,11 @@ function addUserMsg(text,badge){
   if(badge) addMsg(el(`<div class="branch-tag">${esc(badge)}</div>`));
   return addMsg(el(`<div class="msg-user">${esc(text)}</div>`));
 }
-const PENDING_LABELS=['正在思考…','正在分析句子…','正在调取讲解…','正在整理回复…'];
+const PENDING_KEYS=['pend0','pend1','pend2','pend3'];
 function addPending(){
-  const p=el(`<div class="pending"><span class="ti"></span><span class="ti"></span><span class="ti"></span><span>${PENDING_LABELS[0]}</span></div>`);
+  const p=el(`<div class="pending"><span class="ti"></span><span class="ti"></span><span class="ti"></span><span>${t(PENDING_KEYS[0])}</span></div>`);
   let i=0;
-  p._iv=setInterval(()=>{i=(i+1)%PENDING_LABELS.length;p.lastChild.textContent=PENDING_LABELS[i];},2400);
+  p._iv=setInterval(()=>{i=(i+1)%PENDING_KEYS.length;p.lastChild.textContent=t(PENDING_KEYS[i]);},2400);
   return addMsg(p);
 }
 function addNote(txt,cls,hint){
@@ -637,7 +923,7 @@ function annotate(escaped){
   const re=new RegExp('('+kpVocab.map(v=>escRe(v.name)).join('|')+')','g');
   return escaped.replace(re,m=>{
     const v=kpVocab.find(x=>x.name===m);
-    return v?`<span class="note-c" data-kp="${esc(v.id)}" title="点击在地图定位">${m}</span>`:m;
+    return v?`<span class="note-c" data-kp="${esc(v.id)}" title="${esc(t('annotateTitle'))}">${m}</span>`:m;
   });
 }
 chat.addEventListener('click',e=>{
@@ -647,13 +933,13 @@ chat.addEventListener('click',e=>{
 
 /* ============================================================
  * 学习成果卡（A1：内部工具轨迹隐藏，只渲染转译后的成果卡）
- * 数据源 = /api/dialog 返回的 trace[]；t.ok===false 跳过（无成果不渲染）
+ * 数据源 = /api/dialog 返回的 trace[]；tr.ok===false 跳过（无成果不渲染）
  * ============================================================ */
 function renderTrace(trace){
-  (trace||[]).forEach(t=>{
-    if(t.ok===false) return;
-    const r=t.result||{};
-    switch(t.name){
+  (trace||[]).forEach(tr=>{
+    if(tr.ok===false) return;
+    const r=tr.result||{};
+    switch(tr.name){
       case 'identify_errors':  renderIdentify(r); break;
       case 'explain_error':    renderExplain(r); break;
       case 'verify_retell':    renderVerify(r); break;
@@ -667,6 +953,7 @@ function renderTrace(trace){
     }
   });
 }
+const COLON=()=>LANG==='zh'?'：':': ';
 
 // ---- 偏误识别：偏误卡（含分支工具栏）/ 正确卡 + 低置信条 ----
 function renderIdentify(res){
@@ -677,15 +964,15 @@ function renderIdentify(res){
     const kpId=err.knowledge_point_id||'';
     const c=el(`<div class="card"></div>`);
     c.innerHTML=`
-      <div class="cardlabel">偏误识别</div>
+      <div class="cardlabel">${t('lblIdentify')}</div>
       <div class="head">
-        <span class="tag ${typeClass(err.type)}">${esc(err.type||'偏误')}</span>
+        <span class="tag ${typeClass(err.type)}">${esc(err.type||t('errTag'))}</span>
         <span class="frag">${esc(err.fragment||'')}</span>
         <span class="corr">→ ${esc(err.correction||'')}</span>
       </div>
       <div class="meta-row">
-        <span>图谱：${esc(gw.status||'?')}${gw.kp_id?' · '+esc(gw.kp_id):''}</span>
-        <span>置信 ${err.confidence!=null?Number(err.confidence).toFixed(2):'?'}</span>
+        <span>${t('graphQ')}${COLON()}${esc(gw.status||'?')}${gw.kp_id?' · '+esc(gw.kp_id):''}</span>
+        <span>${t('conf')} ${err.confidence!=null?Number(err.confidence).toFixed(2):'?'}</span>
       </div>
       ${kpId&&graph&&graph.nodes[kpId]?`<div class="kp-row"><span class="kp" data-kp="${esc(kpId)}">· ${esc((graph.nodes[kpId]&&graph.nodes[kpId].knowledge_point)||kpId)}</span></div>`:''}`;
     if(kpId) c.appendChild(cardTools(kpId));
@@ -696,25 +983,25 @@ function renderIdentify(res){
   if(!errors.length){
     const c=el(`<div class="card clean"></div>`);
     c.innerHTML=`
-      <div class="clean-title"><span>✓</span><span>这句话没有发现高置信偏误</span></div>
-      <div class="clean-sub">继续输入保持练习${uncertain.length?`；${uncertain.length} 处低置信候选已进入待确认队列`:''}。</div>`;
+      <div class="clean-title"><span>✓</span><span>${t('cleanTitle')}</span></div>
+      <div class="clean-sub">${t('cleanSub')}${uncertain.length?tf('cleanSubUc',{n:uncertain.length}):''}。</div>`;
     addMsg(c);
   }else if(uncertain.length){
-    addMsg(el(`<div class="uc-strip">另有 ${uncertain.length} 处低置信候选（待确认，不直接写入图谱）：${uncertain.map(u=>esc(u.fragment||'')).join('、')}</div>`));
+    addMsg(el(`<div class="uc-strip">${tf('ucStrip',{n:uncertain.length})}${uncertain.map(u=>esc(u.fragment||'')).join('、')}</div>`));
   }
-  (Array.isArray(res.degraded)?res.degraded:[]).forEach(d=>addNote('识别降级：'+String(d),'warn'));
+  (Array.isArray(res.degraded)?res.degraded:[]).forEach(d=>addNote(t('degradedIdentify')+String(d),'warn'));
 }
 
 // ---- 费曼讲解卡 ----
 function renderExplain(res){
   const kps=Array.isArray(res.key_points)?res.key_points:[];
-  if(!res.explanation&&!kps.length){ if(res._error) addNote('讲解失败：'+res._error,'warn'); return; }
+  if(!res.explanation&&!kps.length){ if(res._error) addNote(t('explainFail')+res._error,'warn'); return; }
   const c=el(`<div class="card"></div>`);
   c.innerHTML=`
-    <div class="cardlabel">费曼讲解</div>
+    <div class="cardlabel">${t('lblExplain')}</div>
     <div class="expl-text">${annotate(esc(res.explanation||''))}</div>
     ${kps.length?`<div class="kp-row">${kps.map(k=>`<span class="kp-plain">${esc(typeof k==='string'?k:(k.text||''))}</span>`).join('')}</div>`:''}
-    ${res._degraded?'<div class="note warn" style="margin-top:8px">讲解引擎降级：内容可能不完整</div>':''}`;
+    ${res._degraded?`<div class="note warn" style="margin-top:8px">${t('explainDegraded')}</div>`:''}`;
   addMsg(c);
 }
 
@@ -728,36 +1015,36 @@ function renderVerify(v){
   const ratio=v.coverage_ratio!=null?Number(v.coverage_ratio):0;
   const c=el(`<div class="card verify v-${verdict}"></div>`);
   c.innerHTML=`
-    <div class="cardlabel">复述验证</div>
+    <div class="cardlabel">${t('lblVerify')}</div>
     <div class="v-head">
-      <span class="v-badge ${verdict}">${verdict==='pass'?'通过 ✓':verdict==='partial'?'部分覆盖':'未覆盖 ✗'}</span>
-      <span class="v-cov">要点覆盖 ${covered}/${total} · 覆盖率 ${(ratio*100).toFixed(0)}%</span>
+      <span class="v-badge ${verdict}">${verdict==='pass'?t('vPass'):verdict==='partial'?t('vPartial'):t('vFail')}</span>
+      <span class="v-cov">${t('vCov')} ${covered}/${total} · ${t('vRatio')} ${(ratio*100).toFixed(0)}%</span>
     </div>
     <div class="v-bar"><div style="width:${Math.min(ratio*100,100)}%"></div></div>
     ${pts.length?`<div class="v-points">${pts.map(p=>`
       <div class="v-point ${p.is_covered?'hit':'miss'}">
         <span class="mk">${p.is_covered?'✓':'✗'}</span>
         <span>${esc(p.text||'')}
-          ${p.is_covered&&p.evidence?`<div class="ev">落实于：${esc(p.evidence)}</div>`:''}
+          ${p.is_covered&&p.evidence?`<div class="ev">${t('evidenceAt')}${esc(p.evidence)}</div>`:''}
         </span>
       </div>`).join('')}</div>`:''}
-    ${v.flowery_but_empty?'<div class="v-hollow">⚠ 流利但空洞：复述顺，但没有落实到具体要点</div>':''}
-    ${v.degraded?'<div class="v-hollow">⚠ 验证引擎降级：本次为保守判定（非逐点 LLM 判定）</div>':''}
+    ${v.flowery_but_empty?`<div class="v-hollow">${t('vHollow')}</div>`:''}
+    ${v.degraded?`<div class="v-hollow">${t('vDegraded')}</div>`:''}
     ${v.feedback?`<div class="v-feedback">${esc(v.feedback)}</div>`:''}
-    ${v.action==='retry_simpler'?'<div class="v-action a-retry">AI 建议换更简单的讲法重新讲一遍</div>':''}
-    ${v.action==='suggest_teacher'?`<div class="v-action a-teacher">同一要点连续未通过 ${v.consecutive_fail||'?'} 次，建议找真人老师答疑</div>`:''}`;
+    ${v.action==='retry_simpler'?`<div class="v-action a-retry">${t('aRetry')}</div>`:''}
+    ${v.action==='suggest_teacher'?`<div class="v-action a-teacher">${tf('aTeacher',{n:v.consecutive_fail||'?'})}</div>`:''}`;
   addMsg(c);
 }
 
 // ---- 知识点卡 ----
 function renderLookup(res){
   const results=Array.isArray(res.results)?res.results:[];
-  if(!results.length){ if(res._error) addNote('知识点查询：'+res._error,'plain'); return; }
+  if(!results.length){ if(res._error) addNote(t('lookupErr')+res._error,'plain'); return; }
   const c=el(`<div class="card"></div>`);
   c.innerHTML=`
-    <div class="cardlabel">知识点 · ${results.length} 条</div>
+    <div class="cardlabel">${t('lblLookup')} · ${results.length}</div>
     ${results.map(r=>{
-      const nm=r.knowledge_point||r.title||r.name||r.kp_id||r.id||'（未命名）';
+      const nm=r.knowledge_point||r.title||r.name||r.kp_id||r.id||t('unnamed');
       const sm=r.summary||r.description||r.definition||r.explanation||r.point||'';
       return `<div class="kp-li">
         <span class="nm">${esc(nm)}</span>
@@ -772,14 +1059,14 @@ function renderReview(res){
   const items=Array.isArray(res.items)?res.items:[];
   const c=el(`<div class="card"></div>`);
   c.innerHTML=`
-    <div class="cardlabel">复习安排 · ${res.count!=null?res.count:items.length} 项</div>
+    <div class="cardlabel">${t('lblReview')} · ${res.count!=null?res.count:items.length} ${t('items')}</div>
     ${items.length?`<div>${items.slice(0,8).map(it=>{
       const n=it.node||{};
       return `<div class="rv-li" data-kp="${esc(it.kp_id||'')}">
         <span style="min-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.knowledge_point||it.kp_id||'')}</span>
         <div class="bar"><div style="width:${Math.min((it.priority||0)*10,100)}%"></div></div>
         <span class="rv-prio">${(it.priority||0).toFixed(1)}</span>
-      </div>`;}).join('')}</div>`:'<div class="clean-sub">暂无到期复习项</div>'}`;
+      </div>`;}).join('')}</div>`:`<div class="clean-sub">${t('noReview')}</div>`}`;
   addMsg(c);
   c.querySelectorAll('.rv-li').forEach(row=>row.addEventListener('click',()=>locateKp(row.dataset.kp)));
 }
@@ -789,11 +1076,11 @@ function renderUnit(out,label){
   const c=el(`<div class="card unit"></div>`);
   if(!out||out.ok!==true||!out.unit){
     const diags=Array.isArray(out&&out.diagnostics)?out.diagnostics:[];
-    let html=`<div class="cardlabel" style="color:rgb(var(--sem-err))">生成失败${label?' · '+esc(label):''}</div>
-      <div class="note err">${esc((out&&out.message)||'生成单元不可用')}</div>`;
+    let html=`<div class="cardlabel" style="color:rgb(var(--sem-err))">${t('genFail')}${label?' · '+esc(label):''}</div>
+      <div class="note err">${esc((out&&out.message)||t('genNA'))}</div>`;
     if(diags.length){
-      html+=`<div class="unit-sec">诊断 · ${esc((out&&out.attempts)||0)} 次尝试（稳定 code）</div>
-        <ul class="unit-li">${diags.map(d=>`<li>${esc(d.code)} · ${esc(d.subject)}：${esc(d.message)}</li>`).join('')}</ul>`;
+      html+=`<div class="unit-sec">${tf('diagnostics',{n:(out&&out.attempts)||0})}</div>
+        <ul class="unit-li">${diags.map(d=>`<li>${esc(d.code)} · ${esc(d.subject)}${LANG==='zh'?'：':': '}${esc(d.message)}</li>`).join('')}</ul>`;
     }
     c.innerHTML=html;
     return addMsg(c);
@@ -802,13 +1089,13 @@ function renderUnit(out,label){
   const kps=Array.isArray(u.keyPoints)?u.keyPoints:[];
   const forb=Array.isArray(u.forbidden_errors)?u.forbidden_errors:[];
   c.innerHTML=`
-    <div class="cardlabel">${esc(label||(u.type==='practice'?'巩固练习':'费曼讲解单元'))}</div>
+    <div class="cardlabel">${esc(label||(u.type==='practice'?t('lblPractice'):t('lblUnit')))}</div>
     <div class="unit-title">${esc(u.title||'')}</div>
-    ${kps.length?`<div class="unit-th">要点（正向知识）</div><div class="unit-kp">${kps.map(k=>`<span class="kp-plain">${esc(k)}</span>`).join('')}</div>`:''}
-    ${u.task_kind?`<div class="unit-sec">任务类型：${esc(u.task_kind)} · 题量 ${u.questionCount!=null?esc(u.questionCount):'?'}</div>`:''}
-    ${forb.length?`<div class="unit-th" style="color:rgb(var(--sem-warn));margin-top:10px">本回合不会犯（护栏）</div>
+    ${kps.length?`<div class="unit-th">${t('unitKps')}</div><div class="unit-kp">${kps.map(k=>`<span class="kp-plain">${esc(k)}</span>`).join('')}</div>`:''}
+    ${u.task_kind?`<div class="unit-sec">${t('taskKind')}${LANG==='zh'?'：':': '}${esc(u.task_kind)} · ${t('qCount')} ${u.questionCount!=null?esc(u.questionCount):'?'}</div>`:''}
+    ${forb.length?`<div class="unit-th" style="color:rgb(var(--sem-warn));margin-top:10px">${t('forbidden')}</div>
       <ul class="unit-forbid">${forb.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}
-    ${u.estimatedDuration?`<div class="unit-sec">建议时长 ${esc(u.estimatedDuration)}s</div>`:''}`;
+    ${u.estimatedDuration?`<div class="unit-sec">${t('duration')} ${esc(u.estimatedDuration)}s</div>`:''}`;
   return addMsg(c);
 }
 
@@ -822,10 +1109,10 @@ function renderSearch(res){
   if(!results.length) return;
   const d=el(`<details class="src"></details>`);
   d.innerHTML=`
-    <summary>参考来源 · ${results.length} 条（点击展开）</summary>
+    <summary>${tf('lblSources',{n:results.length})}</summary>
     <div class="src-list">${results.map(r=>`
       <div class="src-item">
-        <a href="${esc(safeUrl(r.link||r.url))}" target="_blank" rel="noopener noreferrer">${esc(r.title||r.link||r.url||'（无标题）')}</a>
+        <a href="${esc(safeUrl(r.link||r.url))}" target="_blank" rel="noopener noreferrer">${esc(r.title||r.link||r.url||t('noTitle'))}</a>
         ${r.snippet?`<span class="sn">${esc(String(r.snippet).slice(0,200))}</span>`:''}
       </div>`).join('')}</div>`;
   addMsg(d);
@@ -835,13 +1122,13 @@ function renderSearch(res){
 function renderRetrieve(res){
   const results=Array.isArray(res.results)?res.results:[];
   if(!results.length) return;
-  const srcLabel={knowledge_point:'知识点清单',lexicon:'HSK词表',graph:'该生图谱'};
+  const srcLabel=()=>({knowledge_point:t('srcKp'),lexicon:t('srcLex'),graph:t('srcGraph')});
   const d=el(`<details class="src"></details>`);
   d.innerHTML=`
-    <summary>语料检索 · ${results.length} 条（点击展开）</summary>
+    <summary>${tf('lblCorpus',{n:results.length})}</summary>
     <div class="src-list">${results.map(r=>`
       <div class="src-item">
-        <span>${esc(r.knowledge_point||r.chunk_id||'')} · ${esc(srcLabel[r.source]||r.source||'')}${r.in_graph?' · 该生常错':''}</span>
+        <span>${esc(r.knowledge_point||r.chunk_id||'')} · ${esc(srcLabel()[r.source]||r.source||'')}${r.in_graph?t('inGraph'):''}</span>
         ${r.text?`<span class="sn">${esc(String(r.text).slice(0,200))}</span>`:''}
       </div>`).join('')}</div>`;
   addMsg(d);
@@ -853,9 +1140,9 @@ function renderParse(res){
   if(!blocks.length) return;
   const d=el(`<details class="src"></details>`);
   d.innerHTML=`
-    <summary>已解析材料 · ${blocks.length} 块（点击展开）</summary>
+    <summary>${tf('lblParsed',{n:blocks.length})}</summary>
     ${blocks.slice(0,3).map(b=>`<div class="blk-pre">[${esc(b.type||'text')}] ${esc(String(b.text||'').slice(0,200))}</div>`).join('')}
-    ${blocks.length>3?`<div class="unit-sec">… 其余 ${blocks.length-3} 块略</div>`:''}`;
+    ${blocks.length>3?`<div class="unit-sec">${tf('moreBlocks',{n:blocks.length-3})}</div>`:''}`;
   addMsg(d);
 }
 
@@ -888,18 +1175,18 @@ function cardTools(kpId){
     bar.appendChild(b);
     return b;
   };
-  mk('↗',hasNode?'子卡深挖：请 AI 深入讲解该知识点':'图谱中无此节点（未确认，不可深挖）',hasNode,()=>{
+  mk('↗',hasNode?t('digTitle'):t('digOff'),hasNode,()=>{
     const nm=nodeName(kpId);
-    sendPrompt(`请用费曼式讲解深入讲一下「${nm}」：核心规则、常见用法和易错点。`,'↗ 深挖 · '+nm);
+    sendPrompt(tf('digPrompt',{name:nm}),tf('digBadge')+nm);
   });
-  mk('→',nbs.length?'相邻角度：沿图谱混淆边展开':'无关联边（图谱未确认，不可发散）',nbs.length>0,btn=>{
+  mk('→',nbs.length?t('adjTitle'):t('adjOff'),nbs.length>0,btn=>{
     showNeighborMenu(btn,kpId);
   });
-  mk('↓',queued?'沿待复习：出针对性巩固练习':'该知识点不在复习队列',queued,()=>{
+  mk('↓',queued?t('rvTitle'):t('rvOff'),queued,()=>{
     const nm=nodeName(kpId);
-    sendPrompt(`请针对「${nm}」出一道巩固练习（practice 单元）并开始。`,'↓ 待复习 · '+nm);
+    sendPrompt(tf('rvPrompt',{name:nm}),tf('rvBadge')+nm);
   });
-  mk('✕','删除本卡片（不影响图谱）',true,()=>{bar.closest('.card').remove();toast('已移除卡片（不影响图谱）');});
+  mk('✕',t('delTitle'),true,()=>{bar.closest('.card').remove();toast(t('delToast'));});
   return bar;
 }
 
@@ -908,7 +1195,7 @@ function showNeighborMenu(btn,kpId){
   const nbs=neighborsOf(kpId);
   const r=btn.getBoundingClientRect();
   const p=el(`<div class="popover"></div>`);
-  p.innerHTML=`<div class="po-t">沿混淆边选择相邻知识点</div>`+nbs.slice(0,8).map(id=>{
+  p.innerHTML=`<div class="po-t">${t('poNeighbors')}</div>`+nbs.slice(0,8).map(id=>{
     const n=graph.nodes[id]||{};
     return `<div class="pop-item" data-kp="${esc(id)}"><span>${esc(nodeName(id))}</span><span class="pl">${esc(n.level||'')}</span></div>`;
   }).join('');
@@ -920,7 +1207,7 @@ function showNeighborMenu(btn,kpId){
     const other=it.dataset.kp;
     const a=nodeName(kpId),b=nodeName(other);
     closePopovers();
-    sendPrompt(`我容易混淆「${a}」和「${b}」，请讲讲它们的区别和联系。`,'→ 相邻 · '+a+' × '+b);
+    sendPrompt(tf('adjPrompt',{a,b}),tf('adjBadge')+a+' × '+b);
   }));
 }
 function closePopovers(){document.querySelectorAll('.popover').forEach(p=>p.remove());}
@@ -961,8 +1248,8 @@ function renderMap(){
   const nodes=graph&&graph.nodes?graph.nodes:{};
   const ids=Object.keys(nodes);
   const L=layoutNodes();
-  $('mapCount').textContent=ids.length+' 节点';
-  $('mapBadge').textContent=ids.length?ids.length+' 节点':'';
+  $('mapCount').textContent=ids.length+' '+t(ids.length===1?'node':'nodes');
+  $('mapBadge').textContent=ids.length?ids.length+' '+t('nodes'):'';
   $('mapEmpty').style.display=ids.length?'none':'flex';
   const g=document.createElementNS(SVGNS,'g');
   g.setAttribute('id','gRoot');
@@ -979,10 +1266,10 @@ function renderMap(){
   }
   const ax=document.createElementNS(SVGNS,'text');
   ax.setAttribute('x',12);ax.setAttribute('y',L.top);ax.setAttribute('class','lv-label');
-  ax.textContent='已掌握';g.appendChild(ax);
+  ax.textContent=t('mastered');g.appendChild(ax);
   const ax2=document.createElementNS(SVGNS,'text');
   ax2.setAttribute('x',12);ax2.setAttribute('y',L.bottom+4);ax2.setAttribute('class','lv-label');
-  ax2.textContent='待巩固';g.appendChild(ax2);
+  ax2.textContent=t('toConsolidate');g.appendChild(ax2);
 
   const prioOf=id=>{const q=(graph&&graph.queue||[]).find(x=>x.kp_id===id);return q?q.priority:0;};
   const edges=(graph&&graph.edges||[]).filter(e=>nodes[e.from_node_id]&&nodes[e.to_node_id]);
@@ -1009,7 +1296,7 @@ function renderMap(){
     if(prio>1){c.setAttribute('stroke','rgb(var(--sem-warn))');c.setAttribute('stroke-width',2.5);}
     grp.appendChild(c);
     const tip=document.createElementNS(SVGNS,'title');
-    tip.textContent=`${n.knowledge_point||id}\n等级 ${n.level||'?'} · 掌握度 ${(n.mastery||0).toFixed(2)}\n错误 ${n.error_count||0} 次 · 复习优先级 ${prio.toFixed(2)}`;
+    tip.textContent=`${n.knowledge_point||id}\n${t('tipLevel')} ${n.level||'?'} · ${t('tipMastery')} ${(n.mastery||0).toFixed(2)}\n${t('tipErrors')} ${n.error_count||0} ${t('tipTimes')} · ${t('tipPrio')} ${prio.toFixed(2)}`;
     grp.appendChild(tip);
     const label=document.createElementNS(SVGNS,'text');
     label.setAttribute('x',p.x);label.setAttribute('y',p.y+r+13);
@@ -1069,7 +1356,7 @@ function renderQueue(){
   const q=graph&&graph.queue||[];
   const box=$('queue');
   box.innerHTML='';
-  if(!q.length){box.innerHTML='<div class="clean-sub" style="padding:6px 2px">暂无复习项</div>';return;}
+  if(!q.length){box.innerHTML=`<div class="clean-sub" style="padding:6px 2px">${t('noReview')}</div>`;return;}
   q.slice(0,10).forEach(item=>{
     const n=item.node||{};
     const row=el(`<div class="qitem" data-kp="${esc(item.kp_id||'')}">
@@ -1088,8 +1375,8 @@ function applyGraph(g){
   rebuildVocab();
   renderMap();renderQueue();
   const q=g.queue||[];
-  $('rvCount').textContent=q.length?q.length+' 项':'空';
-  setStatus(true,`${g.learner_id||'demo'} · ${Object.keys(g.nodes||{}).length} 节点 · ${state.conversation}`);
+  $('rvCount').textContent=q.length?q.length+' '+t('items'):'—';
+  setStatus(true,tf('statusFmt',{id:g.learner_id||'demo',n:Object.keys(g.nodes||{}).length,c:state.conversation}));
 }
 function setStatus(on,text){
   const s=$('status');s.className='status '+(on?'on':'off');
@@ -1119,13 +1406,13 @@ function renderSessions(){
   if(cur&&!list.some(s=>s.id===cur)){
     list.unshift({id:cur,title:'',message_count:0,_pending:true});
   }
-  $('sessCount').textContent=state.sessions.length?state.sessions.length+' 个':'';
+  $('sessCount').textContent=state.sessions.length?tf('nSessions',{n:state.sessions.length}):'';
   list.slice(0,30).forEach(s=>{
     const isCur=s.id===cur;
     const d=el(`<div class="sbtn ${isCur?'cur':''}" data-id="${esc(s.id)}">
       <span class="ic">${isCur?'●':'○'}</span>
-      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${esc(s.title||(s._pending?'新会话 · 未开始':s.id))}</span>
-      <span class="srow-sub">${s._pending?'':esc((s.message_count||0)+' 条')}</span>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${esc(s.title||(s._pending?t('newSessPending'):s.id))}</span>
+      <span class="srow-sub">${s._pending?'':esc(tf('nMsgs',{n:s.message_count||0}))}</span>
     </div>`);
     d.title=(s.title||s.id)+(s.updated_at?` · ${timeShort(s.updated_at)}`:'');
     d.addEventListener('click',()=>switchSession(s.id));
@@ -1142,7 +1429,7 @@ async function switchSession(id,forceNew){
     const c=await api('/api/conversation?id='+encodeURIComponent(id));
     const msgs=(c&&c.messages)||[];
     if(msgs.length){
-      addMsg(el(`<div class="note plain">已恢复会话（${msgs.length} 条消息）· 成果卡不随会话持久，此处为文本记录</div>`));
+      addMsg(el(`<div class="note plain">${tf('restored',{n:msgs.length})}</div>`));
       msgs.forEach(m=>{
         if(m.role==='user') addUserMsg(m.content);
         else addAiText(m.content);
@@ -1155,13 +1442,13 @@ async function switchSession(id,forceNew){
 function newSession(){
   const id='s-'+Date.now().toString(36);
   switchSession(id,true);
-  toast('已新建会话');
+  toast(t('newSessionToast'));
 }
 function clearChat(){
   chat.innerHTML='';
   const e=el(`<div class="empty" id="emptyState">
-    <h2>开始你的第一句</h2>
-    <p>直接对话：写一句中文让它找错、问一个语法点、复述刚学的内容检验理解。<br>你的每次偏误都会沉淀到认知地图（侧栏「◈ 认知地图」随时查看）。</p>
+    <h2 data-i18n="startFirst">${t('startFirst')}</h2>
+    <p data-i18n-html="emptyIntro">${t('emptyIntro')}</p>
     <div class="chips">
       <button class="chip" data-ex="我想买苹果很多。">✍ 我想买苹果很多。</button>
       <button class="chip" data-ex="把字句是什么意思？">📖 把字句是什么意思？</button>
@@ -1182,7 +1469,7 @@ function bindChips(root){
  * 学习动线（侧栏）
  * ============================================================ */
 function beginReview(){
-  sendPrompt('我该复习什么了？请拉取我的复习队列，并对最需要复习的知识点给我一道针对性练习。','▶ 开始复习');
+  sendPrompt(t('reviewPrompt'),t('reviewBadge'));
 }
 async function showReport(){
   const pend=addPending();
@@ -1190,7 +1477,7 @@ async function showReport(){
     const p=await api('/api/profile');
     renderReport(p);
   }catch(e){
-    addNote('报告加载失败：'+e.message,'err');
+    addNote(t('reportFail')+e.message,'err');
   }finally{
     clearInterval(pend._iv);pend.remove();
   }
@@ -1208,24 +1495,24 @@ function renderReport(p){
       <div class="rf-row" data-kp="${esc(f.kp_id||'')}">
         <span class="nm">${esc(f.knowledge_point||f.kp_id||'')}</span>
         ${f.level?`<span class="lv">${esc(f.level)}</span>`:''}
-        ${f.repeat_offender?`<span class="rf-off">惯犯 ×${f.repeated}</span>`:`<span class="rf-rep">撞错 ${f.repeated||0} 次</span>`}
+        ${f.repeat_offender?`<span class="rf-off">${tf('repOff',{n:f.repeated})}</span>`:`<span class="rf-rep">${tf('repRep',{n:f.repeated||0})}</span>`}
         <div class="bar" style="min-width:60px;max-width:120px"><div style="width:${Math.min((f.priority||0)*10,100)}%"></div></div>
         <span class="rv-prio">${(f.priority||0).toFixed(1)}</span>
-        ${f.latest_evidence?`<div class="rf-ev">最近证据：「${esc(String(f.latest_evidence).slice(0,60))}」</div>`:''}
+        ${f.latest_evidence?`<div class="rf-ev">${t('repLatest')}「${esc(String(f.latest_evidence).slice(0,60))}」</div>`:''}
       </div>`).join('');
   }
   c.innerHTML=`
-    <div class="cardlabel">AI 学习报告 · ${new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+    <div class="cardlabel">${t('repTitle')} · ${new Date().toLocaleString(LANG==='zh'?'zh-CN':'en-US',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
     <div class="rep-stats">
-      <span>图谱 <b>${st.graph_nodes!=null?st.graph_nodes:'?'}</b> 节点</span>
-      <span>待复习 <b>${st.review_count!=null?st.review_count:'?'}</b> 项</span>
-      <span>混淆边 <b>${st.graph_edges!=null?st.graph_edges:'?'}</b> 条</span>
-      <span>惯犯 <b style="color:${offenders.length?'rgb(var(--sem-err))':'inherit'}">${offenders.length}</b> 个</span>
+      <span>${t('repGraph')} <b>${st.graph_nodes!=null?st.graph_nodes:'?'}</b> ${t('repNodes')}</span>
+      <span>${t('repReview')} <b>${st.review_count!=null?st.review_count:'?'}</b> ${t('repItems')}</span>
+      <span>${t('repEdges')} <b>${st.graph_edges!=null?st.graph_edges:'?'}</b></span>
+      <span>${t('repOffenders')} <b style="color:${offenders.length?'rgb(var(--sem-err))':'inherit'}">${offenders.length}</b></span>
     </div>
-    ${offenders.length?`<div class="uc-strip">⚠ 惯犯知识点：${offenders.map(o=>esc(o)).join('、')} —— 建议今日优先巩固</div>`:''}
-    ${facts.length?rows:'<div class="clean-sub">暂无画像数据 —— 先和助教多聊几句、写几个句子，你的偏误会自动沉淀成报告。</div>'}
-    ${isStored?'<div class="meta-row"><span>（历史快照：当前复习队列无到期项）</span></div>':''}
-    <div class="meta-row"><span>数据来源：偏误图谱 × 事件账本 × 长期记忆（只读，非 LLM 生成）</span></div>`;
+    ${offenders.length?`<div class="uc-strip">${tf('repWarn',{list:offenders.map(o=>esc(o)).join('、')})}</div>`:''}
+    ${facts.length?rows:`<div class="clean-sub">${t('repEmpty')}</div>`}
+    ${isStored?`<div class="meta-row"><span>${t('repStored')}</span></div>`:''}
+    <div class="meta-row"><span>${t('repSrc')}</span></div>`;
   addMsg(c);
   c.querySelectorAll('.rf-row[data-kp]').forEach(r=>r.addEventListener('click',()=>locateKp(r.dataset.kp)));
 }
@@ -1235,7 +1522,7 @@ function openDoc(){$('docOvl').classList.add('show');updateCharCt();}
 function updateCharCt(){
   const n=$('docText').value.length;
   const ct=$('charCt');
-  ct.textContent=`${n} / ${DOC_CHAR_LIMIT} 字`+(n>DOC_CHAR_LIMIT?'（超出将截断）':'');
+  ct.textContent=tf('charCt',{n})+(n>DOC_CHAR_LIMIT?t('charOver'):'');
   ct.classList.toggle('over',n>DOC_CHAR_LIMIT);
 }
 $('docText').addEventListener('input',updateCharCt);
@@ -1243,17 +1530,17 @@ $('docFile').addEventListener('change',e=>{
   const f=e.target.files&&e.target.files[0];
   if(!f)return;
   const rd=new FileReader();
-  rd.onload=()=>{$('docText').value=String(rd.result||'');updateCharCt();toast('已载入 '+f.name);};
-  rd.onerror=()=>toast('文件读取失败');
+  rd.onload=()=>{$('docText').value=String(rd.result||'');updateCharCt();toast(tf('docToastLoaded',{name:f.name}));};
+  rd.onerror=()=>toast(t('docToastFail'));
   rd.readAsText(f,'utf-8');
 });
 $('docParse').addEventListener('click',()=>{
-  let t=$('docText').value.trim();
-  if(!t){toast('先粘贴文本或选择文件');return;}
-  if(t.length>DOC_CHAR_LIMIT)t=t.slice(0,DOC_CHAR_LIMIT);
+  let tx=$('docText').value.trim();
+  if(!tx){toast(t('docToastEmpty'));return;}
+  if(tx.length>DOC_CHAR_LIMIT)tx=tx.slice(0,DOC_CHAR_LIMIT);
   $('docOvl').classList.remove('show');
   $('docText').value='';updateCharCt();
-  sendPrompt('请解析这份材料，找出其中的中文知识点并讲解：\n\n'+t,'▤ 阅读材料');
+  sendPrompt(t('docPrompt')+tx,t('docBadge'));
 });
 
 /* ============================================================
@@ -1275,7 +1562,7 @@ function currentProvider(){
 }
 function renderModelPick(){
   const p=currentProvider();
-  $('modelPickName').textContent=p?p.model:'默认模型';
+  $('modelPickName').textContent=p?p.model:t('defaultModel');
   $('modelPick').querySelector('.dot').style.background=
     p?'rgb(var(--sem-ok))':'rgb(var(--tx3))';
 }
@@ -1284,12 +1571,12 @@ function showModelMenu(btn){
   const r=btn.getBoundingClientRect();
   const p=el(`<div class="popover"></div>`);
   if(!state.providers.length){
-    p.innerHTML=`<div class="po-t">模型</div><div class="pop-item" data-open="llm"><span>尚未配置供应商 → 前往「模型密钥」</span></div>`;
+    p.innerHTML=`<div class="po-t">${t('mmTitle')}</div><div class="pop-item" data-open="llm"><span>${t('mmNone')}</span></div>`;
   }else{
-    p.innerHTML=`<div class="po-t">选择模型</div>`+state.providers.map(pr=>{
+    p.innerHTML=`<div class="po-t">${t('mmPick')}</div>`+state.providers.map(pr=>{
       const cur=(pr.id===state.providerId)||( !state.providerId && pr.id===state.defaultProvider);
-      return `<div class="pop-item" data-pv="${esc(pr.id)}"><span>${esc(pr.name)}</span><span class="pl">${esc(pr.model)}${cur?' ·当前':''}</span></div>`;
-    }).join('')+(state.defaultProvider?`<div class="pop-item" data-pv=""><span>跟随默认（服务端）</span></div>`:'');
+      return `<div class="pop-item" data-pv="${esc(pr.id)}"><span>${esc(pr.name)}</span><span class="pl">${esc(pr.model)}${cur?t('mmCur'):''}</span></div>`;
+    }).join('')+(state.defaultProvider?`<div class="pop-item" data-pv=""><span>${t('mmFollow')}</span></div>`:'');
   }
   document.body.appendChild(p);
   const pw=p.getBoundingClientRect();
@@ -1299,7 +1586,7 @@ function showModelMenu(btn){
     state.providerId=it.dataset.pv;
     try{localStorage.setItem('hsk-provider',state.providerId);}catch(e){}
     renderModelPick();closePopovers();
-    const pr=currentProvider();toast(pr?('模型 → '+pr.model):'模型 → 跟随服务端默认');
+    const pr=currentProvider();toast(pr?tf('mmToastSet',{name:pr.model}):t('mmToastDefault'));
   }));
   const openLlm=p.querySelector('[data-open="llm"]');
   if(openLlm)openLlm.addEventListener('click',()=>{
@@ -1315,7 +1602,8 @@ $('modelPick').addEventListener('click',()=>showModelMenu($('modelPick')));
 async function runDialog(text){
   const before=new Set(Object.keys((graph&&graph.nodes)||{}));
   const res=await api('/api/dialog',{text,conversation_id:state.conversation,
-                                     provider_id:state.providerId});
+                                     provider_id:state.providerId,
+                                     native_lang:LANG});
   bornIds=new Set(Object.keys((res.graph&&res.graph.nodes)||{}).filter(id=>!before.has(id)));
   applyGraph(res.graph);
   renderTrace(res.trace);
@@ -1339,13 +1627,12 @@ async function sendPrompt(text,badge){
 }
 function dialogError(e){
   if(e.code==='llm_not_configured'){
-    addNote('自由对话需要配置 LLM API Key：'+e.message,'err',
-      '两种方法：① 设置 → 模型密钥，添加供应商（OpenAI 兼容，即时生效）；② 复制 .env.example 为 .env，填入 DEEPSEEK_API_KEY 后重启服务');
+    addNote(t('errLLMBody')+e.message,'err',t('errLlmHint'));
   }else if(e.code==='unknown_provider'){
-    addNote(e.message,'err','该供应商可能已被删除，请重新选择模型');
+    addNote(e.message,'err',t('errUnknownHint'));
     loadProviders();
   }else{
-    addNote('请求失败：'+e.message,'err');
+    addNote(t('errReq')+e.message,'err');
   }
 }
 async function submit(){
@@ -1369,56 +1656,73 @@ function setTheme(id){
 }
 const settingsTabs={
   theme:()=>`
-    <h3>界面主题</h3>
-    <p class="sub">两套主题（深浅相同、强调色不同），切换只换 token，语义色（图谱类型/偏误红绿）保持不变。</p>
-    <div class="theme-grid">${THEMES.map(t=>`
-      <div class="theme-swatch ${document.documentElement.dataset.theme===t.id?'active':''}" data-th="${t.id}">
-        <div class="dot" style="background:${t.bg};outline:3px solid ${t.brand};outline-offset:-3px"></div>
-        <div class="nm">${t.name}</div>
+    <h3>${t('themeH')}</h3>
+    <p class="sub">${t('themeSub')}</p>
+    <div class="theme-grid">${THEMES.map(th=>`
+      <div class="theme-swatch ${document.documentElement.dataset.theme===th.id?'active':''}" data-th="${th.id}">
+        <div class="dot" style="background:${th.bg};outline:3px solid ${th.brand};outline-offset:-3px"></div>
+        <div class="nm">${t(th.id==='memphis'?'themeMemphis':'themeWarm')}</div>
       </div>`).join('')}</div>`,
+  lang:()=>`
+    <h3>${t('langH')}</h3>
+    <p class="sub">${t('langSub')}</p>
+    <div class="theme-grid" style="grid-template-columns:1fr;max-width:360px">
+      <div class="theme-swatch ${LANG==='en'?'active':''}" data-lang="en">
+        <div class="nm">English</div>
+      </div>
+      <div class="theme-swatch ${LANG==='zh'?'active':''}" data-lang="zh">
+        <div class="nm">中文</div>
+      </div>
+    </div>`,
   llm:()=>`
-    <h3>模型密钥（BYOK）</h3>
-    <div class="prov-note">统一 <b>OpenAI 兼容协议</b>：DeepSeek / Qwen / GLM / Kimi / 本地 Ollama 均可。
-      添加后<b>即时生效</b>，无需重启服务；Key 存于本机 <b>data/llm_providers.json</b>（已 gitignore，不会上传）。
-      <b>DeepSeek 已按 M6 评测校准（80% 达标），其他模型未评测</b>——协议遵循度可能下降。</div>
-    <div id="provList">加载中…</div>
+    <h3>${t('llmH')}</h3>
+    <div class="prov-note">${t('llmNote')}</div>
+    <div id="provList">${t('llmLoading')}</div>
     <div class="prov-form">
-      <h5>＋ 添加供应商</h5>
+      <h5>${t('llmAdd')}</h5>
       <div class="fgrid">
-        <input id="pvName" placeholder="名称（如 GLM-4）">
-        <input id="pvModel" placeholder="模型名（如 glm-4-plus）">
-        <input id="pvUrl" class="wide" placeholder="Base URL（如 https://open.bigmodel.cn/api/paas/v4）">
-        <input id="pvKey" class="wide" placeholder="API Key（仅存本机）" type="password">
+        <input id="pvName" placeholder="${t('llmName')}">
+        <input id="pvModel" placeholder="${t('llmModel')}">
+        <input id="pvUrl" class="wide" placeholder="${t('llmUrl')}">
+        <input id="pvKey" class="wide" placeholder="${t('llmKey')}" type="password">
       </div>
       <div class="frow">
-        <button class="btn-brand" id="pvAdd">添加</button>
-        <button class="prov-btn" id="pvTestNew">先测试连通</button>
-        <span class="hint">模型名手动填写，请参考各供应商官方文档；「先测试连通」验证后再保存。</span>
+        <button class="btn-brand" id="pvAdd">${t('llmBtnAdd')}</button>
+        <button class="prov-btn" id="pvTestNew">${t('llmBtnTest')}</button>
+        <span class="hint">${t('llmHint')}</span>
       </div>
     </div>`,
   keys:()=>`
-    <h3>快捷键</h3>
-    <div class="row2"><span class="kbd">Ctrl+Enter</span><span>发送</span></div>
-    <div class="row2"><span class="kbd">Enter</span><span>换行</span></div>
-    <div class="row2"><span class="kbd">↗ → ↓ ✕</span><span>卡片分支动作（悬停卡片右上角，锚定图谱权威边）</span></div>
-    <div class="row2"><span class="kbd">点击下划线词</span><span>Smart Annotation → 地图定位知识点</span></div>
-    <div class="row2"><span class="kbd">?conversation=</span><span>网址参数携带当前会话（可收藏/回访恢复）</span></div>`,
+    <h3>${t('tabKeys')}</h3>
+    <div class="row2"><span class="kbd">Ctrl+Enter</span><span>${t('keysSend')}</span></div>
+    <div class="row2"><span class="kbd">Enter</span><span>${t('keysNewline')}</span></div>
+    <div class="row2"><span class="kbd">↗ → ↓ ✕</span><span>${t('keysCards')}</span></div>
+    <div class="row2"><span class="kbd">✍</span><span>${t('keysAnno')}</span></div>
+    <div class="row2"><span class="kbd">?conversation=</span><span>${t('keysUrl')}</span></div>`,
   about:()=>`
-    <h3>关于</h3>
+    <h3>${t('tabAbout')}</h3>
     <ul class="about-li">
-      <li>HSK-AI-Coach · 前端壳 v2（0.19）</li>
-      <li>架构：planner 自由 ReAct 唯一对话入口（dialog 契约 v1）</li>
-      <li>数据：偏误图谱唯一权威 · 两段式写回 · 服务端多轮记忆（按会话）</li>
-      <li>零第三方依赖：Python 标准库 + 原生 JS/SVG，单文件可离线</li>
-      <li>卡片沿图谱权威边生长（↗深挖 →相邻 ↓待复习），无自由发散</li>
+      <li>${t('aboutLi1')}</li>
+      <li>${t('aboutLi2')}</li>
+      <li>${t('aboutLi3')}</li>
+      <li>${t('aboutLi4')}</li>
+      <li>${t('aboutLi5')}</li>
     </ul>`,
 };
 function renderSettingsTab(k){
+  curTab=k;
   document.querySelectorAll('#settingsNav li').forEach(li=>li.classList.toggle('active',li.dataset.tab===k));
   $('settingsBody').innerHTML=settingsTabs[k]();
   if(k==='theme'){
     $('settingsBody').querySelectorAll('.theme-swatch').forEach(sw=>
-      sw.addEventListener('click',()=>{setTheme(sw.dataset.th);toast('主题 → '+(THEMES.find(t=>t.id===sw.dataset.th)||{}).name);}));
+      sw.addEventListener('click',()=>{setTheme(sw.dataset.th);toast(tf('themeToast',{name:t(sw.dataset.th==='memphis'?'themeMemphis':'themeWarm')}));}));
+  }
+  if(k==='lang'){
+    $('settingsBody').querySelectorAll('.theme-swatch[data-lang]').forEach(sw=>
+      sw.addEventListener('click',()=>{
+        setLang(sw.dataset.lang);
+        toast(tf('langToast',{name:sw.dataset.lang==='zh'?'中文':'English'}));
+      }));
   }
   if(k==='llm')bindProvidersTab();
 }
@@ -1427,8 +1731,7 @@ function renderSettingsTab(k){
 function renderProvList(){
   const box=$('provList');if(!box)return;
   if(!state.providers.length){
-    box.innerHTML=`<div class="clean-sub">还没有任何供应商 —— .env 未配置 Key，也未在界面添加。
-      在下方表单添加即可开始对话（DeepSeek 为已评测默认选择）。</div>`;
+    box.innerHTML=`<div class="clean-sub">${t('provEmpty')}</div>`;
     return;
   }
   box.innerHTML=state.providers.map(p=>{
@@ -1438,14 +1741,14 @@ function renderProvList(){
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="pv-nm">${esc(p.name)}</span>
           <span class="pv-md">${esc(p.model)}</span>
-          ${isDef?'<span class="pv-bdg">默认</span>':''}
+          ${isDef?`<span class="pv-bdg">${t('provDefault')}</span>`:''}
         </div>
         <div class="pv-key">${esc(p.api_key_masked)} · ${esc(p.base_url)}</div>
       </div>
       <span class="pv-st" data-st="${esc(p.id)}"></span>
-      <button class="prov-btn" data-act="test">测试</button>
-      ${p.source==='env'?'':`<button class="prov-btn" data-act="def">${isDef?'取消默认':'设为默认'}</button>`}
-      ${p.source==='env'?'':`<button class="prov-btn danger" data-act="del">删除</button>`}
+      <button class="prov-btn" data-act="test">${t('provTest')}</button>
+      ${p.source==='env'?'':`<button class="prov-btn" data-act="def">${isDef?t('provUnsetDef'):t('provSetDef')}</button>`}
+      ${p.source==='env'?'':`<button class="prov-btn danger" data-act="del">${t('provDel')}</button>`}
     </div>`;
   }).join('');
   box.querySelectorAll('.prov-row').forEach(row=>{
@@ -1456,14 +1759,14 @@ function renderProvList(){
 async function provAction(act,pid,btn){
   if(act==='test'){
     const st=$('provList').querySelector(`[data-st="${CSS.escape(pid)}"]`)||btn;
-    st.textContent='测试中…';btn.disabled=true;
+    st.textContent=t('provTesting');btn.disabled=true;
     try{
       const r=await api('/api/providers/test',{id:pid});
       if(st.classList)st.classList.remove('ok','err');
-      if(r&&r.ok){st.textContent=`✓ ${r.latency_ms}ms`;st.classList.add('ok');}
-      else{st.textContent='✕ 连通失败';st.classList.add('err');
-        toast('测试失败：'+((r&&r.error)||'未知错误').slice(0,120));}
-    }catch(e){st.textContent='✕ 连通失败';st.classList.add('err');toast('测试失败：'+e.message);}
+      if(r&&r.ok){st.textContent=tf('provOkMs',{n:r.latency_ms});st.classList.add('ok');}
+      else{st.textContent=t('provFail');st.classList.add('err');
+        toast(t('provToastFail')+((r&&r.error)||t('provUnknownErr')).slice(0,120));}
+    }catch(e){st.textContent=t('provFail');st.classList.add('err');toast(t('provToastFail')+e.message);}
     btn.disabled=false;
     return;
   }
@@ -1471,44 +1774,44 @@ async function provAction(act,pid,btn){
     const target=(state.defaultProvider===pid)?'env':'p';
     try{
       await api('/api/providers/default',{id:(target==='env'?'env':pid)});
-      toast(target==='env'?'已回落 .env 默认':'默认供应商已切换');
+      toast(target==='env'?t('provToastEnv'):t('provToastDef'));
       await loadProviders();renderProvList();
-    }catch(e){toast('操作失败：'+e.message);}
+    }catch(e){toast(t('provToastOpFail')+e.message);}
     return;
   }
   if(act==='del'){
-    if(!confirm('确认删除该供应商？已选它的会话将回落默认模型。'))return;
+    if(!confirm(t('provConfirmDel')))return;
     try{
       const r=await fetch('/api/providers?id='+encodeURIComponent(pid),{method:'DELETE'});
       if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||('HTTP '+r.status));}
       if(state.providerId===pid){state.providerId='';try{localStorage.setItem('hsk-provider','');}catch(e){}}
-      await loadProviders();renderProvList();toast('已删除');
-    }catch(e){toast('删除失败：'+e.message);}
+      await loadProviders();renderProvList();toast(t('provToastDeleted'));
+    }catch(e){toast(t('provToastDelFail')+e.message);}
   }
 }
 function bindProvidersTab(){
   renderProvList();
   loadProviders().then(renderProvList);   // 打开 tab 时刷新一次（可能别处已变更）
   $('pvTestNew').addEventListener('click',async()=>{
-    const b=$('pvTestNew');b.disabled=true;const old=b.textContent;b.textContent='测试中…';
+    const b=$('pvTestNew');b.disabled=true;const old=b.textContent;b.textContent=t('provTesting');
     try{
       const r=await api('/api/providers/test',{
         base_url:$('pvUrl').value.trim(),api_key:$('pvKey').value.trim(),model:$('pvModel').value.trim()});
-      toast(r&&r.ok?('连通成功（'+r.latency_ms+'ms）'):('连通失败：'+((r&&r.error)||'').slice(0,120)));
-    }catch(e){toast('测试失败：'+e.message);}
+      toast(r&&r.ok?tf('provTestOk',{n:r.latency_ms}):(t('provTestFail')+((r&&r.error)||'').slice(0,120)));
+    }catch(e){toast(t('provToastFail')+e.message);}
     b.disabled=false;b.textContent=old;
   });
   $('pvAdd').addEventListener('click',async()=>{
     const name=$('pvName').value.trim(),model=$('pvModel').value.trim(),
           base_url=$('pvUrl').value.trim(),api_key=$('pvKey').value.trim();
-    if(!(name&&model&&base_url&&api_key)){toast('四个字段都必填');return;}
-    const b=$('pvAdd');b.disabled=true;const old=b.textContent;b.textContent='添加中…';
+    if(!(name&&model&&base_url&&api_key)){toast(t('provAllRequired'));return;}
+    const b=$('pvAdd');b.disabled=true;const old=b.textContent;b.textContent=t('provAdding');
     try{
       await api('/api/providers',{name,model,base_url,api_key});
       ['pvName','pvModel','pvUrl','pvKey'].forEach(i=>$(i).value='');
       await loadProviders();renderProvList();
-      toast('已添加供应商（即时生效，输入框左上角可切换）');
-    }catch(e){toast('添加失败：'+e.message);}
+      toast(t('provToastAdded'));
+    }catch(e){toast(t('provToastAddFail')+e.message);}
     b.disabled=false;b.textContent=old;
   });
 }
@@ -1577,6 +1880,7 @@ $('text').addEventListener('input',function(){this.style.height='auto';this.styl
   try{th=localStorage.getItem('hsk-theme')||'memphis';}catch(e){}
   if(!THEMES.some(t=>t.id===th))th='memphis';
   document.documentElement.dataset.theme=th;
+  applyLang();   // 0.21 语言（localStorage hsk-lang，默认 en）——首帧即应用
 
   // 会话：URL 深链 ?conversation=<id>（OpenMAIC 式查询参数驱动）
   const u=new URL(location);
@@ -1588,8 +1892,8 @@ $('text').addEventListener('input',function(){this.style.height='auto';this.styl
     graph=await api('/api/graph');
     applyGraph(graph);
   }catch(e){
-    setStatus(false,'服务未连接');
-    addNote('无法加载图谱：'+e.message,'err');
+    setStatus(false,t('disconnected'));
+    addNote(t('errGraph')+e.message,'err');
   }
   bindChips(document);
   await loadSessions();
@@ -1601,7 +1905,7 @@ $('text').addEventListener('input',function(){this.style.height='auto';this.styl
       const msgs=(c&&c.messages)||[];
       if(msgs.length){
         const emptyEl=$('emptyState');if(emptyEl)emptyEl.remove();
-        addMsg(el(`<div class="note plain">已恢复会话（${msgs.length} 条消息）· 成果卡不随会话持久，此处为文本记录</div>`));
+        addMsg(el(`<div class="note plain">${tf('restored',{n:msgs.length})}</div>`));
         msgs.forEach(m=>{
           if(m.role==='user')addUserMsg(m.content);
           else addAiText(m.content);
