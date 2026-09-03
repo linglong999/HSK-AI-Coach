@@ -115,7 +115,10 @@ GLOBAL_RULES_EN = (
 
 # 0.21：native_lang 由系统确定性注入这些技能参数（语言是系统约束，不依赖 LLM 自觉传参）
 # generate_unit 走 context.self_language/language_directive（引擎既有字段），其余走 native_lang
-LANG_INJECTED_SKILLS = ("explain_error", "verify_retell", "generate_unit")
+# 0.22：identify_errors 加入——识别器迁移假设（hypotheses[]）依赖 native_lang，
+# 漏注入会让 L1 归因在对话主链静默失效（与 Router.process 漏传同类问题）
+LANG_INJECTED_SKILLS = ("identify_errors", "explain_error", "verify_retell",
+                        "generate_unit")
 
 # 0.21 EN 模式生成单元的语言指令（英壳 + 中文内容载体，与规则 8 同口径）
 _LANG_DIRECTIVE_EN = (
@@ -144,14 +147,25 @@ class Planner:
     def run(self, user_input: str, history: Optional[List[Dict]] = None,
             learner_id: str = "default",
             profile_summary: Optional[str] = None,
-            native_lang: str = "") -> Dict[str, Any]:
+            native_lang: str = "",
+            scene_brief: str = "",
+            persona_brief: str = "",
+            intervention_directive: str = "") -> Dict[str, Any]:
         """主循环。返回含 text / used_skills / steps / fallback 的结果。
         profile_summary（M8）：常错点/惯犯摘要，非空时拼进 system 供个性化教学；
         由上层 serve 从 build_profile_summary(graph, ledger) 计算，planner 不自取。
         native_lang（0.21）：非 zh → 英文全局规则/降级文案，并确定性注入
-        explain_error / verify_retell 参数（教学层英文，中文内容载体不变）。"""
+        explain_error / verify_retell 参数（教学层英文，中文内容载体不变）。
+        scene_brief（0.22 方向2）：场景对话 [Scene] 段（serve 组好传入），非空时
+        追加进 system——让学习者开口习得、不逐句纠错（纠错介入交给方向3）。
+        persona_brief（0.22 方向3）：个性化栏 [Persona] 段（风格/称呼/人设/自定义指令）。
+        intervention_directive（0.22 方向3）：本轮介入判定 [Intervention] 段
+        （serve 确定性分档后传入：none 静默/light 引导/block 讲解）。"""
         history = history or []
-        system = self._build_system(profile_summary or "", native_lang=native_lang)
+        system = self._build_system(profile_summary or "", native_lang=native_lang,
+                                    scene_brief=scene_brief,
+                                    persona_brief=persona_brief,
+                                    intervention_directive=intervention_directive)
         messages: List[Dict] = [{"role": "system", "content": system}]
         messages.extend(history)
         messages.append({"role": "user", "content": user_input})
@@ -252,7 +266,7 @@ class Planner:
     def _inject_lang(name: str, params: Dict[str, Any],
                      native_lang: str) -> Dict[str, Any]:
         """0.21 语言注入：教学层语言由系统确定性写入技能参数，不依赖 LLM 自觉。
-        explain_error/verify_retell → 顶层 native_lang；generate_unit → EN 时注入
+        identify_errors/explain_error/verify_retell → 顶层 native_lang；generate_unit → EN 时注入
         context.self_language + language_directive（引擎既有语言字段，zh 是引擎默认不动）。"""
         if name == "generate_unit":
             if native_lang.lower() == "zh":
@@ -275,7 +289,10 @@ class Planner:
         return params
 
     def _build_system(self, profile_summary: str = "",
-                      native_lang: str = "") -> str:
+                      native_lang: str = "",
+                      scene_brief: str = "",
+                      persona_brief: str = "",
+                      intervention_directive: str = "") -> str:
         is_en = bool(native_lang and native_lang.lower() != "zh")
         rules = GLOBAL_RULES_EN if is_en else GLOBAL_RULES
         compact = "\n".join(
@@ -287,6 +304,15 @@ class Planner:
             header = ("[Learner profile] (personalize the teaching accordingly)"
                       if is_en else "【学习者画像】（结合画像个性化教学）")
             system += f"\n\n{header}\n{profile_summary}"
+        if persona_brief:
+            # 0.22 方向3：个性化段（风格/称呼/人设/自定义指令），与画像/场景并列
+            system += f"\n\n{persona_brief}"
+        if scene_brief:
+            # 0.22 方向2：场景段与规则/画像并列（独立 [Scene] 标记，不与 persona 冲突）
+            system += f"\n\n{scene_brief}"
+        if intervention_directive:
+            # 0.22 方向3：本轮介入判定段——最具体（逐轮），置于末尾
+            system += f"\n\n{intervention_directive}"
         return system
 
     def _dispatch_action(self, name: str, params: Dict[str, Any]) -> Dict[str, Any]:

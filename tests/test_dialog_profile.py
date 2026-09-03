@@ -33,9 +33,13 @@ from engine.serve import make_handler
 # ---------------- 测试替身 ----------------
 
 class FakeRecognizer:
-    """固定返回一个已确认偏误（免 LLM、确定性）。"""
+    """含「苹果很多」片段的句子返回固定已确认偏误；其余句子干净零命中。
+    （0.22 方向3：serve 对每句预扫识别，替身必须对齐真实识别器
+    "干净句零误报"的宁漏勿错契约——否则预扫会把干净句打成偏误。）"""
 
     def recognize(self, text, level=3, native_lang=""):
+        if "苹果很多" not in str(text or ""):
+            return {"errors": [], "uncertain": [], "degraded": []}
         return {
             "errors": [{
                 "fragment": "苹果很多", "correction": "很多苹果",

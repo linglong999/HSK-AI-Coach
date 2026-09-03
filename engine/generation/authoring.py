@@ -148,6 +148,64 @@ def build_practice_prompt(*, for_keypoints=None, targets_errors=None,
     )
 
 
+# ---------------- dialogue 单元 authoring prompt ----------------
+# 0.22 方向2 · D2.2 复用生成引擎扩写：把预置场景扩成更丰满的场景 brief
+# （更多回合提示、目标表达、可替换词块），供动态扩展预置库/直注入主链。
+# 输出是"扩写的场景 brief"（结构化 JSON，非 schema-v1 完整单元），
+# 故不套 _COMMON_RULES 的 dialogueSpec 后置约束——本类型不产 schema-v1 单元。
+DIALOGUE_AUTHORING_PROMPT = """【任务】作为 HSK 中文教学专家，把给定的中文学习场景扩写成一份"场景对话 brief"，用于引导学习者在该场景里开口习得中文。
+
+【上下文槽】
+- 场景 id：{scene_id}
+- 目标语言指令：{language_directive}（可空，默认中文）
+- 学习者 HSK 等级范围：{level}
+- 本场景锚定知识点：{kp_ids}
+- 原场景 seed（作为扩写基底）：{seed}
+
+【要求】扩写要让学习者自然开口且覆盖锚定的知识点，输出严格 JSON：
+{{
+  "scene_id": "沿用上下文 scene_id（或 scene_id + '-ext'）",
+  "type": "dialogue",
+  "title": "一句英文标题（面向英语母语者，≤40 字符）",
+  "title_zh": "一句中文标题（≤12 字）",
+  "level": [1, 2],
+  "kp_ids": ["逐项抄录上下文给的锚定知识点 id"],
+  "seed": "开场情境（中文，比上下文更具体：地点/人物/要完成的事）",
+  "turns": ["至少 3 条回合提示（中文，一步步推进对话，每条约一个话题/动作）"],
+  "expressions": ["至少 3 条目标表达（中文短语/句型，学习者应在本场景用到的）"]
+}}
+{constraints}"""
+
+
+_DIALOGUE_CONSTRAINTS = """【约束】
+1. seed、turns、expressions 一律中文（内容载体），title 英文、title_zh 中文。
+2. turns 不少于 3 条，按"开口→展开→收尾"渐进推进，聚焦本场景锚定知识点。
+3. expressions 是本场景"学习者应说出的正面表达"，不是纠错清单。
+4. 场景目标符合该 HSK 等级范围（不教超纲表达）。
+5. JSON 严格合法（无注释、无尾逗号）；数组和字符串字段正确。"""
+
+
+def build_dialogue_prompt(*, scene_id: str = "", level=None, kp_ids=None,
+                          seed: str = "", language_directive: str = "") -> str:
+    """组装 dialogue 场景扩写 prompt（填入槽位 + 专属约束）。"""
+    if level is None:
+        level = []
+    if kp_ids is None:
+        kp_ids = []
+    return DIALOGUE_AUTHORING_PROMPT.format(
+        scene_id=scene_id or "（空）",
+        language_directive=language_directive or "（默认中文）",
+        level="、".join(str(l) for l in (level or [])) or "（空）",
+        kp_ids="、".join(kp_ids) or "（空）",
+        seed=seed or "（空）",
+        constraints=_DIALOGUE_CONSTRAINTS,
+    )
+
+
+DIALOGUE_FIELDS = ("scene_id", "type", "title", "title_zh", "level",
+                   "kp_ids", "seed", "turns", "expressions")
+
+
 # ---------------- 契约字段口径清单（供校验器/测试引用，与 schema v1 一致） ----------------
 # 用于确保 authoring 与 schema 口径同步；CRITICAL 字段不可缺省。
 UNIT_BASE_FIELDS = ("id", "type", "title", "keyPoints", "forbidden_errors", "context")

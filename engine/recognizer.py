@@ -13,6 +13,7 @@ import sys
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _PROJECT_ROOT)
 from engine.llm.client import LLMClient
+from engine.transfer import match as transfer_match
 
 # 知识清单路径（HSK 1-4 级 MVP 骨架版）：位于项目根（HSK-AI-Coach/）datasets/
 KNOWLEDGE_POINTS_PATH = os.path.join(_PROJECT_ROOT, "datasets", "knowledge_points_v1_4.json")
@@ -232,8 +233,17 @@ class Recognizer:
                 kept.append(_e)
         confirmed = kept
 
+        # 0.22 方向1 · L1 迁移假设：仅对确认层偏误、且 native_lang 非 zh 时归因。
+        # 纯确定性匹配（engine/transfer），status=candidate 绝不进图谱 confirmed 层；
+        # 匹配异常静默降级为空（归因失败不影响识别主链）。
+        try:
+            hypotheses = transfer_match(confirmed, native_lang)
+        except Exception:
+            hypotheses = []
+
         return {"errors": confirmed, "uncertain": uncertain, "raw": raw,
                 "kp_total": len(self.kps),
+                "hypotheses": hypotheses,          # L1 迁移候选假设（0.22，只读不写图谱）
                 "beyond_level": beyond,            # 权威词表判定结果 [{word,level}]
                 "beyond_level_flag": bool(beyond),
                 "dropped_fp": dropped}
@@ -253,6 +263,7 @@ class Recognizer:
         } for b in beyond]
         return {"errors": [], "uncertain": uncertain, "raw": {},
                 "kp_total": len(self.kps),
+                "hypotheses": [],                  # 降级路径无确认偏误，无迁移假设（0.22）
                 "beyond_level": beyond, "beyond_level_flag": bool(beyond),
                 "dropped_fp": [],
                 "degraded": f"识别引擎不可用，已回退规则匹配（仅超纲词预检）: {reason}"}

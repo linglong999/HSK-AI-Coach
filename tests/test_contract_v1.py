@@ -36,15 +36,15 @@ FAKE_UNCERTAIN = {
 }
 
 TRUE_KEYS = {"contract_version", "learner_id", "user_level", "native_lang",
-             "input_text", "errors", "uncertain", "has_error", "graph_size",
-             "review_queue", "degraded", "meta"}
+             "input_text", "errors", "uncertain", "hypotheses", "has_error",
+             "graph_size", "review_queue", "degraded", "meta"}
 META_KEYS = {"start_ts", "end_ts", "elapsed_ms"}
 
 
 def _mock_ok(router):
-    router.recognizer.recognize = lambda text: {
+    router.recognizer.recognize = lambda text, native_lang="": {
         "errors": [dict(FAKE_CONFIRMED)], "uncertain": [dict(FAKE_UNCERTAIN)],
-        "degraded": []}
+        "hypotheses": [], "degraded": []}
     router.explainer.explain = lambda err, **kw: {
         "explanation": "应把数量短语放名词前。例：很多水。",
         "key_points": [{"id": "kp-1", "text": "很多+名词语序"}],
@@ -137,7 +137,7 @@ class TestContractShape(ContractBase):
             "dropped_fp": [],
             "degraded": "识别引擎不可用，已回退规则匹配（仅超纲词预检）: LLM down",
         }
-        self.router.recognizer.recognize = lambda text: fallback
+        self.router.recognizer.recognize = lambda text, native_lang="": fallback
         res = self.router.process("我想买苹果很多。", event_key="c9")
         notices = [d for d in res["degraded"] if d.get("stage") == "recognize"]
         self.assertEqual(len(notices), 1)
@@ -145,6 +145,7 @@ class TestContractShape(ContractBase):
         self.assertIs(False, notices[0]["fatal"])  # 非致命：uncertain 候选仍在，链条继续
         self.assertEqual(len(res["uncertain"]), 1)
         self.assertIs(True, res["uncertain"][0]["uncertain"])
+        self.assertEqual(res["hypotheses"], [])  # 降级路径假设为空（0.22）
 
 
 if __name__ == "__main__":

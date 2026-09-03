@@ -1,0 +1,131 @@
+# ============================================================
+# engine/persona.py
+# 0.22 方向3 · 个性化栏（设计稿 §3.2，用户拍板单字段 reply_style 六档）
+#   - normalize_persona：校验/纠正/白名单合并（POST /api/profile 写入前）
+#   - build_persona_brief：persona → [Persona] 注入段（双语，与 0.21 语言指令并行）
+# 存储位：LearnerMemory profile.persona（data/memory_<learner>.json）
+# 共处规则（设计稿 §3.3）：identity 优先于 scene role；default 回退 0.21 默认。
+# ============================================================
+
+import re
+from typing import Any, Dict, Optional
+
+REPLY_STYLES = ("default", "rigorous", "friendly", "pragmatic", "creative", "socratic")
+
+DEFAULT_PERSONA: Dict[str, Any] = {
+    "reply_style": "default",
+    "address": "",
+    "identity": "",
+    "custom_instructions": "",
+    "interrupt_cap": 3,
+}
+
+# 自由文本字段 → 最大长度（防 prompt 膨胀/注入面）
+_TEXT_LIMITS = {"address": 50, "identity": 200, "custom_instructions": 500}
+
+# 六档回复风格 → system 措辞（执行时定稿，设计稿残留点3授权）
+_STYLE_DIRECTIVES_ZH = {
+    "rigorous": "回复风格：专业严谨——术语准确、条理清晰、直指关键，不寒暄。",
+    "friendly": "回复风格：亲和友善——多肯定学习者的尝试，语气温暖鼓励，纠错先扬后抑。",
+    "pragmatic": "回复风格：高效务实——直给能用的说法，最短路径帮学习者说对，少讲理论。",
+    "creative": "回复风格：天马行空——用生动类比和有趣例子讲中文，允许幽默。",
+    "socratic": "回复风格：启发引导——引而不答，多用提问带学习者自己发现规律，非必要不直接给答案。",
+}
+_STYLE_DIRECTIVES_EN = {
+    "rigorous": "Reply style: rigorous — precise terminology, structured points, "
+                "no small talk.",
+    "friendly": "Reply style: friendly — warm and encouraging; acknowledge attempts "
+                "before correcting.",
+    "pragmatic": "Reply style: pragmatic — give usable Chinese directly, shortest "
+                 "path, minimal theory.",
+    "creative": "Reply style: creative — vivid analogies and playful examples; "
+                "humor welcome.",
+    "socratic": "Reply style: socratic — guide with questions instead of answers; "
+                "let the learner notice the rule themselves.",
+}
+
+_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def _clean_text(value: Any, limit: int) -> str:
+    """自由文本清洗：str 化、去控制字符、去首尾空白、截长。"""
+    s = _CONTROL_CHARS.sub("", str(value or "")).strip()
+    return s[:limit]
+
+
+def normalize_persona(raw: Dict[str, Any],
+                      current: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """校验并归一 persona（部分合并：只更新给出的字段，其余沿用 current）。
+    - reply_style：六档枚举，非法 → ValueError（前端下拉控制，fail-loud）
+    - interrupt_cap：int 纠正（'3'→3），钳制 0-10
+    - 文本字段：清洗截长；未知键丢弃（白名单）
+    非法输入（非对象）→ ValueError。"""
+    if not isinstance(raw, dict):
+        raise ValueError("persona 应为对象")
+    merged = {k: v for k, v in (current or {}).items() if k in DEFAULT_PERSONA}
+    merged.update({k: v for k, v in raw.items() if k in DEFAULT_PERSONA})
+
+    style = str(merged.get("reply_style") or "default").strip().lower()
+    if style not in REPLY_STYLES:
+        raise ValueError(f"reply_style 仅支持: {', '.join(REPLY_STYLES)}")
+
+    cap = merged.get("interrupt_cap")
+    try:
+        cap = int(cap)
+    except (TypeError, ValueError):
+        cap = DEFAULT_PERSONA["interrupt_cap"]
+    cap = max(0, min(10, cap))
+
+    return {
+        "reply_style": style,
+        "address": _clean_text(merged.get("address"), _TEXT_LIMITS["address"]),
+        "identity": _clean_text(merged.get("identity"), _TEXT_LIMITS["identity"]),
+        "custom_instructions": _clean_text(
+            merged.get("custom_instructions"), _TEXT_LIMITS["custom_instructions"]),
+        "interrupt_cap": cap,
+    }
+
+
+def _l1_is_zh(native_lang: str) -> bool:
+    v = str(native_lang or "").strip().lower()
+    return v in ("", "zh", "中文", "汉语", "chinese", "汉语官话")
+
+
+def build_persona_brief(persona: Optional[Dict[str, Any]],
+                        native_lang: str = "") -> str:
+    """persona → [Persona] 注入段。全默认（default 风格 + 无自由文本）→ 空串，
+    回退 0.21 语言指令默认（设计稿：default 不加额外约束）。
+    interrupt_cap 由 serve 介入判定确定性执行（不依赖 LLM），此处仅作告知。"""
+    if not isinstance(persona, dict) or not persona:
+        return ""
+    try:
+        p = normalize_persona(persona)
+    except ValueError:
+        return ""
+    if (p["reply_style"] == "default" and not p["address"]
+            and not p["identity"] and not p["custom_instructions"]
+            and p["interrupt_cap"] == DEFAULT_PERSONA["interrupt_cap"]):
+        return ""
+
+    is_zh = _l1_is_zh(native_lang)
+    lines = ["[Persona]"]
+    if p["reply_style"] != "default":
+        style = (_STYLE_DIRECTIVES_ZH if is_zh else _STYLE_DIRECTIVES_EN)[p["reply_style"]]
+        lines.append(f"- {style}")
+    if p["address"]:
+        lines.append(f"- 称呼我：{p['address']}" if is_zh
+                     else f"- Address me as: {p['address']}")
+    if p["identity"]:
+        note = ("（优先于 [Scene] 中的角色设定）" if is_zh
+                else " (takes precedence over the [Scene] role)")
+        lines.append(f"- 你的身份：{p['identity']}{note}" if is_zh
+                     else f"- Your identity: {p['identity']}{note}")
+    if p["custom_instructions"]:
+        lines.append(f"- 自定义指令：{p['custom_instructions']}" if is_zh
+                     else f"- Custom instructions: {p['custom_instructions']}")
+    lines.append(f"- 打断频率上限：{p['interrupt_cap']} 次/场" if is_zh
+                 else f"- Interruption cap: {p['interrupt_cap']} per conversation")
+    return "\n".join(lines)
+
+
+__all__ = ["REPLY_STYLES", "DEFAULT_PERSONA", "normalize_persona", "build_persona_brief"]

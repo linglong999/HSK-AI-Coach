@@ -56,7 +56,8 @@ class FileCoach:
                   "has_error": False}
         ctx = sentence or selection
 
-        recog = self.recognizer.recognize(selection)
+        # 0.22：native_lang 传入识别（迁移假设 + 母语上下文；与 Router.process 同步补漏）
+        recog = self.recognizer.recognize(selection, native_lang=self.native_lang)
         confirmed = recog.get("errors", [])
 
         if confirmed:

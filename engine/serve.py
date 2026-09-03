@@ -13,6 +13,7 @@
 #   POST /api/generate → GenerationEngine.generate_unit()（费曼单元，0.16 接入，共享 graph）
 #   GET  /api/graph    → ErrorGraph.graph_snapshot()（nodes/edges/queue）
 #   GET  /api/profile  → 学习者画像 + 会话列表（0.19 前端 v2：AI 学习报告/侧栏数据源，只读）
+#   POST /api/profile  → 保存个性化 persona（0.22 方向3：reply_style/address/identity/自定义指令/打断上限）
 #   GET  /api/conversation?id= → 单会话消息历史（0.19：URL 深链恢复会话，只读）
 #   GET  /api/providers → BYOK 供应商列表（掩码，0.20）
 #   POST /api/providers → 添加供应商（0.20 BYOK：OpenAI 兼容，UI 内配置免重启）
@@ -78,7 +79,9 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
         _dialog_llm = dialog_llm
         _memory_root = memory_root
         _memories = {}   # learner_id -> LearnerMemory（M5 多轮记忆）
-        _writebacks = {}   # learner_id -> Writeback（M8 事件账本/两段式）
+        _writebacks = {}  # learner_id -> Writeback（M8 事件账本/两段式）
+        _interventions = {}  # conversation_id -> InterventionTracker（0.22 方向3）
+        _identify_skill = None  # 预扫识别技能（共享 router.recognizer+graph 实例）
 
         def log_message(self, fmt, *args):
             sys.stderr.write("  [serve] " + fmt % args + "\n")
@@ -143,7 +146,28 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 self.__class__._writebacks[learner_id] = wb
             return wb
 
-        def _writeback_ledger_events(self, wb, trace, user_input: str) -> list:
+        def _get_tracker(self, conversation_id: str):
+            """按 conversation_id 缓存介入跟踪器（0.22 方向3：打断计数/近错窗口/上轮档位）。"""
+            from engine.intervention import InterventionTracker
+            tr = self.__class__._interventions.get(conversation_id)
+            if tr is None:
+                tr = InterventionTracker()
+                self.__class__._interventions[conversation_id] = tr
+            return tr
+
+        def _get_identify_skill(self):
+            """预扫识别技能（0.22 方向3 D3.4：识别触发移到 serve——每轮产出句先走
+            identify（喂图谱，event_key 幂等与 planner 路径同构）再分档介入）。
+            共享 router.recognizer + router.graph 实例（与 planner 注册表同一来源）。"""
+            if self.__class__._identify_skill is None:
+                from skills.identify_errors import IdentifyErrorsSkill
+                self.__class__._identify_skill = IdentifyErrorsSkill(
+                    recognizer=getattr(self._router, "recognizer", None),
+                    graph=self._router.graph)
+            return self.__class__._identify_skill
+
+        def _writeback_ledger_events(self, wb, trace, user_input: str,
+                                     skip_text: str = "") -> list:
             """M8 两段式·账本侧（从 planner trace 编排）：
             - 识别命中（identify_errors ok）→ ledger observation_error（惯犯判定数据源）
             - 复述验证 pass（verify_retell verdict=pass）→ on_confirmed 记 concept_confirmed
@@ -151,7 +175,9 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             此处只补事件账本；单条失败降级不阻塞对话。
             确认对象：同轮识别的 KP 优先；跨轮（上轮识别讲解、本轮复述通过）时
             从账本推导"最近观察过且其后无确认"的 KP 兜底（复述验证的是最近讲解，
-            讲解对象即最近未确认偏误；宁紧勿滥，倒序最多 3 个）。"""
+            讲解对象即最近未确认偏误；宁紧勿滥，倒序最多 3 个）。
+            skip_text（0.22 方向3）：serve 预扫已对同句记过账，planner 若重复
+            identify 同一句则跳过（防 observation_error 双计→惯犯虚高）。"""
             notices = []
             round_kps = []
             for t in trace or []:
@@ -160,6 +186,9 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 name = t.get("name")
                 result = t.get("result") or {}
                 if name == "identify_errors":
+                    if skip_text and str((t.get("params") or {}).get(
+                            "text", "")).strip() == skip_text:
+                        continue
                     for err in result.get("errors", []):
                         kp = err.get("knowledge_point_id")
                         if not kp:
@@ -319,6 +348,19 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             native_lang = str((payload.get("native_lang") or "")).strip().lower() or \
                 str(getattr(self._router, "native_lang", "") or "")
 
+            # 0.22 方向2 · 场景对话：scene_id → 编译 [Scene] 段注入主链（D2.2）。
+            # 场景缺失/未命中 → scene_brief 空串，planner 照常走自由对话（不阻断）。
+            scene_brief = ""
+            scene_id = str((payload.get("scene_id") or "")).strip()
+            if scene_id:
+                try:
+                    from engine.scenarios import build_scene_brief, get_scene
+                    _scene = get_scene(scene_id)
+                    if _scene:
+                        scene_brief = build_scene_brief(_scene, native_lang)
+                except Exception:  # noqa: BLE001 场景加载失败 → 退化为自由对话
+                    scene_brief = ""
+
             # fail-loud：真实 LLM 路径必须先有可用供应商（mock 注入路径跳过）
             provider = None
             if self.__class__._dialog_llm is None:
@@ -345,6 +387,10 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             with self._lock:
                 from engine.memory.summarize import (
                     build_profile_summary, build_profile_facts)
+                from engine.intervention import (
+                    MAX_SCAN_CHARS, DEFAULT_CAP, build_intervention_directive,
+                    detect_help_intent)
+                from engine.persona import build_persona_brief
                 mem = self._get_memory(learner_id)
                 wb = self._get_writeback(learner_id)
                 history = mem.to_llm_history(conversation_id)
@@ -354,12 +400,76 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                         self._router.graph, wb.ledger)
                 except Exception:  # noqa: BLE001
                     profile_summary = ""
+
+                # ---- 0.22 方向3 · persona（个性化栏：风格/称呼/人设/自定义指令/打断上限）----
+                profile_block = mem.get_profile() or {}
+                persona = profile_block.get("persona") if isinstance(
+                    profile_block.get("persona"), dict) else {}
+                persona_brief = build_persona_brief(persona, native_lang)
+                try:
+                    cap = int((persona or {}).get("interrupt_cap", DEFAULT_CAP))
+                except (TypeError, ValueError):
+                    cap = DEFAULT_CAP
+
+                # ---- 0.22 方向3 · 介入判定（确定性分档，D3.4 主链重构）----
+                # 预扫：每轮产出句先走 identify（喂图谱+迁移假设，句子→图谱链不变），
+                # 再用组合信号分档（求助/空/含义不清/连续错率 + 打断上限）。
+                # 求助句不预扫（meta 问题，识别交给 planner 按需调技能）；
+                # 超长文本视为学习材料（交给 parse_document），不识别不介入。
+                tracker = self._get_tracker(conversation_id)
+                pre_scan = None
+                scan_notices = []
+                help_intent = detect_help_intent(user_input)
+                too_long = len(user_input) > MAX_SCAN_CHARS
+                if not help_intent and not too_long:
+                    try:
+                        pre_scan = self._get_identify_skill().run(
+                            {"text": user_input, "native_lang": native_lang})
+                    except Exception as e:  # noqa: BLE001 预扫失败不阻断对话
+                        pre_scan = None
+                        scan_notices.append({"stage": "pre_scan",
+                                             "reason": str(e), "fatal": False})
+                max_conf, error_flag = 1.0, None
+                if isinstance(pre_scan, dict):
+                    confs = [float(e.get("confidence") or 0.0)
+                             for e in (pre_scan.get("errors") or [])
+                             + (pre_scan.get("uncertain") or [])
+                             if isinstance(e, dict)]
+                    max_conf = max(confs) if confs else 1.0
+                    error_flag = bool(pre_scan.get("errors")
+                                      or pre_scan.get("uncertain"))
+                    # 账本：预扫确认偏误 → observation_error（惯犯数据源不断档；
+                    # planner 重复 identify 同句由 skip_text 去重）
+                    for err in pre_scan.get("errors") or []:
+                        kp = err.get("knowledge_point_id") if isinstance(err, dict) else None
+                        if not kp:
+                            continue
+                        try:
+                            wb.ledger.record(
+                                "observation_error", kp,
+                                signature=err.get("fragment", ""),
+                                evidence=user_input)
+                        except Exception as e:  # noqa: BLE001
+                            scan_notices.append({"stage": "ledger_write",
+                                                 "reason": str(e), "fatal": False})
+                if too_long:
+                    level, reason = "none", "material"   # 材料句：不介入不分档
+                else:
+                    level, reason = tracker.observe(
+                        user_input, max_conf=max_conf,
+                        error_flag=error_flag, cap=cap)
+                intervention_directive = build_intervention_directive(
+                    level, reason, native_lang, recognition=pre_scan)
+
                 res = self._get_planner(provider).run(
                     user_input, history=history, learner_id=learner_id,
-                    profile_summary=profile_summary, native_lang=native_lang)
+                    profile_summary=profile_summary, native_lang=native_lang,
+                    scene_brief=scene_brief, persona_brief=persona_brief,
+                    intervention_directive=intervention_directive)
                 # M8 两段式·账本侧：识别命中→observation_error；复述 pass→concept_confirmed
-                m8_notices = self._writeback_ledger_events(
-                    wb, res.get("trace", []), user_input)
+                m8_notices = scan_notices + self._writeback_ledger_events(
+                    wb, res.get("trace", []), user_input,
+                    skip_text=(user_input if isinstance(pre_scan, dict) else ""))
                 # M8 汇合 M5：常错点结构化 facts 写回长期记忆 profile 块
                 try:
                     facts = build_profile_facts(self._router.graph, wb.ledger)
@@ -398,6 +508,8 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 "steps": res.get("steps", 0),
                 "fallback": bool(res.get("fallback", False)),
                 "trace": res.get("trace", []),
+                "intervention": {"level": level, "reason": reason,
+                                 "used": tracker.interrupt_used, "cap": cap},
                 "degraded": degraded,
                 "graph": graph_snapshot,
             }
@@ -408,7 +520,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             path = parsed.path.rstrip("/")
             if path in ("/api/process", "/api/verify", "/api/generate", "/api/dialog",
                         "/api/providers", "/api/providers/test",
-                        "/api/providers/default"):
+                        "/api/providers/default", "/api/profile"):
                 try:
                     length = int(self.headers.get("Content-Length", 0))
                     raw = self.rfile.read(length) if length else b"{}"
@@ -444,6 +556,12 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                     self._do_api_dialog(payload)
                 except Exception as e:
                     self._send_json({"error": f"dialog failed: {e}"}, 500)
+                return
+            if path == "/api/profile":
+                try:
+                    self._do_api_profile_save(payload)
+                except Exception as e:
+                    self._send_json({"error": f"profile save failed: {e}"}, 500)
                 return
             if path == "/api/providers":
                 try:
@@ -492,6 +610,15 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 return
             if path == "/api/providers":
                 self._do_api_providers_list()
+                return
+            if path == "/api/scenarios":
+                # 0.22 方向2 · 预置场景库（前端场景卡列表，D2.3）
+                try:
+                    from engine.scenarios import list_scene_cards
+                    self._send_json({"scenes": list_scene_cards(),
+                                     "count": len(list_scene_cards())})
+                except Exception as e:  # noqa: BLE001 场景库不可用 → 空列表不报错
+                    self._send_json({"scenes": [], "count": 0, "error": str(e)})
                 return
             # 静态：根 → index.html
             rel = parsed.path or "/"
@@ -572,6 +699,31 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                     {"role": m.get("role"), "content": m.get("content", "")}
                     for m in msgs if m.get("role") in ("user", "assistant")],
             })
+
+        def _do_api_profile_save(self, payload):
+            """0.22 方向3 · 保存个性化 persona（设计稿 §4：仅更新 persona 块）。
+            - normalize_persona 校验/清洗（白名单 + 截长），非法 reply_style → 400
+            - 部分合并：只更新给出字段，其余沿用现值（current）"""
+            learner_id = str(payload.get("learner") or "").strip() or \
+                self._router.learner_id
+            raw = payload.get("persona")
+            if not isinstance(raw, dict):
+                self._send_json({"error": "persona 应为对象",
+                                 "code": "invalid_persona"}, 400)
+                return
+            from engine.persona import normalize_persona
+            with self._lock:
+                mem = self._get_memory(learner_id)
+                current = mem.get_profile().get("persona")
+                try:
+                    normalized = normalize_persona(
+                        raw, current=current if isinstance(current, dict) else None)
+                except ValueError as e:
+                    self._send_json({"error": str(e),
+                                     "code": "invalid_persona"}, 400)
+                    return
+                mem.update_profile(persona=normalized)
+            self._send_json({"ok": True, "persona": normalized})
 
         # ---------- BYOK 供应商管理（0.20：OpenAI 兼容多供应商，UI 内配置免重启） ----------
 

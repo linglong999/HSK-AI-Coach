@@ -1,0 +1,61 @@
+{
+  "l1": "en",
+  "version": "0.22.1",
+  "note": "英语母语者→中文高频迁移规则（0.22 方向1）。锚定 recognizer 实际降类（type 四枚举 + knowledge_point_id），fragment/correction 签名二次确认。假设只作 candidate，绝不进确诊图谱。",
+  "rules": [
+    {
+      "rule_id": "en-classifier-missing",
+      "title": "量词缺失或泛化",
+      "kp_anchors": ["kp-liangci"],
+      "types": ["语法", "词汇"],
+      "l1_anchor": "English numbers nouns directly ('three apples', 'a phone') with no classifier system",
+      "zh_signature": "数词直接连名词（三苹果→三个苹果），或一律泛化用'个'（一个手机→一部手机）",
+      "conf": 0.5
+    },
+    {
+      "rule_id": "en-possessive-de",
+      "title": "领属/修饰'的'遗漏",
+      "kp_anchors": ["kp-de-di-de"],
+      "types": ["语法"],
+      "l1_anchor": "English marks possession and modification without a particle ('my friend', 'Tom's book', 'beautiful clothes')",
+      "zh_signature": "代词/名词/形容词直接连名词缺'的'（我朋友书→我朋友的书；漂亮衣服→漂亮的衣服）",
+      "conf": 0.45
+    },
+    {
+      "rule_id": "en-quantity-adverb-postposed",
+      "title": "数量词后置",
+      "kp_anchors": ["kp-zhuangyu-chezhi", "kp-chengdu-jieci"],
+      "types": ["语法"],
+      "l1_anchor": "English splits 'many' (before noun) from 'a lot' (after verb); learners keep the quantity word after the verb phrase",
+      "zh_signature": "'很多/不少'等留在动词后（买苹果很多→买很多苹果）",
+      "conf": 0.4
+    },
+    {
+      "rule_id": "en-adj-predicate",
+      "title": "形容词谓语句：系动词冗余或裸形容词",
+      "kp_anchors": ["kp-chengdu-jieci"],
+      "types": ["语法"],
+      "l1_anchor": "English requires 'be' before adjectives (She is happy); Chinese adjectives predicate directly, and a bare adjective needs a degree word (很)",
+      "zh_signature": "'是+形容词'（我是高兴→我很高兴），或裸形容词缺程度词（她高兴→她很高兴）",
+      "conf": 0.45
+    },
+    {
+      "rule_id": "en-aspect-particle",
+      "title": "动态助词'了/着/过'缺失或误加",
+      "kp_anchors": ["kp-le-dynamic", "kp-zhe", "kp-guo"],
+      "types": ["语法"],
+      "l1_anchor": "English marks time on the verb itself (-ed / -ing / have done); Chinese marks aspect with particles after the verb",
+      "zh_signature": "完成义缺'了'（昨天我去学校→去了），或体标记误加/误删",
+      "conf": 0.4
+    },
+    {
+      "rule_id": "en-wh-fronting",
+      "title": "疑问词前置",
+      "kp_anchors": [],
+      "types": ["语法"],
+      "l1_anchor": "English fronts question words (What do you want?); Chinese keeps them where the answer belongs (你要什么?)",
+      "zh_signature": "疑问词留在句首（什么你要→你要什么）",
+      "conf": 0.35
+    }
+  ]
+}

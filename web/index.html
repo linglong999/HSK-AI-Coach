@@ -267,6 +267,25 @@
   .send:hover{filter:brightness(1.08)}
   .send:disabled{opacity:.5;cursor:default}
 
+  /* 0.22 方向2 · 场景对话入口 */
+  .scenebar{display:flex;align-items:center;gap:8px;justify-content:center;padding:8px 14px 0}
+  .scene-pick{flex:0 0 auto;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+              background:transparent;border:1px dashed rgb(var(--line));color:rgb(var(--tx2));
+              border-radius:999px;padding:6px 14px;font-size:12.5px;cursor:pointer;transition:all .15s}
+  .scene-pick:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+  .scene-pick.active{border-style:solid;border-color:rgb(var(--brand));color:rgb(var(--brand))}
+  .scene-clear{margin-left:4px;color:rgb(var(--tx3));cursor:pointer;padding:0 4px}
+  .scene-clear:hover{color:rgb(var(--brand))}
+  .scene-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-top:6px}
+  .scene-card{background:rgb(var(--panel2));border:1px solid rgb(var(--line));border-radius:12px;
+              padding:14px 16px;cursor:pointer;transition:all .15s;text-align:left}
+  .scene-card:hover{transform:translateY(-2px);border-color:rgb(var(--brand))}
+  .scene-card b{display:block;font-size:15px;color:rgb(var(--tx))}
+  .scene-card .sc-zh{font-size:13px;color:rgb(var(--brand));margin-top:2px}
+  .scene-card .sc-goals{font-size:12px;color:rgb(var(--tx2));margin-top:8px;line-height:1.5}
+  .scene-card .sc-meta{display:flex;gap:8px;font-size:11px;color:rgb(var(--tx3));margin-top:8px;flex-wrap:wrap}
+  .scene-card .sc-tag{border:1px solid rgb(var(--line));border-radius:999px;padding:2px 8px}
+
   .pending{display:flex;gap:5px;align-items:center;padding:12px 14px;background:rgb(var(--panel2));
            border:1px solid rgb(var(--line));border-radius:12px;color:rgb(var(--tx2));font-size:13px}
   .pending .ti{width:6px;height:6px;border-radius:50%;background:rgb(var(--brand));animation:blink 1.1s infinite}
@@ -371,6 +390,8 @@
   .theme-swatch .nm{font-size:12.5px;color:rgb(var(--tx2));margin-top:9px;font-weight:600}
   .theme-swatch.active{border-color:rgb(var(--brand))}
   .theme-swatch.active .nm{color:rgb(var(--brand))}
+  .theme-grid.styles{grid-template-columns:repeat(3,1fr);max-width:560px}
+  .theme-swatch .cd{font-size:11px;color:rgb(var(--tx3));line-height:1.5;margin-top:4px;font-weight:400}
   .row2{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:10px;font-size:13px}
   .kbd{font-family:Consolas,monospace;font-size:12px;background:rgb(var(--item));border:1px solid rgb(var(--line));
        border-bottom-width:2px;border-radius:6px;padding:3px 9px;color:rgb(var(--tx2));white-space:nowrap}
@@ -462,6 +483,9 @@
         </div>
       </div>
       <div class="hint mono" data-i18n="inputHint">Enter 换行 · Ctrl+Enter 发送</div>
+      <div class="scenebar">
+        <button class="scene-pick" id="scenePick" data-i18n="scenePick" title="选择学习场景（0.22 方向2）" data-i18n-title="scenePickTitle"><span id="scenePickName">选择场景 ▾</span></button>
+      </div>
       <div class="inputrow">
         <div class="inputbox">
           <button class="model-pick" id="modelPick" title="选择模型（设置 → 模型密钥 可添加供应商）" data-i18n-title="modelPickTitle"><span class="dot"></span><span id="modelPickName">默认模型</span> ▾</button>
@@ -504,6 +528,7 @@
       <li data-tab="theme" class="active" data-i18n="tabTheme">界面主题</li>
       <li data-tab="llm" data-i18n="tabLLM">模型密钥</li>
       <li data-tab="lang" data-i18n="tabLang">语言</li>
+      <li data-tab="persona" data-i18n="tabPersona">个性化</li>
       <li data-tab="keys" data-i18n="tabKeys">快捷键</li>
       <li data-tab="about" data-i18n="tabAbout">关于</li>
     </ul>
@@ -553,7 +578,16 @@
     <div style="display:flex;gap:10px;margin-top:14px;align-items:center">
       <button class="kp" id="docParse" style="font-size:13px;padding:7px 16px" data-i18n="docParse">开始解析</button>
       <span class="charct" data-i18n="docNote">解析结果以"材料解析卡"出现在对话流中</span>
-    </div>
+      </div>
+  </div>
+</div>
+
+<!-- ================= 场景对话（0.22 方向2） ================= -->
+<div class="overlay" id="sceneOvl">
+  <div class="modal">
+    <button class="close" data-close="sceneOvl" aria-label="关闭">×</button>
+    <ul class="modal-nav"><h4 data-i18n="sceneH">场景对话</h4><li class="active" data-i18n="sceneSub">选一个场景，开口练中文</li></ul>
+    <div class="modal-body"><div class="scene-grid" id="sceneBody"></div></div>
   </div>
 </div>
 
@@ -575,6 +609,9 @@ const state={
   sessions:[],           // 侧栏会话列表（GET /api/profile）
   providers:[],          // BYOK 供应商列表（GET /api/providers，0.20）
   defaultProvider:null,  // 服务端实际生效的默认供应商 id
+  sceneId:'',            // 0.22 场景对话：当前场景 id（空=自由对话）
+  scenes:[],             // 预置场景列表（GET /api/scenarios，0.22）
+  persona:null,          // 0.22 方向3：个性化 persona（GET /api/profile.profile.persona）
   providerId:(()=>{try{return localStorage.getItem('hsk-provider')||''}catch(e){return ''}})(),
   lang:(()=>{try{const l=localStorage.getItem('hsk-lang');return (l==='zh'||l==='en')?l:'en'}catch(e){return 'en'}})(),
 };
@@ -597,6 +634,13 @@ en:{
   inputHint:'Enter = new line · Ctrl+Enter = send',
   inputPh:'Type a Chinese sentence, ask about a knowledge point, or retell what you just learned…',
   sendTitle:'Send (Ctrl+Enter)',
+  scenePick:'Choose a scenario ▾', scenePickTitle:'Practice Chinese in a scenario (场景对话)',
+  scenePickActive:'In scenario:', scenePickClear:'exit',
+  sceneH:'Scenario conversation', sceneSub:'Pick a scenario and start speaking Chinese',
+  sceneGoals:'Goals:', sceneLevel:'HSK', sceneKps:'points', sceneStart:'Start',
+  sceneEmpty:'No scenarios available — the server scenario library is empty.',
+  sceneOpen:'Let’s start the "{title}" scenario. Set the scene and let me speak.',
+  sceneIntro:'Scenario starts: {title}. I will speak first — guide me, don’t correct every sentence.',
   modelPickTitle:'Choose model (add providers in Settings → Model keys)',
   defaultModel:'Default model',
   backChat:'‹ Back to chat',
@@ -669,7 +713,20 @@ en:{
   errUnknownHint:'This provider may have been deleted — pick the model again',
   errGraph:'Failed to load the graph: ',
   annotateTitle:'Click to locate this knowledge point on the map',
-  tabTheme:'Theme', tabLLM:'Model keys', tabKeys:'Shortcuts', tabAbout:'About', tabLang:'Language',
+  tabTheme:'Theme', tabLLM:'Model keys', tabKeys:'Shortcuts', tabAbout:'About', tabLang:'Language', tabPersona:'Personalize',
+  psH:'Personalize your coach',
+  psSub:'Reply style, address, identity and custom instructions — saved to your learner profile and applied on every turn (interrupt cap is enforced deterministically by the server, not left to the model).',
+  psStyle:'Reply style',
+  psStyle_default:'Default', psStyle_rigorous:'Rigorous', psStyle_friendly:'Friendly', psStyle_pragmatic:'Pragmatic', psStyle_creative:'Creative', psStyle_socratic:'Socratic',
+  psStyleDesc_default:'Follows the language-policy default', psStyleDesc_rigorous:'Precise, structured, no small talk',
+  psStyleDesc_friendly:'Warm, encourages before correcting', psStyleDesc_pragmatic:'Shortest usable Chinese, minimal theory',
+  psStyleDesc_creative:'Vivid analogies, humor welcome', psStyleDesc_socratic:'Questions instead of answers',
+  psAddressPh:'How to address you (e.g. Ling)', psIdentityPh:'Coach identity (e.g. my Chinese practice buddy)',
+  psInstrPh:'Custom instructions (e.g. focus on one error at a time)',
+  psCap:'Interruption cap (per conversation)',
+  psCapHint:'Silent while you are fluent; steps in only when you ask for help, get stuck, or repeat errors. After the cap it just records silently.',
+  psSave:'Save', psSaving:'Saving…', psSaved:'Saved — applies from your next message', psSaveFail:'Save failed: ',
+  psLoadingPersona:'Loading…',
   themeH:'Interface theme', themeSub:'Two themes (same lightness, different accent). Switching only swaps tokens; semantic colors (graph types / error green-red) stay.',
   themeMemphis:'Memphis', themeWarm:'Warm orange', themeToast:'Theme → {name}',
   langH:'Language / 语言',
@@ -724,6 +781,13 @@ zh:{
   inputHint:'Enter 换行 · Ctrl+Enter 发送',
   inputPh:'说一句话、问一个知识点，或复述刚学的内容…',
   sendTitle:'发送 (Ctrl+Enter)',
+  scenePick:'选择场景 ▾', scenePickTitle:'在场景里开口练中文（场景对话）',
+  scenePickActive:'场景中:', scenePickClear:'退出',
+  sceneH:'场景对话', sceneSub:'选一个场景，开口练中文',
+  sceneGoals:'目标:', sceneLevel:'HSK', sceneKps:'知识点', sceneStart:'开始',
+  sceneEmpty:'暂无可用场景 —— 服务端场景库为空。',
+  sceneOpen:'我们开始「{title}」场景吧。设定好场景，让我先开口。',
+  sceneIntro:'场景已开启：{title}。让我先开口，你引导我——不要逐句纠错。',
   modelPickTitle:'选择模型（设置 → 模型密钥 可添加供应商）',
   defaultModel:'默认模型',
   backChat:'‹ 返回对话',
@@ -796,7 +860,20 @@ zh:{
   errUnknownHint:'该供应商可能已被删除，请重新选择模型',
   errGraph:'无法加载图谱：',
   annotateTitle:'点击在地图定位',
-  tabTheme:'界面主题', tabLLM:'模型密钥', tabKeys:'快捷键', tabAbout:'关于', tabLang:'语言',
+  tabTheme:'界面主题', tabLLM:'模型密钥', tabKeys:'快捷键', tabAbout:'关于', tabLang:'语言', tabPersona:'个性化',
+  psH:'个性化你的学习伙伴',
+  psSub:'回复风格、称呼、身份与自定义指令——存入学习档案，每轮对话即时生效（打断上限由服务端确定性执行，不依赖模型自觉）。',
+  psStyle:'回复风格',
+  psStyle_default:'默认', psStyle_rigorous:'专业严谨', psStyle_friendly:'亲和友善', psStyle_pragmatic:'高效务实', psStyle_creative:'天马行空', psStyle_socratic:'启发引导',
+  psStyleDesc_default:'跟随语言策略默认，不加额外约束', psStyleDesc_rigorous:'术语准确、条理清晰，不寒暄',
+  psStyleDesc_friendly:'先肯定再纠错，语气温暖鼓励', psStyleDesc_pragmatic:'直给能用的说法，少讲理论',
+  psStyleDesc_creative:'生动类比、有趣例子，允许幽默', psStyleDesc_socratic:'引而不答，多提问带你自己发现',
+  psAddressPh:'怎么称呼你（如：小玲）', psIdentityPh:'AI 身份（如：我的中文陪练友）',
+  psInstrPh:'自定义指令（如：一次只聚焦一个错）',
+  psCap:'打断上限（次/场）',
+  psCapHint:'流利时静默；仅在求助、卡壳或连续出错时介入，达上限后只记录不打断。',
+  psSave:'保存', psSaving:'保存中…', psSaved:'已保存，下一轮对话生效', psSaveFail:'保存失败：',
+  psLoadingPersona:'读取中…',
   themeH:'界面主题', themeSub:'两套主题（深浅相同、强调色不同），切换只换 token，语义色（图谱类型/偏误红绿）保持不变。',
   themeMemphis:'孟菲斯', themeWarm:'暖橙', themeToast:'主题 → {name}',
   langH:'语言 / Language',
@@ -1596,14 +1673,60 @@ function showModelMenu(btn){
 $('modelPick').addEventListener('click',()=>showModelMenu($('modelPick')));
 
 /* ============================================================
+ * 场景对话（0.22 方向2）：选择场景 → dialog 带 scene_id
+ * 服务端把 [Scene] brief 注入主链，让学习者开口习得、不逐句纠错。
+ * ============================================================ */
+function sceneTitleInline(sc){return (LANG==='zh'?sc.title_zh:sc.title)||sc.title;}
+function renderScenePick(){
+  const btn=$('scenePick'),name=$('scenePickName');
+  if(!btn)return;
+  if(state.sceneId){
+    const sc=state.scenes.find(s=>s.scene_id===state.sceneId);
+    btn.classList.add('active');
+    name.textContent=(sc?sceneTitleInline(sc):state.sceneId)+'  ×';
+    btn.title=t('scenePickTitle');
+  }else{
+    btn.classList.remove('active');
+    name.textContent=t('scenePick');
+    btn.title=t('scenePickTitle');
+  }
+}
+async function loadScenes(){
+  let list=[];
+  try{const d=await api('/api/scenarios');list=(d&&d.scenes)||[];}catch(e){list=[];}
+  state.scenes=list;
+  const body=$('sceneBody');if(!body)return;
+  if(!list.length){body.innerHTML=`<div class="charct" style="grid-column:1/-1">${t('sceneEmpty')}</div>`;return;}
+  body.innerHTML=list.map(sc=>`
+    <div class="scene-card" data-s="${esc(sc.scene_id)}">
+      <b>${esc(sc.title)}</b>
+      <div class="sc-zh">${esc(sc.title_zh||'')}</div>
+      <div class="sc-goals">${t('sceneGoals')} ${(sc.goals||[]).map(esc).join(' · ')}</div>
+      <div class="sc-meta">
+        <span class="sc-tag">${t('sceneLevel')} ${(sc.level||[]).join('-')}</span>
+        <span class="sc-tag">${esc(sc.kp_count||0)} ${t('sceneKps')}</span>
+      </div>
+    </div>`).join('');
+  body.querySelectorAll('.scene-card').forEach(c=>c.addEventListener('click',()=>{
+    const id=c.dataset.s;state.sceneId=id;renderScenePick();
+    $('sceneOvl').classList.remove('show');
+    const sc=state.scenes.find(x=>x.scene_id===id);
+    sendPrompt(tf('sceneOpen',{title:sc?sceneTitleInline(sc):id}));
+  }));
+}
+$('scenePick').addEventListener('click',()=>{openOverlay('sceneOvl');loadScenes();});
+
+/* ============================================================
  * 主流程：单一输入框 → /api/dialog（planner 唯一对话入口）
  * 会话内多轮上下文由服务端按 conversation_id 持久化（M5 权威源）
  * ============================================================ */
 async function runDialog(text){
   const before=new Set(Object.keys((graph&&graph.nodes)||{}));
-  const res=await api('/api/dialog',{text,conversation_id:state.conversation,
-                                     provider_id:state.providerId,
-                                     native_lang:LANG});
+  const body={text,conversation_id:state.conversation,
+              provider_id:state.providerId,
+              native_lang:LANG};
+  if(state.sceneId) body.scene_id=state.sceneId;   // 0.22 场景对话
+  const res=await api('/api/dialog',body);
   bornIds=new Set(Object.keys((res.graph&&res.graph.nodes)||{}).filter(id=>!before.has(id)));
   applyGraph(res.graph);
   renderTrace(res.trace);
@@ -1649,6 +1772,7 @@ const THEMES=[
   {id:'memphis',name:'孟菲斯',brand:'#df6b8c',bg:'#faf8f3'},
   {id:'warm',name:'暖橙',brand:'#f45f28',bg:'#f2eadb'},
 ];
+const PS_STYLES=['default','rigorous','friendly','pragmatic','creative','socratic'];
 function setTheme(id){
   document.documentElement.dataset.theme=id;
   try{localStorage.setItem('hsk-theme',id);}catch(e){}
@@ -1674,6 +1798,35 @@ const settingsTabs={
         <div class="nm">中文</div>
       </div>
     </div>`,
+  persona:()=>{
+    const p=state.persona||{};
+    const cur=p.reply_style||'default';
+    const cap=(p.interrupt_cap!=null)?p.interrupt_cap:3;
+    return `
+    <h3>${t('psH')}</h3>
+    <p class="sub">${t('psSub')}</p>
+    <div class="prov-form">
+      <h5>${t('psStyle')}</h5>
+      <div class="theme-grid styles">${PS_STYLES.map(s=>`
+        <div class="theme-swatch ${cur===s?'active':''}" data-style="${s}">
+          <div class="nm">${t('psStyle_'+s)}</div>
+          <div class="cd">${t('psStyleDesc_'+s)}</div>
+        </div>`).join('')}</div>
+      <div class="fgrid" style="margin-top:12px">
+        <input id="psAddress" placeholder="${t('psAddressPh')}" maxlength="50" value="${esc(p.address||'')}">
+        <input id="psIdentity" placeholder="${t('psIdentityPh')}" maxlength="200" value="${esc(p.identity||'')}">
+        <input id="psInstr" class="wide" placeholder="${t('psInstrPh')}" maxlength="500" value="${esc(p.custom_instructions||'')}">
+      </div>
+      <div class="frow">
+        <label class="hint" for="psCap" style="flex:none;white-space:nowrap">${t('psCap')}</label>
+        <input id="psCap" type="number" min="0" max="10" value="${cap}" style="width:70px;flex:none">
+        <span class="hint">${t('psCapHint')}</span>
+      </div>
+      <div class="frow">
+        <button class="btn-brand" id="psSave">${t('psSave')}</button>
+        <span class="hint" id="psStatus">${state.persona?'':t('psLoadingPersona')}</span>
+      </div>
+    </div>`;},
   llm:()=>`
     <h3>${t('llmH')}</h3>
     <div class="prov-note">${t('llmNote')}</div>
@@ -1725,6 +1878,56 @@ function renderSettingsTab(k){
       }));
   }
   if(k==='llm')bindProvidersTab();
+  if(k==='persona')bindPersonaTab();
+}
+
+// ---- 个性化 tab（0.22 方向3）：persona 编辑/保存（POST /api/profile） ----
+async function loadPersona(){
+  const r=await api('/api/profile');
+  const p=(r&&r.profile&&r.profile.persona)||null;
+  state.persona=p||{};
+  return p;
+}
+function bindPersonaTab(){
+  const body=$('settingsBody');
+  // 风格六卡单选
+  body.querySelectorAll('.theme-swatch[data-style]').forEach(sw=>
+    sw.addEventListener('click',()=>{
+      body.querySelectorAll('.theme-swatch[data-style]').forEach(x=>x.classList.remove('active'));
+      sw.classList.add('active');
+    }));
+  const fill=(p)=>{
+    if(!p)return;
+    if(p.reply_style)body.querySelectorAll('.theme-swatch[data-style]').forEach(x=>
+      x.classList.toggle('active',x.dataset.style===p.reply_style));
+    $('psAddress').value=p.address||'';
+    $('psIdentity').value=p.identity||'';
+    $('psInstr').value=p.custom_instructions||'';
+    if(p.interrupt_cap!=null)$('psCap').value=p.interrupt_cap;
+    const st=$('psStatus');if(st)st.textContent='';
+  };
+  // 打开 tab 时拉一次现值（服务端 profile.persona 为权威；空 = 全默认）
+  loadPersona().then(fill).catch(()=>{
+    const st=$('psStatus');if(st)st.textContent='';
+  });
+  $('psSave').addEventListener('click',async()=>{
+    const active=body.querySelector('.theme-swatch[data-style].active');
+    const persona={
+      reply_style:active?active.dataset.style:'default',
+      address:$('psAddress').value.trim(),
+      identity:$('psIdentity').value.trim(),
+      custom_instructions:$('psInstr').value.trim(),
+      interrupt_cap:parseInt($('psCap').value,10),
+    };
+    const b=$('psSave');b.disabled=true;const old=b.textContent;b.textContent=t('psSaving');
+    try{
+      const r=await api('/api/profile',{persona});
+      state.persona=(r&&r.persona)||persona;
+      fill(state.persona);
+      toast(t('psSaved'));
+    }catch(e){toast(t('psSaveFail')+e.message);}
+    b.disabled=false;b.textContent=old;
+  });
 }
 
 // ---- 模型密钥 tab（0.20 BYOK）：列表渲染 + 增删/测试/设默认 ----

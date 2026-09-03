@@ -57,6 +57,7 @@ class Router:
         result = {"contract_version": "v1", "learner_id": self.learner_id,
                   "user_level": self.user_level, "native_lang": self.native_lang,
                   "input_text": user_text, "errors": [], "uncertain": [],
+                  "hypotheses": [],
                   "has_error": False, "graph_size": 0, "review_queue": [],
                   "degraded": [], "meta": {"start_ts": time.strftime("%Y-%m-%dT%H:%M:%SZ",
                                                                      time.gmtime()),
@@ -70,9 +71,13 @@ class Router:
 
         # 1. 识别引擎（已对齐 2.1 v0.3；LLM 失败时内部已回退规则匹配）
         try:
-            recog = self.recognizer.recognize(user_text)
+            # 0.22：native_lang 传入识别（0.21 只接了 explainer/verifier，此路径漏传——
+            # 迁移假设与"母语"上下文提示词都依赖它）
+            recog = self.recognizer.recognize(user_text, native_lang=self.native_lang)
             confirmed = recog.get("errors", [])
             uncertain = recog.get("uncertain", [])
+            # 0.22：L1 迁移假设透传（契约 v1 新增可选键，向后兼容；只读不写图谱）
+            result["hypotheses"] = recog.get("hypotheses", [])
             # 识别层降级透传：_rule_fallback 返回字符串（非列表），两者都要记（契约 §5）
             rd_raw = recog.get("degraded")
             if isinstance(rd_raw, list):

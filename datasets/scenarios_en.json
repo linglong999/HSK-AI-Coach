@@ -1,0 +1,62 @@
+{
+  "l1": "en",
+  "version": "0.22.1",
+  "note": "预置场景库（0.22 方向2 D2.1）。kp_ids 对齐 datasets/knowledge_points_v1_4.json 真实 id（非占位名）；场景按 HSK 等级范围 + 知识点锚定（D2.4）。scene brief 注入对话主链让学习者开口习得，不逐句纠错。分发资产，放 datasets/（data/ 被 gitignore）。",
+  "scenes": [
+    {
+      "scene_id": "restaurant",
+      "title": "At a restaurant",
+      "title_zh": "餐厅点餐",
+      "level": [1, 2],
+      "kp_ids": ["kp-liangci", "kp-chengdu-jieci", "kp-nengyuan-dongci"],
+      "goals": ["点菜", "问价", "表达偏好", "请服务员帮忙"],
+      "seed": "你走进一家中国餐厅，想点两道菜，问问有什么招牌菜，再问问价格。",
+      "roles": {"learner": "顾客", "agent": "服务员"},
+      "roles_en": {"learner": "customer", "agent": "waiter"}
+    },
+    {
+      "scene_id": "shopping",
+      "title": "Shopping",
+      "title_zh": "购物",
+      "level": [1, 2],
+      "kp_ids": ["kp-liangci", "kp-haishi-xuanze", "kp-zhuangyu-chezhi"],
+      "goals": ["挑东西", "问价", "看款式", "决定买哪个"],
+      "seed": "你在商店里想买一件衣服，问问有哪些颜色和款式，比较一下价格。",
+      "roles": {"learner": "顾客", "agent": "店员"},
+      "roles_en": {"learner": "shopper", "agent": "shop assistant"}
+    },
+    {
+      "scene_id": "asking-direction",
+      "title": "Asking for directions",
+      "title_zh": "问路",
+      "level": [2, 3],
+      "kp_ids": ["kp-cunxian-ju", "kp-preposition-zaizai", "kp-zhuangyu-chezhi"],
+      "goals": ["问路", "确认方位", "道谢"],
+      "seed": "你在一个陌生的城市迷了路，想问路人去火车站怎么走，并确认要走多久。",
+      "roles": {"learner": "路人", "agent": "指路人"},
+      "roles_en": {"learner": "traveler", "agent": "local"}
+    },
+    {
+      "scene_id": "seeing-doctor",
+      "title": "Seeing a doctor",
+      "title_zh": "看医生",
+      "level": [3, 4],
+      "kp_ids": ["kp-le-dynamic", "kp-guo", "kp-de-di-de"],
+      "goals": ["描述症状", "说明病程", "听懂医嘱"],
+      "seed": "你觉得不舒服，去医院看医生，说说哪里疼、病了多少天，并问医嘱和吃什么药。",
+      "roles": {"learner": "病人", "agent": "医生"},
+      "roles_en": {"learner": "patient", "agent": "doctor"}
+    },
+    {
+      "scene_id": "travel-planning",
+      "title": "Planning a trip",
+      "title_zh": "旅行计划",
+      "level": [3, 4],
+      "kp_ids": ["kp-quxiang-buyu", "kp-haishi-xuanze", "kp-jietiaoyu-tiaojian"],
+      "goals": ["讨论行程", "比较选项", "安排时间天气"],
+      "seed": "你和一个同伴计划周末去旅游，讨论去哪里、坐什么车、住几天，比较几个方案。",
+      "roles": {"learner": "计划者", "agent": "同伴"},
+      "roles_en": {"learner": "planner", "agent": "companion"}
+    }
+  ]
+}

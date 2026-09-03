@@ -171,8 +171,9 @@ class GenerationEngineTest(unittest.TestCase):
 
     # ---------------- 其他：非法参数 / degrade 结构完整性 ----------------
     def test_unknown_type_degrades(self):
+        # dialogue 已是合法类型（0.22 方向2）；用真正未知的类型测守卫
         eng = self._engine([])
-        out = eng.generate_unit("dialogue", {}, max_repairs=0, write_back=False)
+        out = eng.generate_unit("slides", {}, max_repairs=0, write_back=False)
         self.assertFalse(out["ok"])
         self.assertEqual(out["status"], "degraded")
         self.assertEqual(out["attempts"], 0)

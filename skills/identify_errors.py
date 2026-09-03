@@ -27,7 +27,7 @@ class IdentifyErrorsSkill(Skill):
             "text": "必填，待检查的中文句子整数，如 '我想买苹果很多。'",
             "level": "可选，学习者 HSK 等级（1-4），默认 'HSK3'；由调用方注入，技能不自行获取上下文",
         },
-        "output": "对齐契约 v1：errors[]（fragment/correction/type/confidence/knowledge_point_id）+ uncertain[] + degraded[]",
+        "output": "对齐契约 v1：errors[]（fragment/correction/type/confidence/knowledge_point_id）+ uncertain[] + degraded[] + hypotheses[]（0.22 L1 迁移候选假设，只读不写图谱）",
     }
     input_schema: Dict[str, Any] = {
         "type": "object",
@@ -43,6 +43,7 @@ class IdentifyErrorsSkill(Skill):
             "errors": {"type": "array"},
             "uncertain": {"type": "array"},
             "degraded": {"type": "array"},
+            "hypotheses": {"type": "array"},
         },
     }
 
@@ -115,9 +116,11 @@ class IdentifyErrorsSkill(Skill):
             degraded.extend(self._write_graph(text, level, errors, uncertain))
 
         # 契约 v1 对齐：recognize 结果须含 errors/uncertain/degraded 键，缺省补全
+        # hypotheses[]（0.22 L1 迁移假设）：仅确认层偏误的候选归因，不进图谱（_write_graph 只读 errors/uncertain）
         return {
             "errors": errors,
             "uncertain": uncertain,
             "degraded": degraded,
+            "hypotheses": result.get("hypotheses", []) if isinstance(result, dict) else [],
             "_level_used": level,
         }

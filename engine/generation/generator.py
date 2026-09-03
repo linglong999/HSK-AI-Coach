@@ -16,6 +16,7 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from engine.generation.authoring import (
+    build_dialogue_prompt,
     build_explain_prompt,
     build_practice_prompt,
 )
@@ -28,7 +29,7 @@ _SYSTEM = (
     "只输出一个合法 JSON object，不含任何多余解释、注释或代码块。"
 )
 
-_SCENE_TYPES = ("explain", "practice")
+_SCENE_TYPES = ("explain", "practice", "dialogue")
 
 
 def _repair_feedback(diagnostics: List[UnitDiagnostic]) -> str:
@@ -121,10 +122,12 @@ class GenerationEngine:
 
             best_effort = parsed
             unit = parsed
-            diagnostics = self.validator.validate(parsed)
-            if not diagnostics:  # 合法单元
+            # 校验：explain/practice 走 schema-v1 严格校验；dialogue 走自身最小校验
+            diagnostics = (self._validate_dialogue(parsed) if unit_type == "dialogue"
+                           else self.validator.validate(parsed))
+            if not diagnostics:  # 合法输出
                 out = {"ok": True, "unit": unit, "attempts": attempts,
-                       "research": research_meta}
+                       "research": research_meta, "unit_type": unit_type}
                 if write_back and unit_type == "practice":
                     out["writeback"] = self._write_back(unit)
                 return out
@@ -180,6 +183,35 @@ class GenerationEngine:
         return text, {"used": True, "status": "ok", "n_sources": len(refs)}
 
     # ---------------- 内部 ----------------
+    @staticmethod
+    def _validate_dialogue(parsed: Any) -> List[UnitDiagnostic]:
+        """dialogue 场景扩写的最小校验（不套 schema-v1 完整单元校验）。
+        缺失必需字段/回合不足 → 产修复诊断（自愈）；否则合法。宁缺勿错：不合格不落库。"""
+        if not isinstance(parsed, dict):
+            return [UnitDiagnostic("code_shape", "root",
+                                   "dialogue 输出应为 JSON 对象",
+                                   fixes=["按 dialogue schema 输出对象"])]
+        problems = []
+        for field in ("scene_id", "type", "title", "title_zh", "seed", "turns",
+                      "expressions"):
+            if field not in parsed:
+                problems.append(field)
+        if not problems:
+            if parsed.get("type") != "dialogue":
+                problems.append("type(应为 dialogue)")
+            turns = parsed.get("turns")
+            exprs = parsed.get("expressions")
+            if not isinstance(turns, list) or len(turns) < 3:
+                problems.append("turns(≥3 条回合提示)")
+            if not isinstance(exprs, list) or len(exprs) < 3:
+                problems.append("expressions(≥3 条目标表达)")
+        if not problems:
+            return []
+        return [UnitDiagnostic(
+            "code_missing_fields", "root",
+            "dialogue 场景扩写缺少必要字段", evidence=", ".join(problems),
+            fixes=[f"补全字段: {', '.join(problems)} 并按要求输出"])]
+
     def _build_prompt(self, unit_type: str, context: Dict[str, Any],
                       reference_sources: str = "") -> str:
         if unit_type == "explain":
@@ -192,6 +224,14 @@ class GenerationEngine:
                 language_directive=context.get("language_directive", ""),
                 self_language=context.get("self_language", "zh"),
                 reference_sources=reference_sources,
+            )
+        if unit_type == "dialogue":
+            return build_dialogue_prompt(
+                scene_id=context.get("scene_id", ""),
+                level=context.get("level") or [],
+                kp_ids=context.get("kp_ids") or [],
+                seed=context.get("seed", ""),
+                language_directive=context.get("language_directive", ""),
             )
         for_keypoints = context.get("for_keypoints") or []
         if isinstance(for_keypoints, str):

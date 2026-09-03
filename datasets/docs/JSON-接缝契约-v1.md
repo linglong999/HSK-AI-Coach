@@ -18,6 +18,7 @@
   "input_text": "string",            // 本次输入原句
   "errors": [ /* 识别→讲解→图谱 → 已确认偏误列表，见 §1 */ ],
   "uncertain": [ /* 进入待确认队列的偏误，见 §1 */ ],
+  "hypotheses": [ /* L1 迁移候选假设（0.22），见 §6；只读，绝不进 confirmed 层 */ ],
   "has_error": true,                 // bool：是否有任何 confirmed 偏误
   "graph_size": 42,                  // int：当前图谱节点数（len(graph)）
   "review_queue": [ /* 复习队列，见 §4 */ ],
@@ -25,6 +26,27 @@
   "meta": { "start_ts": "...", "end_ts": "...", "elapsed_ms": 0 }
 }
 ```
+
+### §6. hypotheses[] —— L1 迁移候选假设（0.22 方向1，新增可选键）
+
+**向后兼容**：新增可选键，旧消费方不读不受影响。`identify_errors` 技能输出（对话主链 tool_result）与
+`Router.process()` 返回均携带；`native_lang` 为 zh/空、或无规则命中时为 `[]`。
+
+```jsonc
+{
+  "rule_id": "en-classifier-missing",  // datasets/transfer_rules_<l1>.json 的规则 id
+  "l1": "en",                          // 学习者母语（别名已归一：英语/English→en）
+  "conf": 0.5,                         // <0.7，永不到确认阈值
+  "status": "candidate",               // 恒为 candidate：假设，不是确诊
+  "fragment": "三苹果",                 // 归因挂靠的偏误片段（attach 用）
+  "l1_anchor": "English numbers nouns directly...",  // 母语习惯成因（讲解明示用）
+  "zh_signature": "数词直接连名词...",   // 该迁移在中文里的典型表现
+  "correction": "三个苹果"              // 原偏误的修正建议（与 errors 同源）
+}
+```
+
+约束：假设**只读**——不写偏误图谱（confirmed/pending 均不碰）、不进 ledger 事件、不进复习队列；
+消费方仅 `explainer`（EN 讲解注入母语成因，D1.4）与前端展示（后续版本）。
 
 ### §1. errors[] —— 一个"已确认偏误"的处理闭环
 

@@ -15,6 +15,7 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from engine.llm.client import LLMClient, JSONStrictError
+from engine.transfer import match_one as transfer_match_one
 
 # 讲解语言策略（0.21 · 面向英语母语学习者）：
 #   native_lang=="en"（或任意非 zh）时，讲解用"英文解释外壳 + 中文例句/正确句"（脚手架式双语，参考主流中文学习产品）。
@@ -71,6 +72,7 @@ LANGUAGE RULE: Write the explanation shell in English (the learner's native lang
 - Uncertain: {uncertain} (true → open with "This judgment is tentative.")
 - Beyond level: {beyond_level} (true → keep it simpler, note "beyond your level")
 - Graph history (may be empty): {learner_history} (if the point was missed repeatedly, explain more specifically WHY it keeps recurring)
+- L1 transfer hypothesis (candidate, may be empty): {transfer_hint}
 - Candidate points: {candidate_points}
 
 [Constraints]
@@ -81,6 +83,7 @@ LANGUAGE RULE: Write the explanation shell in English (the learner's native lang
 5. Always give a full corrected Chinese sentence; if the original is ambiguous, say which reading you corrected, then give the fix.
 6. key_points must come only from the candidates; if candidates are empty you may propose your own points but must set free_generated=true.
 7. Chinese grammar terms stay Chinese (量词, 补语, 语气词…); do not map them to English tense/syntax labels.
+8. If an L1 transfer hypothesis is present, weave it into part ② as the likely cause: name the native-language habit in plain words (e.g. "in English, 'many' comes before the noun"), then contrast with how Chinese works. Mark it as a likely reason, not a certainty.
 
 [Output] Strict JSON (key_points carry ids):
 {{"explanation": "English explanation with Chinese examples.", "key_points": [{{"id": "kp-1", "text": "English positive point with Chinese example if helpful"}}], "keywords": ["keyword1", "keyword2"], "uncertain_note": "tentative note or empty", "free_generated": false}}"""
@@ -172,6 +175,20 @@ class Explainer:
         is_en = bool(native_lang and native_lang.lower() != "zh")
         filled_system = SYSTEM_PROMPT_EN if is_en else SYSTEM_PROMPT
 
+        # 0.22 方向1 · D1.4：确定性迁移归因（零 LLM），命中则注入讲解——明示母语成因。
+        # 假设只作 candidate：提示词约束 8 要求"标为可能原因，不当定论"。
+        transfer_hint = ""
+        if is_en:
+            try:
+                hyp = transfer_match_one(error, native_lang)
+            except Exception:
+                hyp = None
+            if hyp:
+                transfer_hint = (
+                    f"rule={hyp['rule_id']} | native-language habit: {hyp['l1_anchor']} "
+                    f"| typical Chinese result: {hyp['zh_signature']}"
+                )
+
         if is_en:
             user_prompt = (
                 f"Original sentence: {sentence}\n"
@@ -187,6 +204,7 @@ class Explainer:
             sentence=sentence, fragment=fragment, correction=correction, type=etype,
             level=user_level, native_language=native_lang or "未知", uncertain=uncertain,
             beyond_level=beyond, learner_history=learner_history or "（空）",
+            transfer_hint=transfer_hint or "(none)",
             candidate_points=cand_str,
         )
 
