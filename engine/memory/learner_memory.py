@@ -65,8 +65,10 @@ class LearnerMemory:
         return msg_id
 
     def touch(self, session_id: str, title: Optional[str] = None,
-              status: Optional[str] = None) -> None:
-        """更新会话元信息（title/status/updated_at），不追加消息。"""
+              status: Optional[str] = None, pinned: Optional[bool] = None,
+              bump: bool = True) -> None:
+        """更新会话元信息（title/status/pinned/updated_at），不追加消息。
+        bump=False：置顶/重命名等管理操作不改变 updated_at（排序只反映对话活跃度）。"""
         sid = self._safe(session_id)
         data = self._ensure(sid)
         sess = data["sessions"][sid]
@@ -74,8 +76,22 @@ class LearnerMemory:
             sess["title"] = title
         if status is not None:
             sess["status"] = status
-        sess["updated_at"] = int(time.time())
+        if pinned is not None:
+            sess["pinned"] = bool(pinned)
+        if bump:
+            sess["updated_at"] = int(time.time())
         self._save()
+
+    def delete_session(self, session_id: str) -> bool:
+        """删除整个会话（消息+元信息）。不存在返回 False。"""
+        sid = self._safe(session_id)
+        data = self._load()
+        if sid not in data["sessions"]:
+            return False
+        del data["sessions"][sid]
+        self._msg_seq.pop(sid, None)
+        self._save()
+        return True
 
     # ---------------- 读（LLM 注入前） ----------------
     def get_history(self, session_id: str, window: int = DEFAULT_WINDOW) -> List[Dict[str, Any]]:

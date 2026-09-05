@@ -15,6 +15,8 @@
 #   GET  /api/profile  → 学习者画像 + 会话列表（0.19 前端 v2：AI 学习报告/侧栏数据源，只读）
 #   POST /api/profile  → 保存个性化 persona（0.22 方向3：reply_style/address/identity/自定义指令/打断上限）
 #   GET  /api/conversation?id= → 单会话消息历史（0.19：URL 深链恢复会话，只读）
+#   POST /api/session/update   → 会话置顶/重命名（0.24 右键菜单，bump=False 不动活跃度排序）
+#   POST /api/session/delete   → 删除会话（0.24 右键菜单）
 #   GET  /api/providers → BYOK 供应商列表（掩码，0.20）
 #   POST /api/providers → 添加供应商（0.20 BYOK：OpenAI 兼容，UI 内配置免重启）
 #   POST /api/providers/test → 连通性测试（最小 chat 请求，不落盘）
@@ -520,7 +522,8 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             path = parsed.path.rstrip("/")
             if path in ("/api/process", "/api/verify", "/api/generate", "/api/dialog",
                         "/api/providers", "/api/providers/test",
-                        "/api/providers/default", "/api/profile"):
+                        "/api/providers/default", "/api/profile",
+                        "/api/session/update", "/api/session/delete"):
                 try:
                     length = int(self.headers.get("Content-Length", 0))
                     raw = self.rfile.read(length) if length else b"{}"
@@ -562,6 +565,18 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                     self._do_api_profile_save(payload)
                 except Exception as e:
                     self._send_json({"error": f"profile save failed: {e}"}, 500)
+                return
+            if path == "/api/session/update":
+                try:
+                    self._do_api_session_update(payload)
+                except Exception as e:
+                    self._send_json({"error": f"session update failed: {e}"}, 500)
+                return
+            if path == "/api/session/delete":
+                try:
+                    self._do_api_session_delete(payload)
+                except Exception as e:
+                    self._send_json({"error": f"session delete failed: {e}"}, 500)
                 return
             if path == "/api/providers":
                 try:
@@ -660,8 +675,10 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                         "status": str(sess.get("status") or "active"),
                         "updated_at": int(sess.get("updated_at") or 0),
                         "message_count": len(sess.get("messages", [])),
+                        "pinned": bool(sess.get("pinned")),
                     })
-                sessions.sort(key=lambda s: s["updated_at"], reverse=True)
+                # 0.24：置顶优先，组内仍按 updated_at 降序
+                sessions.sort(key=lambda s: (not s["pinned"], -s["updated_at"]))
                 snap = self._router.graph.graph_snapshot()
                 queue = snap.get("queue", [])
                 try:
@@ -724,6 +741,64 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                     return
                 mem.update_profile(persona=normalized)
             self._send_json({"ok": True, "persona": normalized})
+
+        # ---------- 会话管理（0.24：右键菜单 置顶/重命名/删除） ----------
+
+        def _do_api_session_update(self, payload):
+            """会话元信息管理：置顶/取消置顶、重命名。
+            - bump=False：管理操作不改变 updated_at（排序只反映对话活跃度）
+            - title 非空截 60 字；pinned 必须 bool；至少给一个字段
+            - 会话不存在 → 404 session_not_found（前端刷新列表自愈）"""
+            learner_id = str(payload.get("learner") or "").strip() or \
+                self._router.learner_id
+            cid = str(payload.get("conversation_id") or "").strip()
+            if not cid:
+                self._send_json({"error": "缺少 conversation_id",
+                                 "code": "missing_conversation_id"}, 400)
+                return
+            title = payload.get("title")
+            pinned = payload.get("pinned")
+            if title is not None:
+                title = str(title).strip()[:60]
+                if not title:
+                    self._send_json({"error": "标题不能为空",
+                                     "code": "invalid_title"}, 400)
+                    return
+            if pinned is not None and not isinstance(pinned, bool):
+                self._send_json({"error": "pinned 应为布尔值",
+                                 "code": "invalid_pinned"}, 400)
+                return
+            if title is None and pinned is None:
+                self._send_json({"error": "无可更新字段（title/pinned）",
+                                 "code": "nothing_to_update"}, 400)
+                return
+            with self._lock:
+                mem = self._get_memory(learner_id)
+                if mem._get(mem._safe(cid)) is None:
+                    self._send_json({"error": f"会话不存在: {cid}",
+                                     "code": "session_not_found"}, 404)
+                    return
+                mem.touch(cid, title=title, pinned=pinned, bump=False)
+            self._send_json({"ok": True, "conversation_id": cid,
+                             "title": title, "pinned": pinned})
+
+        def _do_api_session_delete(self, payload):
+            """删除整个会话（消息+元信息）。不存在 → 404（前端按已删处理）。"""
+            learner_id = str(payload.get("learner") or "").strip() or \
+                self._router.learner_id
+            cid = str(payload.get("conversation_id") or "").strip()
+            if not cid:
+                self._send_json({"error": "缺少 conversation_id",
+                                 "code": "missing_conversation_id"}, 400)
+                return
+            with self._lock:
+                mem = self._get_memory(learner_id)
+                deleted = mem.delete_session(cid)
+            if not deleted:
+                self._send_json({"error": f"会话不存在: {cid}",
+                                 "code": "session_not_found"}, 404)
+                return
+            self._send_json({"ok": True, "conversation_id": cid})
 
         # ---------- BYOK 供应商管理（0.20：OpenAI 兼容多供应商，UI 内配置免重启） ----------
 
@@ -848,6 +923,8 @@ def main():
     print("  GET  /api/graph     图谱 nodes/edges/queue")
     print("  GET  /api/profile   学习者画像 + 会话列表（AI 学习报告/侧栏，只读）")
     print("  GET  /api/conversation?id=  单会话消息历史（URL 深链恢复，只读）")
+    print("  POST /api/session/update   会话置顶/重命名（右键菜单）")
+    print("  POST /api/session/delete   删除会话（右键菜单）")
     print("  GET  /              前端壳页面（若 web/index.html 存在）")
     print("  Ctrl+C 停止")
     try:

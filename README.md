@@ -41,7 +41,7 @@ cp .env.example .env          # 填入 DEEPSEEK_API_KEY（https://platform.deeps
 python -m unittest discover tests -v
 ```
 
-**385 个测试全部 PASS** 即说明链路完整（识别/讲解/图谱/降级兜底/前端服务层）。这是本次主要增量：0.19 前后端 profile/深链 11、0.20 供应商/BYOK 20、0.21 双语 25、0.22 母语迁移归因 25 + 场景对话 25 + 介入时机/个性化 50。
+**403 个测试全部 PASS** 即说明链路完整（识别/讲解/图谱/降级兜底/前端服务层+界面静态不变量）。主要增量：0.19 前后端 profile/深链 11、0.20 供应商/BYOK 20、0.21 双语 25、0.22 母语迁移归因 25 + 场景对话 25 + 介入时机/个性化 50、0.23 前端静态不变量 3、0.24 会话右键菜单/置顶-重命名-删除 15。
 
 **3. 命令行跑两种用法**
 
@@ -133,7 +133,7 @@ HSK-AI-Coach/
 │   ├── persona.py + serve.py + providers.py + graph/error_graph.py + llm/client.py
 ├── web/index.html            前端壳（对话画布 + 认知地图）
 ├── datasets/  knowledge_points_v1_4 / lexicon_hsk1_4 / 各设计稿与评测脚本
-├── tests/                    385 个测试（免 Key 全 mock）
+├── tests/                    403 个测试（免 Key 全 mock）
 └── examples/                 命令行 demo
 ```
 

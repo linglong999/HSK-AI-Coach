@@ -37,6 +37,18 @@
     --sem-ok:34 154 104; --sem-warn:183 121 26; --sem-err:206 74 64;
     --kp-vocab:52 118 186; --kp-grammar:128 84 186; --kp-pragma:206 116 40; --kp-char:206 74 64;
   }
+  /* 暗夜（移植自个人工作台 midnight：暖褐黑 + 亮米白 + 亮铜金，无蓝味）*/
+  [data-theme="midnight"]{
+    --brand:212 160 84; --brand-ink:#241f1c;
+    --bg:36 31 28; --panel:43 38 34; --panel2:51 46 41;
+    --line:66 58 52; --line-strong:84 74 66;
+    --tx:236 231 224; --tx2:200 192 184; --tx3:158 149 141;
+    --input:40 35 31; --usermsg:74 58 42;
+    --item:48 42 38; --item-active:74 60 44;
+    /* 语义色整体提亮一档（暗底下同亮度会显脏）*/
+    --sem-ok:92 186 140; --sem-warn:214 156 66; --sem-err:232 106 92;
+    --kp-vocab:96 156 220; --kp-grammar:166 128 220; --kp-pragma:232 150 84; --kp-char:232 106 92;
+  }
 
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -311,12 +323,10 @@
   .q-prio{color:rgb(var(--tx2));min-width:42px;text-align:right;font-variant-numeric:tabular-nums}
 
   .node{cursor:pointer;transition:opacity .25s ease}
-  .node circle{transition:filter .2s ease}
-  .node:hover circle{filter:brightness(1.15)}
-  .node.hot circle{filter:brightness(1.12) drop-shadow(0 0 7px rgb(var(--sem-warn)/.8))}
-  .node.selected circle{stroke:rgb(var(--tx));stroke-width:2;filter:brightness(1.05) drop-shadow(0 0 8px rgb(var(--tx)/.4))}
+  .node:hover circle.core{filter:brightness(1.15)}
+  .node.hot circle.core{filter:brightness(1.12) drop-shadow(0 0 7px rgb(var(--sem-warn)/.8))}
   .node.dim{opacity:.14}
-  .node.born circle{animation:grow .55s cubic-bezier(.22,1.2,.4,1)}
+  .node.born circle.core{animation:grow .55s cubic-bezier(.22,1.2,.4,1)}
   @keyframes grow{0%{transform:scale(0)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
   .node-label{pointer-events:none;font-size:11px;fill:rgb(var(--tx2));transition:opacity .25s ease}
   .node-label.dim{opacity:.1}
@@ -324,6 +334,90 @@
   .edge.lit{stroke:rgb(var(--brand)/.8)}
   .edge.dim{opacity:.08}
   .lv-band{fill:rgb(var(--tx)/.025)}
+  /* 分区头（HSK 等级 pill） */
+  .lv-chip-bg{fill:rgb(var(--panel2));stroke:rgb(var(--line));stroke-width:1}
+  .lv-chip{font-size:10.5px;font-weight:700;fill:rgb(var(--tx2));text-anchor:middle;pointer-events:none}
+  .lv-chip .ct{fill:rgb(var(--tx3));font-weight:500}
+  /* 掌握度环 + 待复习虚线描边 */
+  .mastery-ring-bg{fill:none;stroke:rgb(var(--tx)/.2);stroke-width:3}
+  .mastery-ring{fill:none;stroke:rgb(var(--sem-ok));stroke-width:3;stroke-linecap:round}
+  .node circle.core{transition:filter .2s ease}
+  .node circle.core.rv{stroke:rgb(var(--sem-warn));stroke-width:2;stroke-dasharray:4 3}
+  .node.selected circle.core{stroke:rgb(var(--tx));stroke-width:2.5;stroke-dasharray:none;
+    filter:brightness(1.05) drop-shadow(0 0 8px rgb(var(--tx)/.4))}
+  .node.rec circle.core{animation:mapPulse 2.4s ease-in-out infinite}
+  @keyframes mapPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.28) drop-shadow(0 0 7px rgb(var(--sem-warn)/.55))}}
+  /* 下一步推荐条 */
+  .next-bar{display:none;align-items:center;gap:10px;padding:8px 12px;margin:0 16px 8px;
+    background:rgb(var(--panel));border:1px solid rgb(var(--line));border-radius:12px}
+  .next-bar.show{display:flex}
+  .next-bar .nb-glyph{width:26px;height:26px;border-radius:8px;background:rgb(var(--brand)/.14);color:rgb(var(--brand));
+    display:flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+  .next-bar .nb-main{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;font-size:12.5px}
+  .next-bar .nb-label{color:rgb(var(--brand));font-weight:700;flex:none}
+  .next-bar .nb-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .next-bar .nb-reason{color:rgb(var(--tx3));font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nb-btn{flex:none;border:0;cursor:pointer;padding:6px 12px;border-radius:9px;font-size:12px;font-weight:600;
+    background:rgb(var(--brand));color:var(--brand-ink)}
+  .nb-btn:hover{filter:brightness(1.08)}
+  .nb-btn.ghost{background:transparent;border:1px solid rgb(var(--line-strong));color:rgb(var(--tx2))}
+  /* 节点详情面板（点击聚焦） */
+  .node-detail{display:none;flex-direction:column;gap:8px;margin:0 16px 10px;padding:10px 12px;
+    background:rgb(var(--panel));border:1px solid rgb(var(--line));border-radius:12px;font-size:12.5px}
+  .node-detail.show{display:flex}
+  .node-detail .nd-head{display:flex;align-items:center;gap:8px}
+  .node-detail .nd-dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .node-detail .nd-name{font-weight:700;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .node-detail .nd-chip{flex:none;font-size:10.5px;padding:2px 8px;border-radius:99px;background:rgb(var(--tx)/.07);color:rgb(var(--tx2))}
+  .node-detail .nd-close{margin-left:auto;border:0;background:transparent;cursor:pointer;color:rgb(var(--tx3));font-size:15px;line-height:1;padding:2px 4px}
+  .node-detail .nd-close:hover{color:rgb(var(--tx))}
+  .node-detail .nd-stats{display:flex;align-items:center;gap:10px;color:rgb(var(--tx2));font-size:11.5px;flex-wrap:wrap}
+  .node-detail .nd-bar{flex:1;min-width:90px;height:6px;border-radius:4px;background:rgb(var(--tx)/.08);overflow:hidden}
+  .node-detail .nd-bar>i{display:block;height:100%;background:rgb(var(--sem-ok));border-radius:4px}
+  .node-detail .nd-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .node-detail .nd-act{border:1px solid rgb(var(--line-strong));background:transparent;color:rgb(var(--tx2));
+    border-radius:9px;padding:5px 11px;font-size:12px;cursor:pointer}
+  .node-detail .nd-act:hover{border-color:rgb(var(--brand));color:rgb(var(--brand))}
+  /* 场景横幅（0.23 场景任务化：目标常驻 + 复盘/退出） */
+  .scene-banner{display:none;flex-direction:column;gap:6px;margin:10px 16px 0;padding:9px 12px;
+    border:1px solid rgb(var(--brand)/.35);background:rgb(var(--brand)/.07);border-radius:12px;font-size:12px}
+  .scene-banner.show{display:flex}
+  .scene-banner .sb-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .scene-banner .sb-tag{flex:none;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;
+    background:rgb(var(--brand)/.16);color:rgb(var(--brand));letter-spacing:.5px}
+  .scene-banner .sb-title{font-weight:700;font-size:13px}
+  .scene-banner .sb-roles{color:rgb(var(--tx3));font-size:11.5px}
+  .scene-banner .sb-recap{margin-left:auto;flex:none;border:0;cursor:pointer;padding:5px 11px;border-radius:9px;
+    font-size:12px;font-weight:600;background:rgb(var(--brand));color:var(--brand-ink)}
+  .scene-banner .sb-recap:hover{filter:brightness(1.08)}
+  .scene-banner .sb-exit{flex:none;border:1px solid rgb(var(--line-strong));background:transparent;cursor:pointer;
+    color:rgb(var(--tx3));border-radius:8px;padding:4px 8px;font-size:12px;line-height:1}
+  .scene-banner .sb-exit:hover{color:rgb(var(--sem-err));border-color:rgb(var(--sem-err)/.5)}
+  .scene-banner .sb-goals{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .scene-banner .sb-glabel{color:rgb(var(--tx3));font-size:11.5px;flex:none}
+  .scene-banner .sb-goal{font-size:11.5px;padding:2px 9px;border-radius:99px;
+    background:rgb(var(--tx)/.06);border:1px dashed rgb(var(--line-strong));color:rgb(var(--tx2))}
+  .scene-banner .sb-seed{color:rgb(var(--tx3));font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* 会话右键菜单（0.24：置顶/分享/重命名/删除，对标 Notion/Linear 紧凑菜单） */
+  .ctx-menu{position:fixed;z-index:300;display:none;min-width:168px;padding:5px;
+    background:rgb(var(--panel2));border:1px solid rgb(var(--line-strong));border-radius:10px;
+    box-shadow:0 12px 32px rgb(0 0 0/.16),0 2px 8px rgb(0 0 0/.1);font-size:12.5px;user-select:none}
+  .ctx-menu.show{display:block}
+  .ctx-it{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:7px;
+    cursor:pointer;color:rgb(var(--tx2));white-space:nowrap}
+  .ctx-it:hover{background:rgb(var(--item));color:rgb(var(--tx))}
+  .ctx-it .ci{width:16px;text-align:center;font-size:12px;flex:none}
+  .ctx-sep{height:1px;margin:4px 8px;background:rgb(var(--line))}
+  .ctx-it.danger{color:rgb(var(--sem-err))}
+  .ctx-it.danger:hover{background:rgb(var(--sem-err)/.1)}
+  .ctx-it.armed{background:rgb(var(--sem-err)/.12);color:rgb(var(--sem-err));font-weight:600}
+  /* 行内重命名（会话项原地变输入框） */
+  .sren{width:100%;font:inherit;font-size:12.5px;padding:4px 6px;border-radius:6px;
+    border:1px solid rgb(var(--brand));background:rgb(var(--input));color:rgb(var(--tx));outline:none}
+  /* 分享降级文本域 */
+  .share-ta{width:100%;min-height:320px;resize:vertical;font-size:12.5px;line-height:1.7;
+    padding:10px 12px;border-radius:10px;border:1px solid rgb(var(--line-strong));
+    background:rgb(var(--input));color:rgb(var(--tx));outline:none}
   .lv-label{font-size:10px;fill:rgb(var(--tx3));pointer-events:none;letter-spacing:.5px}
 
   /* ============ 弹窗 ============ */
@@ -470,6 +564,7 @@
   <!-- ================= 主区 ================= -->
   <main>
     <section class="left">
+      <div class="scene-banner" id="sceneBanner"></div>
       <div class="chat" id="chat">
         <div class="empty" id="emptyState">
           <h2 data-i18n="startFirst">开始你的第一句</h2>
@@ -484,7 +579,7 @@
       </div>
       <div class="hint mono" data-i18n="inputHint">Enter 换行 · Ctrl+Enter 发送</div>
       <div class="scenebar">
-        <button class="scene-pick" id="scenePick" data-i18n="scenePick" title="选择学习场景（0.22 方向2）" data-i18n-title="scenePickTitle"><span id="scenePickName">选择场景 ▾</span></button>
+        <button class="scene-pick" id="scenePick" title="选择学习场景（0.22 方向2）" data-i18n-title="scenePickTitle"><span id="scenePickName" data-i18n="scenePick">选择场景 ▾</span></button>
       </div>
       <div class="inputrow">
         <div class="inputbox">
@@ -498,14 +593,26 @@
     <section class="right">
       <div class="maptitle">
         <button class="back-chat" id="backChat" data-i18n="backChat">‹ 返回对话</button>
-        <span data-i18n="mapTitle">认知地图 · 横轴=HSK 等级 纵轴=掌握度 大小=错误次数 描边=待复习</span>
+        <span data-i18n="mapTitle">认知地图 · 横轴=HSK 等级分区 · 纵轴=掌握度 · 环=掌握进度 · 虚线描边=待复习</span>
         <span class="maplegend">
           <span><i style="background:rgb(var(--kp-vocab))"></i><span data-i18n="lgVocab">词汇</span></span>
           <span><i style="background:rgb(var(--kp-grammar))"></i><span data-i18n="lgGrammar">语法</span></span>
           <span><i style="background:rgb(var(--kp-pragma))"></i><span data-i18n="lgPragma">语用</span></span>
           <span><i style="background:rgb(var(--kp-char))"></i><span data-i18n="lgChar">汉字</span></span>
+          <span class="lg-samp"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="none" stroke="rgb(var(--tx)/.15)" stroke-width="2.5"/><circle cx="7" cy="7" r="5" fill="none" stroke="rgb(var(--sem-ok))" stroke-width="2.5" stroke-dasharray="7.85 31.4" stroke-linecap="round" transform="rotate(-90 7 7)"/></svg><span data-i18n="lgMastery">掌握度环</span></span>
+          <span class="lg-samp"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="rgb(var(--tx)/.25)" stroke="rgb(var(--sem-warn))" stroke-width="2" stroke-dasharray="3.4 2.2"/></svg><span data-i18n="lgReview">待复习</span></span>
           <span id="mapCount"></span>
         </span>
+      </div>
+      <div class="next-bar" id="nextBar">
+        <span class="nb-glyph">➜</span>
+        <div class="nb-main">
+          <span class="nb-label" data-i18n="nbLabel">下一步</span>
+          <span class="nb-name" id="nbName"></span>
+          <span class="nb-reason" id="nbReason"></span>
+        </div>
+        <button class="nb-btn" id="nbGo" data-i18n="nbGo">去练习</button>
+        <button class="nb-btn ghost" id="nbExplain" data-i18n="nbExplain">看讲解</button>
       </div>
       <div class="mapwrap">
         <svg id="map" role="img" aria-label="知识点认知地图"></svg>
@@ -514,6 +621,7 @@
           <div data-i18n="mapEmpty">地图还是空的 —— 回到对话输入第一个句子，地图开始生长</div>
         </div>
       </div>
+      <div class="node-detail" id="nodeDetail"></div>
       <div class="queue"><h4><span data-i18n="queueTitle">复习队列 · priority 降序（点击定位）</span></h4><div id="queue"></div></div>
     </section>
   </main>
@@ -591,6 +699,18 @@
   </div>
 </div>
 
+<!-- ================= 会话右键菜单（0.24：置顶/分享/重命名/删除） ================= -->
+<div class="ctx-menu" id="ctxMenu"></div>
+
+<!-- 分享降级弹层（剪贴板不可用时的手动复制） -->
+<div class="overlay" id="shareOvl">
+  <div class="modal">
+    <button class="close" data-close="shareOvl" aria-label="关闭">×</button>
+    <ul class="modal-nav"><h4 data-i18n="shareH">分享对话</h4><li class="active" data-i18n="shareHint">复制下面的对话转写，粘贴给老师或朋友</li></ul>
+    <div class="modal-body"><textarea class="share-ta" id="shareTa" readonly></textarea></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -641,11 +761,28 @@ en:{
   sceneEmpty:'No scenarios available — the server scenario library is empty.',
   sceneOpen:'Let’s start the "{title}" scenario. Set the scene and let me speak.',
   sceneIntro:'Scenario starts: {title}. I will speak first — guide me, don’t correct every sentence.',
+  sbTag:'SCENARIO', sbRoles:'You: {a} · AI: {b}', sbSeed:'Mission:',
+  sbRecap:'End & recap', sbExit:'Exit scenario',
+  sbRecapBadge:'Scenario recap · {title}',
+  sbRecapPrompt:'The "{title}" scenario is wrapping up. Review our conversation and judge each goal — {goals} — one by one: for each goal say ✔ achieved or ✘ not yet, with one line of evidence quoting what I said. Then give a short overall summary and one thing to practice next.',
+  ctxPin:'Pin to top', ctxUnpin:'Unpin', ctxShare:'Share', ctxRename:'Rename',
+  ctxDelete:'Delete this conversation', ctxDeleteConfirm:'Confirm delete?',
+  pinnedToast:'Pinned to top', unpinnedToast:'Unpinned', renamedToast:'Renamed',
+  deletedToast:'Conversation deleted', opFailed:'Operation failed, please retry',
+  shareH:'Share conversation', shareHint:'Copy the transcript below and paste it to your teacher or friends',
+  shareYou:'Me', shareAI:'Coach', shareByline:'HSK-AI-Coach conversation',
+  shareCopied:'Transcript copied — paste it anywhere to share',
+  shareEmpty:'This conversation has no messages yet',
   modelPickTitle:'Choose model (add providers in Settings → Model keys)',
   defaultModel:'Default model',
   backChat:'‹ Back to chat',
-  mapTitle:'Cognitive map · X = HSK level, Y = mastery, size = error count, ring = due for review',
+  mapTitle:'Cognitive map · X = HSK level zones · Y = mastery · ring = mastery progress · dashed stroke = due for review',
   lgVocab:'Vocab', lgGrammar:'Grammar', lgPragma:'Pragmatics', lgChar:'Characters',
+  lgMastery:'Mastery ring', lgReview:'Due for review',
+  nbLabel:'Next up', nbGo:'Practice', nbExplain:'Explain',
+  nbReasonDue:'top review priority ({p})', nbReasonWeak:'lowest mastery ({m})',
+  ndMastery:'Mastery', ndErrors:'Errors', ndTimes:'×',
+  ndDig:'Deep dive', ndAdj:'Related ({n})', ndRv:'Practice', ndOff:'not in queue',
   mapEmpty:'The map is empty — go back to chat and type your first sentence; the map starts growing from it',
   queueTitle:'Review queue · by priority (click to locate)',
   nodes:'nodes', node:'node', mastered:'Mastered', toConsolidate:'To consolidate',
@@ -728,7 +865,7 @@ en:{
   psSave:'Save', psSaving:'Saving…', psSaved:'Saved — applies from your next message', psSaveFail:'Save failed: ',
   psLoadingPersona:'Loading…',
   themeH:'Interface theme', themeSub:'Two themes (same lightness, different accent). Switching only swaps tokens; semantic colors (graph types / error green-red) stay.',
-  themeMemphis:'Memphis', themeWarm:'Warm orange', themeToast:'Theme → {name}',
+  themeMemphis:'Memphis', themeWarm:'Warm orange', theme_midnight:'Midnight', theme_memphis:'Memphis', theme_warm:'Warm orange', themeToast:'Theme → {name}',
   langH:'Language / 语言',
   langSub:'Interface & explanations language. The teaching layer follows this choice; Chinese sentences, examples and vocabulary always stay Chinese — they are what you learn.',
   langEn:'English', langZh:'中文', langToast:'Language → {name}',
@@ -788,11 +925,28 @@ zh:{
   sceneEmpty:'暂无可用场景 —— 服务端场景库为空。',
   sceneOpen:'我们开始「{title}」场景吧。设定好场景，让我先开口。',
   sceneIntro:'场景已开启：{title}。让我先开口，你引导我——不要逐句纠错。',
+  sbTag:'场景', sbRoles:'你：{a} · AI：{b}', sbSeed:'任务：',
+  sbRecap:'结束并复盘', sbExit:'退出场景',
+  sbRecapBadge:'场景复盘 · {title}',
+  sbRecapPrompt:'「{title}」场景要收尾了。请回顾我们的对话，逐条判断这些目标——{goals}——是否达成：每条给出 ✔ 已达成 / ✘ 未达成，并引用一句我的原话作为证据。最后给一个简短总结，以及下一步建议练什么。',
+  ctxPin:'置顶', ctxUnpin:'取消置顶', ctxShare:'分享', ctxRename:'重命名',
+  ctxDelete:'删除此对话', ctxDeleteConfirm:'确认删除？',
+  pinnedToast:'已置顶', unpinnedToast:'已取消置顶', renamedToast:'已重命名',
+  deletedToast:'对话已删除', opFailed:'操作失败，请重试',
+  shareH:'分享对话', shareHint:'复制下面的对话转写，粘贴给老师或朋友',
+  shareYou:'我', shareAI:'助教', shareByline:'HSK-AI-Coach 对话',
+  shareCopied:'转写已复制，粘贴即可分享',
+  shareEmpty:'这个对话还没有消息',
   modelPickTitle:'选择模型（设置 → 模型密钥 可添加供应商）',
   defaultModel:'默认模型',
   backChat:'‹ 返回对话',
-  mapTitle:'认知地图 · 横轴=HSK 等级 纵轴=掌握度 大小=错误次数 描边=待复习',
+  mapTitle:'认知地图 · 横轴=HSK 等级分区 · 纵轴=掌握度 · 环=掌握进度 · 虚线描边=待复习',
   lgVocab:'词汇', lgGrammar:'语法', lgPragma:'语用', lgChar:'汉字',
+  lgMastery:'掌握度环', lgReview:'待复习',
+  nbLabel:'下一步', nbGo:'去练习', nbExplain:'看讲解',
+  nbReasonDue:'复习优先级最高（{p}）', nbReasonWeak:'掌握度最低（{m}）',
+  ndMastery:'掌握度', ndErrors:'错误', ndTimes:'次',
+  ndDig:'深挖', ndAdj:'相邻（{n}）', ndRv:'练习', ndOff:'不在队列',
   mapEmpty:'地图还是空的 —— 回到对话输入第一个句子，地图开始生长',
   queueTitle:'复习队列 · priority 降序（点击定位）',
   nodes:'节点', node:'节点', mastered:'已掌握', toConsolidate:'待巩固',
@@ -875,7 +1029,7 @@ zh:{
   psSave:'保存', psSaving:'保存中…', psSaved:'已保存，下一轮对话生效', psSaveFail:'保存失败：',
   psLoadingPersona:'读取中…',
   themeH:'界面主题', themeSub:'两套主题（深浅相同、强调色不同），切换只换 token，语义色（图谱类型/偏误红绿）保持不变。',
-  themeMemphis:'孟菲斯', themeWarm:'暖橙', themeToast:'主题 → {name}',
+  themeMemphis:'孟菲斯', themeWarm:'暖橙', theme_midnight:'暗夜', theme_memphis:'孟菲斯', theme_warm:'暖橙', themeToast:'主题 → {name}',
   langH:'语言 / Language',
   langSub:'界面与讲解语言。教学层跟随此选择；中文句子、例句、词汇永远保持中文——那才是你要学的内容。',
   langEn:'English', langZh:'中文', langToast:'语言 → {name}',
@@ -928,7 +1082,7 @@ function applyLang(){
   document.querySelectorAll('[data-i18n-ph]').forEach(e=>{e.placeholder=t(e.dataset.i18nPh);});
   document.querySelectorAll('[data-i18n-title]').forEach(e=>{e.title=t(e.dataset.i18nTitle);});
   document.querySelectorAll('[data-i18n-aria]').forEach(e=>{e.setAttribute('aria-label',t(e.dataset.i18nAria));});
-  renderSessions();renderMap();renderQueue();renderModelPick();
+  renderSessions();renderMap();renderQueue();renderModelPick();renderScenePick();renderSceneBanner();
   if(typeof updateCharCt==='function')updateCharCt();
   if($('settingsOvl').classList.contains('show')&&curTab)renderSettingsTab(curTab);
 }
@@ -1296,7 +1450,7 @@ function layoutNodes(){
   const nodes=graph&&graph.nodes?graph.nodes:{};
   const svg=$('map');
   const W=svg.clientWidth||800, H=svg.clientHeight||520;
-  const top=34, bottom=H-58;
+  const headTop=14, top=56, bottom=H-58;   // headTop：HSK 等级分区头 pill 区
   const lvSet=new Set([1,2,3,4]);
   Object.values(nodes).forEach(n=>{const v=levelNum(n.level);if(v>=1&&v<=6)lvSet.add(v);});
   const maxLv=Math.max(...lvSet);
@@ -1316,7 +1470,31 @@ function layoutNodes(){
       pos[id]={x:xOf(node.level),y:Math.max(top,Math.min(bottom,y))};
     });
   });
-  return {pos,W,H,maxLv,colW,xOf,top,bottom};
+  return {pos,W,H,headTop,top,bottom,maxLv,colW,xOf,cols};
+}
+
+// 下一步推荐：复习队列优先级最高项；无队列时取错误数>0 中掌握度最低项
+function pickRecommendation(){
+  const q=(graph&&graph.queue||[]).slice().sort((a,b)=>(b.priority||0)-(a.priority||0));
+  if(q.length&&graph&&graph.nodes&&graph.nodes[q[0].kp_id])
+    return {id:q[0].kp_id,mode:'due',p:q[0].priority||0};
+  const cand=Object.entries((graph&&graph.nodes)||{})
+    .filter(([,n])=>(n.error_count||0)>0)
+    .sort((a,b)=>(a[1].mastery||0)-(b[1].mastery||0));
+  if(cand.length)return {id:cand[0][0],mode:'weak',m:cand[0][1].mastery||0};
+  return null;
+}
+let nextRec=null;
+function renderNextBar(){
+  nextRec=pickRecommendation();
+  const bar=$('nextBar');
+  if(!nextRec||!(graph&&graph.nodes&&graph.nodes[nextRec.id])){bar.classList.remove('show');return;}
+  const n=graph.nodes[nextRec.id];
+  $('nbName').textContent=n.knowledge_point||nextRec.id;
+  $('nbReason').textContent=nextRec.mode==='due'
+    ?tf('nbReasonDue',{p:(nextRec.p||0).toFixed(1)})
+    :tf('nbReasonWeak',{m:(nextRec.m||0).toFixed(2)});
+  bar.classList.add('show');
 }
 
 function renderMap(){
@@ -1325,21 +1503,32 @@ function renderMap(){
   const nodes=graph&&graph.nodes?graph.nodes:{};
   const ids=Object.keys(nodes);
   const L=layoutNodes();
+  renderNextBar();
   $('mapCount').textContent=ids.length+' '+t(ids.length===1?'node':'nodes');
   $('mapBadge').textContent=ids.length?ids.length+' '+t('nodes'):'';
   $('mapEmpty').style.display=ids.length?'none':'flex';
+  if(!ids.length){renderNodeDetail(null);return;}
   const g=document.createElementNS(SVGNS,'g');
   g.setAttribute('id','gRoot');
   for(let lv=1;lv<=L.maxLv;lv++){
     const band=document.createElementNS(SVGNS,'rect');
-    band.setAttribute('x',45+(lv-1)*L.colW);band.setAttribute('y',L.top-22);
-    band.setAttribute('width',L.colW);band.setAttribute('height',L.bottom-L.top+22);
+    band.setAttribute('x',45+(lv-1)*L.colW+3);band.setAttribute('y',L.headTop);
+    band.setAttribute('width',L.colW-6);band.setAttribute('height',L.bottom-L.headTop+10);
+    band.setAttribute('rx',10);
     band.setAttribute('class','lv-band');if(lv%2===0)band.setAttribute('fill','transparent');
     g.appendChild(band);
-    const t=document.createElementNS(SVGNS,'text');
-    t.setAttribute('x',L.xOf('HSK'+lv));t.setAttribute('y',L.bottom+30);
-    t.setAttribute('text-anchor','middle');t.setAttribute('class','lv-label');
-    t.textContent='HSK '+lv;g.appendChild(t);
+    const cnt=(L.cols[lv]||[]).length;
+    const chipW=Math.min(L.colW-14,96);
+    const pill=document.createElementNS(SVGNS,'rect');
+    pill.setAttribute('x',L.xOf('HSK'+lv)-chipW/2);pill.setAttribute('y',L.headTop+8);
+    pill.setAttribute('width',chipW);pill.setAttribute('height',20);pill.setAttribute('rx',10);
+    pill.setAttribute('class','lv-chip-bg');
+    g.appendChild(pill);
+    const tp=document.createElementNS(SVGNS,'text');
+    tp.setAttribute('x',L.xOf('HSK'+lv));tp.setAttribute('y',L.headTop+22);
+    tp.setAttribute('class','lv-chip');
+    tp.textContent='HSK '+lv+(cnt?` · ${cnt}`:'');
+    g.appendChild(tp);
   }
   const ax=document.createElementNS(SVGNS,'text');
   ax.setAttribute('x',12);ax.setAttribute('y',L.top);ax.setAttribute('class','lv-label');
@@ -1366,11 +1555,26 @@ function renderMap(){
     const grp=document.createElementNS(SVGNS,'g');
     grp.setAttribute('class','node');
     if(bornIds.has(id))grp.classList.add('born');
-    const r=13+Math.min((n.error_count||0)*6,26);
+    if(nextRec&&nextRec.id===id)grp.classList.add('rec');
+    // 视觉编码三分：填充=知识类别 · 半径=错误频次 · 环=掌握度 · 虚线描边=待复习
+    const r=12+Math.min(Math.sqrt(n.error_count||0)*7,16);
+    const rr=r+5, C=2*Math.PI*rr;
+    const bg=document.createElementNS(SVGNS,'circle');
+    bg.setAttribute('cx',p.x);bg.setAttribute('cy',p.y);bg.setAttribute('r',rr);
+    bg.setAttribute('class','mastery-ring-bg');
+    grp.appendChild(bg);
+    const m=Math.max(0,Math.min(1,n.mastery||0));
+    const arc=document.createElementNS(SVGNS,'circle');
+    arc.setAttribute('cx',p.x);arc.setAttribute('cy',p.y);arc.setAttribute('r',rr);
+    arc.setAttribute('class','mastery-ring');
+    arc.setAttribute('stroke-dasharray',`${(C*m).toFixed(2)} ${C.toFixed(2)}`);
+    arc.setAttribute('transform',`rotate(-90 ${p.x} ${p.y})`);
+    grp.appendChild(arc);
     const c=document.createElementNS(SVGNS,'circle');
     c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);c.setAttribute('r',r);
-    c.setAttribute('fill',nodeColor(n.error_types));c.setAttribute('opacity',.88);
-    if(prio>1){c.setAttribute('stroke','rgb(var(--sem-warn))');c.setAttribute('stroke-width',2.5);}
+    c.setAttribute('class','core');
+    c.setAttribute('fill',nodeColor(n.error_types));c.setAttribute('opacity',.9);
+    if(prio>0)c.classList.add('rv');
     grp.appendChild(c);
     const tip=document.createElementNS(SVGNS,'title');
     tip.textContent=`${n.knowledge_point||id}\n${t('tipLevel')} ${n.level||'?'} · ${t('tipMastery')} ${(n.mastery||0).toFixed(2)}\n${t('tipErrors')} ${n.error_count||0} ${t('tipTimes')} · ${t('tipPrio')} ${prio.toFixed(2)}`;
@@ -1388,7 +1592,7 @@ function renderMap(){
   });
   svg.appendChild(g);
   svg.onclick=()=>selectNode(null);
-  if(selectedNode)applySelection();
+  if(selectedNode){applySelection();renderNodeDetail(selectedNode);}
 }
 
 function hoverNode(id,on){
@@ -1401,7 +1605,47 @@ function hoverNode(id,on){
 function selectNode(id){
   selectedNode=(selectedNode===id)?null:id;
   applySelection();
+  renderNodeDetail(selectedNode);
   document.querySelectorAll('.qitem').forEach(q=>q.style.background=(q.dataset.kp===selectedNode)?'rgb(var(--item))':'');
+}
+// 点击聚焦详情面板：节点档案 + 沿权威边的三个动作
+function renderNodeDetail(id){
+  const box=$('nodeDetail');
+  const n=id&&graph&&graph.nodes&&graph.nodes[id];
+  if(!n){box.classList.remove('show');box.innerHTML='';return;}
+  const prio=((graph&&graph.queue||[]).find(x=>x.kp_id===id)||{}).priority||0;
+  const nbs=neighborsOf(id);
+  const mastery=Math.max(0,Math.min(1,n.mastery||0));
+  box.innerHTML=`
+    <div class="nd-head">
+      <span class="nd-dot" style="background:${nodeColor(n.error_types)}"></span>
+      <span class="nd-name">${esc(n.knowledge_point||id)}</span>
+      <span class="nd-chip">${esc(n.level||'')}</span>
+      <button class="nd-close" title="×" aria-label="close">×</button>
+    </div>
+    <div class="nd-stats">
+      <span>${t('ndMastery')} <b>${mastery.toFixed(2)}</b></span>
+      <div class="nd-bar"><i style="width:${(mastery*100).toFixed(0)}%"></i></div>
+      <span>${t('ndErrors')} <b>${n.error_count||0}</b> ${t('ndTimes')}${prio>0?` · ${t('tipPrio')} <b>${prio.toFixed(1)}</b>`:''}</span>
+    </div>
+    <div class="nd-actions">
+      <button class="nd-act nd-dig">↗ ${t('ndDig')}</button>
+      <button class="nd-act nd-adj ${nbs.length?'':'off'}">→ ${tf('ndAdj',{n:nbs.length})}</button>
+      <button class="nd-act nd-rv ${prio>0?'':'off'}">↓ ${prio>0?t('ndRv'):t('ndOff')}</button>
+    </div>`;
+  box.classList.add('show');
+  box.querySelector('.nd-close').addEventListener('click',()=>selectNode(null));
+  box.querySelector('.nd-dig').addEventListener('click',()=>{
+    setMapView(false);const nm=nodeName(id);
+    sendPrompt(tf('digPrompt',{name:nm}),tf('digBadge')+nm);
+  });
+  const adj=box.querySelector('.nd-adj');
+  if(nbs.length)adj.addEventListener('click',()=>showNeighborMenu(adj,id));
+  const rv=box.querySelector('.nd-rv');
+  if(prio>0)rv.addEventListener('click',()=>{
+    setMapView(false);const nm=nodeName(id);
+    sendPrompt(tf('rvPrompt',{name:nm}),tf('rvBadge')+nm);
+  });
 }
 function applySelection(){
   const root=$('gRoot');if(!root)return;
@@ -1487,12 +1731,13 @@ function renderSessions(){
   list.slice(0,30).forEach(s=>{
     const isCur=s.id===cur;
     const d=el(`<div class="sbtn ${isCur?'cur':''}" data-id="${esc(s.id)}">
-      <span class="ic">${isCur?'●':'○'}</span>
+      <span class="ic">${s.pinned?'📌':(isCur?'●':'○')}</span>
       <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${esc(s.title||(s._pending?t('newSessPending'):s.id))}</span>
       <span class="srow-sub">${s._pending?'':esc(tf('nMsgs',{n:s.message_count||0}))}</span>
     </div>`);
     d.title=(s.title||s.id)+(s.updated_at?` · ${timeShort(s.updated_at)}`:'');
     d.addEventListener('click',()=>switchSession(s.id));
+    d.addEventListener('contextmenu',ev=>openCtxMenu(ev,s));   // 0.24 右键菜单
     L.appendChild(d);
   });
 }
@@ -1501,6 +1746,10 @@ async function switchSession(id,forceNew){
   if(mapView)setMapView(false);   // 地图视图下点会话 → 自动回对话视图
   state.conversation=id;
   setUrlConversation(id);
+  // 0.24 review：场景按会话绑定 → 切会话时同步场景横幅/作用域
+  // （hsk-scene 存 {cid,scene}，仅目标会话是已绑定的场景会话时才恢复横幅）
+  state.sceneId=boundSceneFor(id);
+  renderScenePick();renderSceneBanner();
   clearChat();
   try{
     const c=await api('/api/conversation?id='+encodeURIComponent(id));
@@ -1521,6 +1770,118 @@ function newSession(){
   switchSession(id,true);
   toast(t('newSessionToast'));
 }
+
+/* ============================================================
+ * 会话右键菜单（0.24）：置顶 / 分享 / 重命名 / 删除
+ * 设计对标任务列表栏右键菜单：图标+文字紧凑列表，删除=危险色+二段确认
+ * ============================================================ */
+function openCtxMenu(e,s){
+  if(s._pending)return;                 // 未落盘的占位会话不出菜单
+  e.preventDefault();e.stopPropagation();
+  const m=$('ctxMenu');
+  m.innerHTML=`
+    <div class="ctx-it" data-act="pin"><span class="ci">📌</span>${s.pinned?t('ctxUnpin'):t('ctxPin')}</div>
+    <div class="ctx-it" data-act="share"><span class="ci">🔗</span>${t('ctxShare')}</div>
+    <div class="ctx-it" data-act="rename"><span class="ci">✏️</span>${t('ctxRename')}</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-it danger" data-act="delete"><span class="ci">🗑</span>${t('ctxDelete')}</div>`;
+  m.classList.add('show');
+  const mw=m.offsetWidth,mh=m.offsetHeight;   // 先显示后测量
+  let x=e.clientX,y=e.clientY;
+  if(x+mw>innerWidth-8)x=Math.max(8,innerWidth-mw-8);    // 右缘翻转
+  if(y+mh>innerHeight-8)y=Math.max(8,innerHeight-mh-8);  // 底缘翻转
+  m.style.left=x+'px';m.style.top=y+'px';
+  m.querySelectorAll('.ctx-it').forEach(it=>
+    it.addEventListener('click',()=>ctxAction(it,s)));
+}
+function closeCtxMenu(){
+  const m=$('ctxMenu');if(!m)return;
+  m.classList.remove('show');m.innerHTML='';m.style.left='';m.style.top='';
+}
+async function ctxAction(it,s){
+  const act=it.dataset.act;
+  if(act==='pin'){
+    try{await api('/api/session/update',{conversation_id:s.id,pinned:!s.pinned});}
+    catch(e){closeCtxMenu();toast(t('opFailed'));return;}
+    closeCtxMenu();await loadSessions();
+    toast(!s.pinned?t('pinnedToast'):t('unpinnedToast'));
+    return;
+  }
+  if(act==='share'){closeCtxMenu();await shareSession(s);return;}
+  if(act==='rename'){closeCtxMenu();startRename(s);return;}
+  if(act==='delete'){
+    if(!it.classList.contains('armed')){          // 二段确认：原地变红防误触
+      it.classList.add('armed');
+      it.innerHTML=`<span class="ci">🗑</span>${t('ctxDeleteConfirm')}`;
+      return;
+    }
+    try{await api('/api/session/delete',{conversation_id:s.id});}
+    catch(e){
+      closeCtxMenu();
+      if(e.code==='session_not_found'){await loadSessions();toast(t('deletedToast'));}
+      else toast(t('opFailed'));
+      return;
+    }
+    closeCtxMenu();
+    if(s.id===state.conversation)newSession();    // 删的是当前会话 → 开新空会话
+    else await loadSessions();
+    toast(t('deletedToast'));
+  }
+}
+// 行内重命名：会话项原地变输入框，Enter 保存 / Esc 取消 / 失焦保存
+function startRename(s){
+  const row=document.querySelector('.sbtn[data-id="'+esc(s.id)+'"]');
+  if(!row)return;
+  const old=row.innerHTML;
+  row.innerHTML=`<input class="sren" maxlength="60" value="${esc(s.title||'')}">`;
+  const inp=row.querySelector('input');
+  inp.focus();inp.select();
+  let done=false;
+  const finish=async(save)=>{
+    if(done)return;done=true;
+    const v=inp.value.trim();
+    row.innerHTML=old;
+    if(!save||!v||v===(s.title||''))return;
+    try{
+      await api('/api/session/update',{conversation_id:s.id,title:v});
+      await loadSessions();toast(t('renamedToast'));
+    }catch(e){toast(t('opFailed'));}
+  };
+  inp.addEventListener('keydown',ev=>{
+    ev.stopPropagation();
+    if(ev.key==='Enter')finish(true);
+    else if(ev.key==='Escape')finish(false);
+  });
+  inp.addEventListener('click',ev=>ev.stopPropagation());
+  inp.addEventListener('blur',()=>finish(true));
+}
+// 分享：拉取会话历史 → Markdown 转写 → 剪贴板（失败降级弹层手动复制）
+async function shareSession(s){
+  let msgs=[];
+  try{const c=await api('/api/conversation?id='+encodeURIComponent(s.id));msgs=(c&&c.messages)||[];}
+  catch(e){toast(t('opFailed'));return;}
+  if(!msgs.length){toast(t('shareEmpty'));return;}
+  const lines=[`# ${s.title||s.id}`,'',`_${t('shareByline')} · ${new Date().toLocaleDateString()}_`,''];
+  msgs.forEach(m=>{
+    lines.push(`**${m.role==='user'?t('shareYou'):t('shareAI')}**`,'',m.content,'');
+  });
+  const md=lines.join('\n');
+  try{
+    await navigator.clipboard.writeText(md);
+    toast(t('shareCopied'));
+  }catch(e){
+    const ta=$('shareTa');ta.value=md;openOverlay('shareOvl');
+    ta.focus();ta.select();      // 非安全上下文（剪贴板 API 不可用）→ 手动复制
+  }
+}
+// 菜单全局关闭：外点 / Esc / 滚动 / 缩放（菜单内点击由 ctxAction 自管）
+document.addEventListener('mousedown',ev=>{
+  const m=$('ctxMenu');
+  if(m&&m.classList.contains('show')&&!m.contains(ev.target))closeCtxMenu();
+},true);
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeCtxMenu();},true);
+addEventListener('scroll',closeCtxMenu,true);
+addEventListener('resize',closeCtxMenu);
 function clearChat(){
   chat.innerHTML='';
   const e=el(`<div class="empty" id="emptyState">
@@ -1679,22 +2040,77 @@ $('modelPick').addEventListener('click',()=>showModelMenu($('modelPick')));
 function sceneTitleInline(sc){return (LANG==='zh'?sc.title_zh:sc.title)||sc.title;}
 function renderScenePick(){
   const btn=$('scenePick'),name=$('scenePickName');
-  if(!btn)return;
+  if(!btn||!name)return;
   if(state.sceneId){
     const sc=state.scenes.find(s=>s.scene_id===state.sceneId);
     btn.classList.add('active');
-    name.textContent=(sc?sceneTitleInline(sc):state.sceneId)+'  ×';
-    btn.title=t('scenePickTitle');
+    name.textContent=t('scenePickActive')+' '+(sc?sceneTitleInline(sc):state.sceneId);
   }else{
     btn.classList.remove('active');
     name.textContent=t('scenePick');
-    btn.title=t('scenePickTitle');
   }
+  btn.title=t('scenePickTitle');
+}
+// 场景横幅：目标常驻 + 结束复盘 + 退出（0.23 场景任务化）
+function renderSceneBanner(){
+  const box=$('sceneBanner');if(!box)return;
+  const sc=state.scenes.find(s=>s.scene_id===state.sceneId);
+  if(!state.sceneId||!sc){box.classList.remove('show');box.innerHTML='';return;}
+  const r=sc.roles||{},re=sc.roles_en||{};
+  const a=(LANG==='zh'?(r.learner||''):(re.learner||r.learner||''));
+  const b=(LANG==='zh'?(r.agent||''):(re.agent||r.agent||''));
+  box.innerHTML=`
+    <div class="sb-head">
+      <span class="sb-tag">${t('sbTag')}</span>
+      <span class="sb-title">${esc(sceneTitleInline(sc))}</span>
+      <span class="sb-roles">${a||b?esc(tf('sbRoles',{a,b})):''}</span>
+      <button class="sb-recap">🏁 ${t('sbRecap')}</button>
+      <button class="sb-exit" title="${t('sbExit')}" aria-label="${t('sbExit')}">✕</button>
+    </div>
+    ${(sc.goals||[]).length?`<div class="sb-goals"><span class="sb-glabel">${t('sceneGoals')}</span>${sc.goals.map(g=>`<span class="sb-goal">${esc(g)}</span>`).join('')}</div>`:''}
+    ${sc.seed?`<div class="sb-seed" title="${esc(sc.seed)}">${t('sbSeed')} ${esc(sc.seed)}</div>`:''}`;
+  box.classList.add('show');
+  box.querySelector('.sb-exit').addEventListener('click',()=>endScene(false));
+  box.querySelector('.sb-recap').addEventListener('click',()=>endScene(true));
+}
+// 结束场景：recap=true 先发复盘请求（场景 brief 仍在，判定质量更好）再摘除；false 直接退出
+async function endScene(recap){
+  const sc=state.scenes.find(s=>s.scene_id===state.sceneId);
+  if(!sc)return;
+  const title=sceneTitleInline(sc);
+  if(recap){
+    const goals=(sc.goals||[]).join('、');
+    await sendPrompt(tf('sbRecapPrompt',{title,goals}),tf('sbRecapBadge',{title}));
+  }
+  state.sceneId='';saveSceneState();
+  renderScenePick();renderSceneBanner();
+}
+// 场景与会话绑定持久化（刷新/深链恢复后横幅仍在，不发裸自由对话）
+function saveSceneState(){
+  try{
+    if(state.sceneId)localStorage.setItem('hsk-scene',JSON.stringify({cid:state.conversation,scene:state.sceneId}));
+    else localStorage.removeItem('hsk-scene');
+  }catch(e){}
+}
+// 取目标会话绑定的场景 id（0.24 review：空/未绑定/场景已失效 → ''，切会话时正确隐藏横幅）
+function boundSceneFor(cid){
+  try{
+    const raw=localStorage.getItem('hsk-scene');if(!raw)return '';
+    const o=JSON.parse(raw);
+    if(o&&o.cid===cid&&o.scene&&
+       (!state.scenes.length||state.scenes.some(s=>s.scene_id===o.scene)))
+      return o.scene;
+  }catch(e){}
+  return '';
+}
+function restoreScene(){
+  state.sceneId=boundSceneFor(state.conversation);
 }
 async function loadScenes(){
   let list=[];
   try{const d=await api('/api/scenarios');list=(d&&d.scenes)||[];}catch(e){list=[];}
   state.scenes=list;
+  renderScenePick();renderSceneBanner();
   const body=$('sceneBody');if(!body)return;
   if(!list.length){body.innerHTML=`<div class="charct" style="grid-column:1/-1">${t('sceneEmpty')}</div>`;return;}
   body.innerHTML=list.map(sc=>`
@@ -1708,7 +2124,10 @@ async function loadScenes(){
       </div>
     </div>`).join('');
   body.querySelectorAll('.scene-card').forEach(c=>c.addEventListener('click',()=>{
-    const id=c.dataset.s;state.sceneId=id;renderScenePick();
+    const id=c.dataset.s;
+    newSession();                       // 场景任务 = 独立新会话，不污染旧上下文
+    state.sceneId=id;saveSceneState();
+    renderScenePick();renderSceneBanner();
     $('sceneOvl').classList.remove('show');
     const sc=state.scenes.find(x=>x.scene_id===id);
     sendPrompt(tf('sceneOpen',{title:sc?sceneTitleInline(sc):id}));
@@ -1771,6 +2190,7 @@ async function submit(){
 const THEMES=[
   {id:'memphis',name:'孟菲斯',brand:'#df6b8c',bg:'#faf8f3'},
   {id:'warm',name:'暖橙',brand:'#f45f28',bg:'#f2eadb'},
+  {id:'midnight',name:'暗夜',brand:'#d4a054',bg:'#241f1c'},
 ];
 const PS_STYLES=['default','rigorous','friendly','pragmatic','creative','socratic'];
 function setTheme(id){
@@ -1785,7 +2205,7 @@ const settingsTabs={
     <div class="theme-grid">${THEMES.map(th=>`
       <div class="theme-swatch ${document.documentElement.dataset.theme===th.id?'active':''}" data-th="${th.id}">
         <div class="dot" style="background:${th.bg};outline:3px solid ${th.brand};outline-offset:-3px"></div>
-        <div class="nm">${t(th.id==='memphis'?'themeMemphis':'themeWarm')}</div>
+        <div class="nm">${t('theme_'+th.id)}</div>
       </div>`).join('')}</div>`,
   lang:()=>`
     <h3>${t('langH')}</h3>
@@ -2048,6 +2468,17 @@ function setMapView(on){
 }
 $('actMap').addEventListener('click',()=>setMapView(!mapView));
 $('backChat').addEventListener('click',()=>setMapView(false));
+// 下一步推荐条：动作回对话主链（先切回对话视图再发）
+$('nbGo').addEventListener('click',()=>{
+  if(!nextRec||!(graph&&graph.nodes&&graph.nodes[nextRec.id]))return;
+  setMapView(false);const nm=nodeName(nextRec.id);
+  sendPrompt(tf('rvPrompt',{name:nm}),tf('rvBadge')+nm);
+});
+$('nbExplain').addEventListener('click',()=>{
+  if(!nextRec||!(graph&&graph.nodes&&graph.nodes[nextRec.id]))return;
+  setMapView(false);const nm=nodeName(nextRec.id);
+  sendPrompt(tf('digPrompt',{name:nm}),tf('digBadge')+nm);
+});
 
 // 地图不常驻后：对话流内点知识点 → 自动切到地图视图并定位
 function locateKp(id){
@@ -2101,6 +2532,8 @@ $('text').addEventListener('input',function(){this.style.height='auto';this.styl
   bindChips(document);
   await loadSessions();
   loadProviders();   // 0.20 BYOK：模型选择器数据（失败静默，选择器显示"默认模型"）
+  restoreScene();    // 0.23 场景持久化：深链/刷新后恢复当前会话绑定的场景横幅
+  loadScenes();
   // 深链恢复：URL 带会话参数时拉取历史（新生成的 id 无历史 → 空态）
   if(fromUrl){
     try{
