@@ -28,6 +28,7 @@
 # /api/dialog 需 LLM Key（A3 决策：无 Key 直接报错，不静默降级）；generate 无 Key 结构化 degraded。
 # ============================================================
 
+from typing import Optional
 import argparse
 import json
 import os
@@ -231,6 +232,117 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             pending.sort(key=lambda kp: last_obs[kp], reverse=True)
             return pending[:limit]
 
+        @staticmethod
+        def _build_why(pre_scan, provider, native_lang):
+            """0.26 · 为预扫识别到的偏误生成"为什么"（隐藏弃用/错误 → 空列表不阻断）。
+            pre_scan：本轮预扫识别结果（None/无 errors → 返回 []）；
+            provider：请求级供应商（None → settings 全局配置，供 mock/默认路径）。
+            仅 errors 参与生成（uncertain 不入 why）；任何异常静默降级为空。"""
+            try:
+                if not (isinstance(pre_scan, dict)
+                        and (pre_scan.get("errors") or [])):
+                    return []
+                from engine.llm.client import LLMClient
+                from engine.generation.why import generate_why
+                cfg = None
+                if provider:
+                    cfg = {"base_url": provider.get("base_url"),
+                           "api_key": provider.get("api_key"),
+                           "model": provider.get("model")}
+                dl = ("zh" if str(native_lang or "").lower() in
+                      ("zh", "中文", "汉语", "chinese") else "en")
+                directive = ("用中文解释，但错误片段保持中文原文。" if dl == "zh"
+                             else "Write reasons in English, but keep the Chinese "
+                                  "fragments in Chinese.")
+                items = generate_why(LLMClient(),
+                                     pre_scan.get("errors") or [],
+                                     pre_scan.get("hypotheses"),
+                                     language_directive=directive,
+                                     config=cfg)
+                # 回配 kp_id：why 条目确定性锚定到预扫描错误的图谱节点，
+                # 前端据此对每条错误挂↗/→/↓分支动作（图谱唯一权威，不经 LLM 自报）
+                return H._attach_kp_to_why(items, pre_scan.get("errors") or [])
+            except Exception:  # noqa: BLE001 生成失败不阻断对话
+                return []
+
+        @staticmethod
+        def _attach_kp_to_why(items, errors):
+            """why 条目 deterministic 回配 kp：把预扫描错误的 knowledge_point_id/type/
+            confidence 穿进对应 why 条目。匹配顺序=精确 fragment → 精确 correction → 索引位。
+            匹配不到（LLM 改写片段）→ 该条不带 kp_id（前端不挂分支动作），不臆造节点。"""
+            if not items:
+                return items
+            by_frag = {}
+            by_corr = {}
+            for e in errors or []:
+                if not isinstance(e, dict):
+                    continue
+                f = str(e.get("fragment") or "").strip()
+                c = str(e.get("correction") or "").strip()
+                if f:
+                    by_frag.setdefault(f, e)
+                if c:
+                    by_corr.setdefault(c, e)
+            out = []
+            for i, it in enumerate(items):
+                if not isinstance(it, dict):
+                    out.append(it)
+                    continue
+                row = dict(it)
+                src = (by_frag.get(str(it.get("fragment") or "").strip())
+                       or by_corr.get(str(it.get("correction") or "").strip()))
+                if src is None and i < len(errors or []):
+                    src = errors[i] if isinstance(errors[i], dict) else None
+                if src:
+                    kp = (src.get("knowledge_point_id")
+                          or (src.get("graph_write") or {}).get("kp_id")
+                          or "")
+                    if kp:
+                        row["kp_id"] = kp
+                    if src.get("type"):
+                        row["type"] = src.get("type")
+                    if src.get("confidence") is not None:
+                        row["confidence"] = src.get("confidence")
+                out.append(row)
+            return out
+
+        # 前端 renderTrace 会渲染成成果卡的技能白名单（0.27 随会话持久）
+        _CARD_SKILLS = frozenset({
+            "identify_errors", "explain_error", "verify_retell",
+            "lookup_knowledge_point", "get_review_queue", "generate_unit",
+            "web_search", "parse_document", "retrieve_corpus",
+        })
+
+        @staticmethod
+        def _compact_cards(trace):
+            """成果卡轻量视图：过滤丢卡（ok=False）与未知技能，只留 {name,result}。
+            前端恢复时 renderTrace 直接消费，保持与实时渲染同源、体积可控（去 params）。"""
+            if not trace:
+                return []
+            out = []
+            for tr in trace:
+                if not isinstance(tr, dict):
+                    continue
+                if tr.get("ok") is False:
+                    continue
+                if tr.get("name") in H._CARD_SKILLS:
+                    out.append({"name": tr.get("name"), "result": tr.get("result")})
+            return out
+
+        @staticmethod
+        def _assistant_payload(res, pre_scan, provider, native_lang, reason):
+            """0.27 · assistant 消息随会话持久的成果卡载荷：{cards, why}。
+            cards 恒存（这轮的成果卡视图）；why 仅当本轮识别到偏误且非材料句才生成。"""
+            cards = H._compact_cards((res or {}).get("trace") or [])
+            why = []
+            # provider 门槛：mock(dialog_llm 注入) 下 provider=None，跳过以免单测触网；
+            # 真实运行 provider 已解析（BYOK 或默认 env 供应商）才生成 why。
+            if (provider and isinstance(pre_scan, dict)
+                    and (pre_scan.get("errors") or [])
+                    and reason not in ("material",)):
+                why = H._build_why(pre_scan, provider, native_lang)
+            return {"cards": cards, "why": why}
+
         def _send_json(self, obj, status=200):
             body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
             self.send_response(status)
@@ -413,6 +525,21 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 except (TypeError, ValueError):
                     cap = DEFAULT_CAP
 
+                # ---- 0.25 起点分层：画像等级 → 识别/超纲/讲解全链生效 ----
+                # 画像 user_level 未设 → HSK3（与技能默认一致）。归一用 serve 自身方法
+                # （不依赖 Router 具体实现，测试替身替出 Router 亦兼容）；同步 Router 仅当支持。
+                level_int = 3
+                raw_level = profile_block.get("user_level")
+                _level_label = self._normalize_user_level(raw_level)
+                if _level_label is not None:
+                    level_int = int(_level_label[3:])
+                    if hasattr(self._router, "set_level"):
+                        try:
+                            self._router.set_level(_level_label)
+                        except Exception:  # noqa: BLE001 同步失败不阻断
+                            pass
+                level_label = f"HSK{level_int}"
+
                 # ---- 0.22 方向3 · 介入判定（确定性分档，D3.4 主链重构）----
                 # 预扫：每轮产出句先走 identify（喂图谱+迁移假设，句子→图谱链不变），
                 # 再用组合信号分档（求助/空/含义不清/连续错率 + 打断上限）。
@@ -426,7 +553,8 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 if not help_intent and not too_long:
                     try:
                         pre_scan = self._get_identify_skill().run(
-                            {"text": user_input, "native_lang": native_lang})
+                            {"text": user_input, "native_lang": native_lang,
+                             "level": level_label})
                     except Exception as e:  # noqa: BLE001 预扫失败不阻断对话
                         pre_scan = None
                         scan_notices.append({"stage": "pre_scan",
@@ -466,7 +594,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 res = self._get_planner(provider).run(
                     user_input, history=history, learner_id=learner_id,
                     profile_summary=profile_summary, native_lang=native_lang,
-                    scene_brief=scene_brief, persona_brief=persona_brief,
+                    user_level=level_label, scene_brief=scene_brief, persona_brief=persona_brief,
                     intervention_directive=intervention_directive)
                 # M8 两段式·账本侧：识别命中→observation_error；复述 pass→concept_confirmed
                 m8_notices = scan_notices + self._writeback_ledger_events(
@@ -490,15 +618,24 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                     except Exception:  # noqa: BLE001
                         pass
                 if reply:
+                    # 0.27 · 成果卡随会话持久：cards(卡视图)+why 写进 assistant 消息 metadata，
+                    # 恢复会话时前端据以原位重建。仅新会话生效（旧记录无此字段）。
+                    payload = H._assistant_payload(res, pre_scan, provider,
+                                                   native_lang, reason)
+                    why_items = payload["why"]
                     mem.append(conversation_id, "assistant", reply,
                                metadata={"skills": res.get("used_skills", []),
-                                         "fallback": bool(res.get("fallback", False))})
+                                         "fallback": bool(res.get("fallback", False)),
+                                         **payload})
                 graph_snapshot = self._router.graph.graph_snapshot()
             degraded = m8_notices  # 账本/画像写入失败降级（非致命）
             if res.get("fallback"):
                 degraded.append({"stage": "planner",
                                  "reason": f"planner fallback: {res.get('reason', 'unterminated')}",
                                  "fatal": False})
+            # why_items：assistant 已写请记忆时由其填充；否则（无回复）为空
+            if "why_items" not in locals():
+                why_items = []
             out = {
                 "dialog_version": "v1",
                 "learner_id": learner_id,
@@ -512,6 +649,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 "trace": res.get("trace", []),
                 "intervention": {"level": level, "reason": reason,
                                  "used": tracker.interrupt_used, "cap": cap},
+                "why": why_items,
                 "degraded": degraded,
                 "graph": graph_snapshot,
             }
@@ -702,7 +840,8 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
 
         def _do_api_conversation(self, parsed):
             """只读单会话消息历史（0.19：URL 深链 ?conversation=<id> 恢复会话）。
-            只透 user/assistant 的 {role, content}，不暴露 metadata 内部项。"""
+            透传 user/assistant 的 {role, content}；assistant 消息额外白名单透传 cards/why
+            （0.27 成果卡随会话持久），其余 metadata 内部项一律不暴露。"""
             qs = parse_qs(parsed.query)
             conversation_id = ((qs.get("id") or [""])[0] or "default").strip()
             learner_id = (qs.get("learner") or [""])[0].strip() or \
@@ -710,37 +849,83 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             with self._lock:
                 mem = self._get_memory(learner_id)
                 msgs = mem.get_history(conversation_id, window=200)
+            visible = []
+            for m in msgs:
+                if m.get("role") not in ("user", "assistant"):
+                    continue
+                item = {"role": m.get("role"), "content": m.get("content", "")}
+                if m.get("role") == "assistant":
+                    md = (m.get("metadata") or {}) or {}
+                    if md.get("cards"):
+                        item["cards"] = md["cards"]
+                    if md.get("why"):
+                        item["why"] = md["why"]
+                visible.append(item)
             self._send_json({
                 "conversation_id": conversation_id,
-                "messages": [
-                    {"role": m.get("role"), "content": m.get("content", "")}
-                    for m in msgs if m.get("role") in ("user", "assistant")],
+                "messages": visible,
             })
 
         def _do_api_profile_save(self, payload):
-            """0.22 方向3 · 保存个性化 persona（设计稿 §4：仅更新 persona 块）。
-            - normalize_persona 校验/清洗（白名单 + 截长），非法 reply_style → 400
-            - 部分合并：只更新给出字段，其余沿用现值（current）"""
+            """0.22 方向3 · 保存个性化 persona；0.25 · 扩展支持顶层 user_level（起点分层）。
+            - persona：normalize_persona 校验/清洗（白名单 + 截长），非法 reply_style → 400
+            - user_level：统一存 'HSK{n}'（1-6），非法值 400
+            - 部分合并：只更新给出的字段，其余沿用现值；至少给一个字段"""
             learner_id = str(payload.get("learner") or "").strip() or \
                 self._router.learner_id
             raw = payload.get("persona")
-            if not isinstance(raw, dict):
-                self._send_json({"error": "persona 应为对象",
-                                 "code": "invalid_persona"}, 400)
+            raw_level = payload.get("user_level")
+            if raw is None and raw_level is None:
+                self._send_json({"error": "无可更新字段（persona/user_level）",
+                                 "code": "nothing_to_update"}, 400)
                 return
-            from engine.persona import normalize_persona
             with self._lock:
                 mem = self._get_memory(learner_id)
-                current = mem.get_profile().get("persona")
-                try:
-                    normalized = normalize_persona(
-                        raw, current=current if isinstance(current, dict) else None)
-                except ValueError as e:
-                    self._send_json({"error": str(e),
-                                     "code": "invalid_persona"}, 400)
-                    return
-                mem.update_profile(persona=normalized)
-            self._send_json({"ok": True, "persona": normalized})
+                result = {"ok": True}
+                if raw is not None:
+                    if not isinstance(raw, dict):
+                        self._send_json({"error": "persona 应为对象",
+                                         "code": "invalid_persona"}, 400)
+                        return
+                    from engine.persona import normalize_persona
+                    current = mem.get_profile().get("persona")
+                    try:
+                        normalized = normalize_persona(
+                            raw, current=current if isinstance(current, dict) else None)
+                    except ValueError as e:
+                        self._send_json({"error": str(e),
+                                         "code": "invalid_persona"}, 400)
+                        return
+                    mem.update_profile(persona=normalized)
+                    result["persona"] = normalized
+                if raw_level is not None:
+                    label = self._normalize_user_level(raw_level)
+                    if label is None:
+                        self._send_json(
+                            {"error": "user_level 应为 'HSK1'-'HSK6' 或数字 1-6",
+                             "code": "invalid_user_level"}, 400)
+                        return
+                    mem.update_profile(user_level=label)
+                    if hasattr(self._router, "set_level"):
+                        try:
+                            self._router.set_level(label)   # 起点分层即时生效
+                        except Exception:  # noqa: BLE001 同步失败不阻断
+                            pass
+                    result["user_level"] = label
+            self._send_json(result)
+
+        @staticmethod
+        def _normalize_user_level(raw) -> Optional[str]:
+            """0.25：归一 user_level（'HSK1'-'HSK6'/数字 1-6）→ 'HSK{n}'；非法 None。"""
+            s = str(raw or "").strip().upper()
+            s = s[len("HSK"):] if s.startswith("HSK") else s
+            try:
+                n = int(s)
+            except (TypeError, ValueError):
+                return None
+            if not (1 <= n <= 6):
+                return None
+            return f"HSK{n}"
 
         # ---------- 会话管理（0.24：右键菜单 置顶/重命名/删除） ----------
 

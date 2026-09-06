@@ -59,6 +59,18 @@ SYSTEM_PROMPT = """【角色】你是一个 HSK 偏误识别器。任务是从�
 输出：{{"fragment":"几岁","correction":"您多大年纪","type":"语用","type_confident":true,"confidence":0.8,"knowledge_point_id":""}}
 反例（合法，不报）：小朋友，你几岁啦？（对象是小孩）
 
+例4（词汇/搭配：液体饮品用"喝"）
+判定条件：宾语为不可咀嚼的液体饮品（奶茶、咖啡、茶、水、酒、果汁等），却用"吃"；仅当宾语是可咀嚼的固体食物（苹果、饭、饼干、菜）时"吃"才合适。
+输入：我想吃奶茶。
+输出：{{"fragment":"吃奶茶","correction":"喝奶茶","type":"词汇","type_confident":true,"confidence":0.8,"knowledge_point_id":""}}
+反例（合法，不报）：我想吃苹果。（苹果可咀嚼，"吃"正确）
+
+例5（语法/语序：数量词"很多"作定语却后置）
+判定条件：句中"很多"修饰一个此前已明确的名词，却置于句末或谓语之后造成定语后置（如"我想要奶茶，很多"→ 应"很多奶茶"）；若"很多"作谓语表数量（"这家店人很多"）或作独立表语，则位置合法，不报。
+输入：我想要奶茶，很多。
+输出：{{"fragment":"很多","correction":"很多奶茶","type":"语法","type_confident":true,"confidence":0.75,"knowledge_point_id":""}}
+反例（合法，不报）：这家店人很多，所以排了很长的队。（"很多"作谓语表数量）
+
 【输出格式】严格输出 JSON，不要输出任何其他文字：
 {{"errors": [{{"fragment": "偏误片段", "correction": "修正建议", "type": "词汇|语法|语用|汉字", "type_confident": true, "confidence": 0.0-1.0, "knowledge_point_id": "<id 或空>"}}]}}"""
 

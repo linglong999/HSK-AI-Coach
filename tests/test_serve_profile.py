@@ -206,9 +206,14 @@ class ProfileConversationTest(unittest.TestCase):
         self.assertEqual([m["role"] for m in msgs], ["user", "assistant"])
         self.assertEqual(msgs[0]["content"], "我想买苹果很多。")
         self.assertEqual(msgs[1]["content"], "已检查这句话。")
-        # 仅 {role, content}：不泄漏 metadata（skills/fallback 等内部项）
+        # 0.27 契约：user 仍纯 {role,content}；assistant 会带白名单 cards/why，
+        # 但绝不泄漏 skills/fallback 等其余 metadata 内部项
         for m in msgs:
-            self.assertEqual(set(m.keys()), {"role", "content"})
+            self.assertEqual(set(m.keys()) & {"skills", "fallback"}, set())
+        self.assertEqual(set(msgs[0].keys()), {"role", "content"})
+        self.assertTrue({"role", "content"} <= set(msgs[1].keys()))
+        if "cards" in msgs[1]:
+            self.assertIsInstance(msgs[1]["cards"], list)
 
     def test_conversation_multi_turn_order(self):
         for _ in range(2):

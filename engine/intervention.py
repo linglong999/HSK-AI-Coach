@@ -146,8 +146,8 @@ class InterventionTracker:
 # ---------------- [Intervention] 注入段（双语） ----------------
 
 _LEVEL_LABEL = {
-    "zh": {"none": "静默记录", "light": "轻介入", "block": "阻断讲解"},
-    "en": {"none": "stay silent", "light": "light touch", "block": "step in"},
+    "zh": {"none": "自然反馈", "light": "轻介入", "block": "阻断讲解"},
+    "en": {"none": "natural flow", "light": "light touch", "block": "step in"},
 }
 _REASON_LABEL = {
     "zh": {"fluent": "流利产出", "help": "主动求助", "empty": "输出犹豫",
@@ -192,15 +192,23 @@ def build_intervention_directive(level: str, reason: str, native_lang: str = "",
     is_zh = not (native_lang and str(native_lang).lower() not in
                  ("zh", "中文", "汉语", "chinese", "汉语官话"))
     scanned = isinstance(recognition, dict)
+    has_err = scanned and bool(recognition.get("errors")
+                               or recognition.get("uncertain"))
     lvl = _LEVEL_LABEL["zh" if is_zh else "en"].get(level, level)
     rsn = _REASON_LABEL["zh" if is_zh else "en"].get(reason, reason)
 
     if is_zh:
         head = f"[Intervention] 本轮介入判定：{lvl}（{rsn}）。本段优先于全局规则3的技能选用建议。"
         body_map = {
-            "none": "学习者本轮流利产出、无需介入：自然回应对话内容即可；"
-                    "不要主动纠错、不要讲解偏误（后台已静默记入学习记录）。"
-                    + ("识别已在后台完成，本轮无需再调 identify_errors。" if scanned else ""),
+            "none": ("学习者本轮流利产出——保持场景自然。"
+                     + ("若该句识别到偏误：先用一整句正确说法自然重述（把需要修正的地方都带进正确句里，"
+                        "如'您想喝很多奶茶吧'），然后逐条明确点出本句识别到的每个错误"
+                        "（每条一两短语，如：是'喝'奶茶不是'吃'奶茶；'很多'要放在'奶茶'前面），"
+                        "不遗漏任何一个识别出的错误；简短、不展开语法规则、不打断场景节奏。"
+                        "错误已在后台静默记录，稍后会通过图谱/复习呈现。"
+                        if has_err else
+                        "本句未识别到明显偏误：自然接话推进场景即可，不提示任何错误。")
+                     + ("识别已在后台完成，本轮无需再调 identify_errors。" if scanned else "")),
             "light": "学习者本轮犹豫或连续出错：请轻介入——用一两个引导性提问带学习者"
                      "自己说对，不直接下结论、不讲解规则。"
                      + ("识别已在后台完成，本轮无需再调 identify_errors。" if scanned else ""),
@@ -215,11 +223,20 @@ def build_intervention_directive(level: str, reason: str, native_lang: str = "",
         head = (f"[Intervention] This turn: {lvl} ({rsn}). This section takes "
                 "precedence over rule 3's skill-selection advice.")
         body_map = {
-            "none": "The learner is producing fluently this turn — no intervention "
-                    "needed: respond naturally to the conversation; do NOT correct "
-                    "or explain errors (already recorded silently in the background)."
-                    + ("Recognition already ran in the background — do not call "
-                       "identify_errors again this turn." if scanned else ""),
+            "none": ("The learner is speaking fluently this turn — keep the scene natural. "
+                     + ("Start by giving a fully corrected natural recast of the whole phrase — "
+                        "bring every spot that needs fixing into the correct form "
+                        "(e.g. '您想喝很多奶茶吧') — then explicitly point out EACH "
+                        "error detected in this sentence, one at a time (1-2 short "
+                        "phrases each, e.g. it's '喝奶茶' not '吃奶茶'; '很多' goes "
+                        "before '奶茶'), leaving none out. Stay brief, do not lecture "
+                        "syntax, and keep the scene flowing. The errors are already "
+                        "logged in the background."
+                        if has_err else
+                        "No obvious error was detected in this sentence: just respond "
+                        "naturally and keep the scene going, without flagging anything.")
+                     + (" Recognition already ran in the background — do not call "
+                        "identify_errors again this turn." if scanned else "")),
             "light": "The learner is hesitating or repeating errors: intervene "
                      "lightly — guide with one or two leading questions so they "
                      "say it right themselves; do not state conclusions or rules. "

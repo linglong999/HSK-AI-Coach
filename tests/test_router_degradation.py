@@ -55,7 +55,8 @@ class DegradationTestBase(unittest.TestCase):
         raise RuntimeError("注入的引擎故障")
 
     def _mock_recognize(self, confirmed=None, uncertain=None):
-        self.router.recognizer.recognize = lambda text, native_lang="": {
+        # 0.25：router.process 现传 level（起点分层），替身签名需接受
+        self.router.recognizer.recognize = lambda text, level=3, native_lang="": {
             "errors": confirmed or [], "uncertain": uncertain or []}
 
     def _mock_explain_ok(self):

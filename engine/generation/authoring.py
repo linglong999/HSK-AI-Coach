@@ -202,6 +202,85 @@ def build_dialogue_prompt(*, scene_id: str = "", level=None, kp_ids=None,
     )
 
 
+# ---------------- why 原理 prompt（0.26 · 隐性"为什么"折叠块） ----------------
+# 与生成单元不同：why 不是 schema-v1 单元，而是一条"逐错误对应的口语化原理"，
+# 前端折叠显示、默认不打扰场景节奏。不套 _COMMON_RULES（无 keyPoints 等字段）。
+WHY_CONSTRAINTS = """【约束】
+1. items 逐条对应输入的错误（fragment/correction 逐字照抄，不改动；条数一致，不增删、不合并）。
+2. reason 用一到两句口语化的原理解释"为什么错、为什么这样改"，就事论事、不堆术语、不写整体建议；按【语言指令】用目标语言写（例句片段保留中文原文）。
+3. fragment/correction 始终保留中文原文，绝不翻译。
+4. l1 字段：仅当该错误的成因与输入里的某条母语迁移假设相符、且置信度高时才写（一两句母语影响说明）；绝大多数情况省略该字段，不硬凑。
+5. 切不可把"为什么"写成对学习者的指责或长篇语法讲义；默认是折叠内容，要读起来轻盈、点开即懂。"""
+
+WHY_AUTHORING_PROMPT = """【任务】作为 HSK 中文教学专家，为学习者写错的那一小段中文写"为什么"——一段简短、口语化的原理：解释"为什么那样讲不对、为什么改成这样就对了"。这条内容会折叠展示，学习者主动点开才看，所以绝不要打扰或指责。
+
+【语言指令】{language_directive}（可空，默认中文解释；非中文时 reason 用目标语言，但 fragment/correction 保持中文原文）
+
+【识别到的偏误（fragment=错片段，correction=正确说法）】
+{errors}
+
+【母语迁移假设（可选，l1 字段仅在相符且高置信时使用）】
+{l1_hypotheses}
+
+【要求】输出严格 JSON object（结构逐字段照抄）：
+{{
+  "items": [
+    {{
+      "fragment": "逐字照抄输入的错误片段",
+      "correction": "逐字照抄输入的修正",
+      "reason": "一两句口语化的为什么（解释机制，用语言指令的语言）",
+      "l1": "仅当该错与母语迁移假设相符且高置信时的母语影响说明，否则省略本字段"
+    }}
+  ]
+}}
+{constraints}"""
+
+WHY_FIELDS = ("fragment", "correction", "reason", "l1")
+
+
+def _fmt_errors(errors) -> str:
+    """把识别到的偏误压缩为 prompt 行（逐字照抄 fragment/correction 进槽位）。"""
+    rows = []
+    for e in (errors or []):
+        if not isinstance(e, dict):
+            continue
+        frag = str(e.get("fragment", "") or "")
+        corr = str(e.get("correction", "") or "")
+        typ = str(e.get("type", "") or "")
+        conf = e.get("confidence")
+        tag = f"（{typ}·置信{conf}）" if (conf is not None) else (f"（{typ}）" if typ else "")
+        rows.append(f"- 错误片段【{frag}】→ 正确【{corr}】{tag}")
+    return "\n".join(rows) or "（无）"
+
+
+def _fmt_l1(l1_hypotheses) -> str:
+    """把母语迁移假设压缩为 prompt 段（仅作 l1 字段候选，非绑定）。"""
+    rows = []
+    for h in (l1_hypotheses or []):
+        if not isinstance(h, dict):
+            continue
+        anchor = str(h.get("l1_anchor", "") or "")
+        corr = str(h.get("correction", "") or "")
+        if corr:
+            rows.append(f"- {anchor} ← 可能受此母语影响（对应修正：{corr}）")
+        elif anchor:
+            rows.append(f"- {anchor}")
+    return "\n".join(rows) or "（无）"
+
+
+def build_why_prompt(*, errors=None, l1_hypotheses=None,
+                     language_directive: str = "") -> str:
+    """组装 why 原理解释 prompt（填槽位 + 专属约束）。errors 为空 → 直接返回空（不生成）。"""
+    if not errors:
+        return ""
+    return WHY_AUTHORING_PROMPT.format(
+        language_directive=language_directive or "(默认中文解释，例句保留中文)",
+        errors=_fmt_errors(errors),
+        l1_hypotheses=_fmt_l1(l1_hypotheses),
+        constraints=WHY_CONSTRAINTS,
+    )
+
+
 DIALOGUE_FIELDS = ("scene_id", "type", "title", "title_zh", "level",
                    "kp_ids", "seed", "turns", "expressions")
 

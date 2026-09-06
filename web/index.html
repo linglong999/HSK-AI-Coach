@@ -96,6 +96,14 @@
   .sbtn:hover{background:rgb(var(--item))}
   .sbtn .ic{width:17px;text-align:center;color:rgb(var(--tx3));flex-shrink:0;font-size:13px}
   .sbtn.add{border:1px dashed rgb(var(--line-strong));color:rgb(var(--tx3));justify-content:center;font-size:12.5px;padding:7px}
+  /* 0.25 免 Key 首屏配置引导条 */
+  .cfgbar{display:flex;align-items:center;gap:10px;margin:10px 14px 0;padding:10px 13px;border:1px solid rgb(var(--sem-warn)/.5);background:rgb(var(--sem-warn)/.12);border-radius:10px;font-size:13px}
+  .cfgbar.hidden{display:none}
+  .cfgbar .cb-ico{flex:none;font-size:16px;line-height:1}
+  .cfgbar .cb-t{font-weight:700;color:rgb(var(--sem-warn));margin-right:8px}
+  .cfgbar .cb-sub{color:rgb(var(--tx2));flex:1;min-width:0}
+  .cfgbar .cb-go{flex:none;padding:5px 12px;border-radius:8px;background:rgb(var(--brand));color:var(--brand-ink);font-weight:600;border:0;cursor:pointer;font-size:12.5px}
+  .cfgbar .cb-x{flex:none;background:none;border:0;color:rgb(var(--tx3));cursor:pointer;font-size:15px;line-height:1;padding:2px}
   .sbtn.add:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
   .sbtn .bdg{margin-left:auto;font-size:10.5px;color:rgb(var(--tx3))}
   .sbtn.cur{background:rgb(var(--item-active));color:rgb(var(--tx));font-weight:600}
@@ -143,6 +151,25 @@
   .note-c{color:rgb(var(--brand));text-decoration:underline;text-decoration-color:rgb(var(--brand)/.5);
           text-underline-offset:3px;cursor:pointer}
   .note-c:hover{background:rgb(var(--brand)/.1);border-radius:3px}
+
+  /* ---- 0.26 隐性"为什么"折叠块（默认折叠，点击展开） ---- */
+  .why-block{margin-bottom:4px;animation:pop .18s ease}
+  .why-toggle{background:none;border:none;color:rgb(var(--brand));cursor:pointer;
+              font:inherit;font-size:13px;padding:2px 4px;display:inline-flex;align-items:center;gap:3px;
+              opacity:.85}
+  .why-toggle:hover{opacity:1}
+  .why-toggle .chev{transition:transform .15s ease;display:inline-block}
+  .why-toggle.open .chev{transform:rotate(180deg)}
+  .why-body{margin:4px 0 6px 12px;padding:8px 12px;border-left:3px solid rgb(var(--brand)/.35);
+            background:rgb(var(--bg-sink));border-radius:6px;font-size:14px}
+  .why-item{margin:4px 0;position:relative}
+  .why-item:hover .why-tools{opacity:1}
+  .why-tools{position:absolute;top:-4px;right:0;display:flex;gap:4px;opacity:0;transition:opacity .15s}
+  .why-tools .tool{width:24px;height:24px;font-size:12px}
+  .why-q{font-weight:600;color:rgb(var(--tx));padding-right:64px}
+  .why-q .why-ar{color:rgb(var(--brand));margin:0 4px;font-weight:400}
+  .why-p{color:rgb(var(--tx)/.85);line-height:1.65;margin-top:2px}
+  .why-l1{color:rgb(var(--sem-warn));margin-top:2px;font-size:13px}
 
   /* ---- 学习成果卡 ---- */
   .card{position:relative;background:rgb(var(--panel2));border:1px solid rgb(var(--line));border-radius:12px;
@@ -564,6 +591,13 @@
   <!-- ================= 主区 ================= -->
   <main>
     <section class="left">
+      <div class="cfgbar hidden" id="cfgBar">
+        <span class="cb-ico">🔑</span>
+        <span class="cb-t" data-i18n="cfgTitle">未配置模型密钥</span>
+        <span class="cb-sub" data-i18n="cfgSub">先在「模型密钥」添加一个 OpenAI 兼容的供应商（DeepSeek 已评测），或填写 .env 的 DEEPSEEK_API_KEY 后重启。</span>
+        <button class="cb-go" id="cfgGo" data-i18n="cfgBtn">去配置</button>
+        <button class="cb-x" id="cfgClose" aria-label="关闭" data-i18n-title="cfgClose">✕</button>
+      </div>
       <div class="scene-banner" id="sceneBanner"></div>
       <div class="chat" id="chat">
         <div class="empty" id="emptyState">
@@ -732,6 +766,7 @@ const state={
   sceneId:'',            // 0.22 场景对话：当前场景 id（空=自由对话）
   scenes:[],             // 预置场景列表（GET /api/scenarios，0.22）
   persona:null,          // 0.22 方向3：个性化 persona（GET /api/profile.profile.persona）
+  userLevel:'HSK3',        // 0.25 起点分层：学习者 HSK 等级（GET /api/profile.profile.user_level）
   providerId:(()=>{try{return localStorage.getItem('hsk-provider')||''}catch(e){return ''}})(),
   lang:(()=>{try{const l=localStorage.getItem('hsk-lang');return (l==='zh'||l==='en')?l:'en'}catch(e){return 'en'}})(),
 };
@@ -776,9 +811,9 @@ en:{
   modelPickTitle:'Choose model (add providers in Settings → Model keys)',
   defaultModel:'Default model',
   backChat:'‹ Back to chat',
-  mapTitle:'Cognitive map · X = HSK level zones · Y = mastery · ring = mastery progress · dashed stroke = due for review',
+  mapTitle:'Cognitive map · X = HSK level zones · Y = mastery · ring = mastery progress · dashed stroke = in review queue',
   lgVocab:'Vocab', lgGrammar:'Grammar', lgPragma:'Pragmatics', lgChar:'Characters',
-  lgMastery:'Mastery ring', lgReview:'Due for review',
+  lgMastery:'Mastery ring', lgReview:'In review queue',
   nbLabel:'Next up', nbGo:'Practice', nbExplain:'Explain',
   nbReasonDue:'top review priority ({p})', nbReasonWeak:'lowest mastery ({m})',
   ndMastery:'Mastery', ndErrors:'Errors', ndTimes:'×',
@@ -801,7 +836,7 @@ en:{
   aRetry:'AI suggests re-explaining this from a simpler angle',
   aTeacher:'Same point missed {n} times in a row — consider asking a real teacher',
   lblLookup:'Knowledge points', lookupErr:'Knowledge point lookup: ', unnamed:'(unnamed)',
-  lblReview:'Review plan', noReview:'Nothing due for review', items:'items',
+  lblReview:'Review plan', noReview:'Nothing in your review queue', items:'items',
   genFail:'Generation failed', genNA:'Generation unit unavailable', diagnostics:'Diagnostics · {n} attempt(s)',
   lblPractice:'Practice', lblUnit:'Feynman unit', unitKps:'Key points (target knowledge)',
   taskKind:'Task type', qCount:'questions', forbidden:'Will not appear this round (guardrails)',
@@ -816,7 +851,7 @@ en:{
   poNeighbors:'Pick an adjacent knowledge point (confusion edge)',
   adjPrompt:'I often confuse 「{a}」 and 「{b}」. Please explain their difference and connection.',
   adjBadge:'→ Adjacent · ',
-  rvTitle:'Due for review: generate targeted practice', rvOff:'This knowledge point is not in the review queue',
+  rvTitle:'In review queue: generate targeted practice', rvOff:'This knowledge point is not in the review queue',
   rvPrompt:'Please give me one targeted practice item for 「{name}」 (a practice unit) and start it.',
   rvBadge:'↓ Review · ',
   delTitle:'Remove this card (graph unaffected)', delToast:'Card removed (graph unaffected)',
@@ -826,10 +861,10 @@ en:{
   reviewPrompt:'What should I review now? Pull my review queue and give me one targeted practice item for the point that most needs review.',
   reviewBadge:'▶ Start review',
   reportFail:'Report failed to load: ',
-  repTitle:'AI study report', repGraph:'Graph', repNodes:'nodes', repReview:'Due', repItems:'items', repEdges:'Confusion edges', repOffenders:'Repeat offenders',
+  repTitle:'AI study report', repGraph:'Graph', repNodes:'nodes', repReview:'Review', repItems:'items', repEdges:'Confusion edges', repOffenders:'Repeat offenders',
   repWarn:'⚠ Repeat-offender points: {list} — prioritize these today',
   repOff:'Repeat ×{n}', repRep:'Missed {n}×', repEmpty:'No profile data yet — chat a bit more, write a few sentences, and your errors will settle into this report automatically.',
-  repStored:'(Historical snapshot: nothing due in the current review queue)',
+  repStored:'(Historical snapshot: nothing in the current review queue)',
   repSrc:'Data source: error graph × event ledger × long-term memory (read-only, not LLM-generated)',
   repLatest:'Latest evidence: ',
   docTitleModal:'Reading material → extract Chinese knowledge points',
@@ -846,10 +881,14 @@ en:{
   errReq:'Request failed: ',
   errLLMBody:'Free dialog needs an LLM API key.',
   errLlmHint:'Two ways: ① Settings → Model keys, add a provider (OpenAI-compatible, takes effect immediately); ② copy .env.example to .env, fill in DEEPSEEK_API_KEY, restart the service',
+  cfgTitle:'No model key configured',
+  cfgSub:'Add an OpenAI-compatible provider first under “Model keys” (DeepSeek is the evaluated default), or fill in DEEPSEEK_API_KEY in .env and restart.',
+  cfgBtn:'Configure', cfgClose:'Close', cfgToast:'Please configure a model key first (Settings → Model keys)',
   errUnknownBody:'Unknown model provider (it may have been deleted). Pick the model again at the input box top-left.',
   errUnknownHint:'This provider may have been deleted — pick the model again',
   errGraph:'Failed to load the graph: ',
   annotateTitle:'Click to locate this knowledge point on the map',
+  whyBtn:'Why?', whyL1:'Possible L1 influence:',
   tabTheme:'Theme', tabLLM:'Model keys', tabKeys:'Shortcuts', tabAbout:'About', tabLang:'Language', tabPersona:'Personalize',
   psH:'Personalize your coach',
   psSub:'Reply style, address, identity and custom instructions — saved to your learner profile and applied on every turn (interrupt cap is enforced deterministically by the server, not left to the model).',
@@ -864,6 +903,9 @@ en:{
   psCapHint:'Silent while you are fluent; steps in only when you ask for help, get stuck, or repeat errors. After the cap it just records silently.',
   psSave:'Save', psSaving:'Saving…', psSaved:'Saved — applies from your next message', psSaveFail:'Save failed: ',
   psLoadingPersona:'Loading…',
+  lsH:'Learner HSK level',
+  lsSub:'Your level drives error detection, beyond-level flagging and explanation difficulty. Change it anytime — it applies from your next message.',
+  lsSave:'Save level', lsSaved:'Level saved', lsSaveFail:'Save failed: ',
   themeH:'Interface theme', themeSub:'Two themes (same lightness, different accent). Switching only swaps tokens; semantic colors (graph types / error green-red) stay.',
   themeMemphis:'Memphis', themeWarm:'Warm orange', theme_midnight:'Midnight', theme_memphis:'Memphis', theme_warm:'Warm orange', themeToast:'Theme → {name}',
   langH:'Language / 语言',
@@ -965,7 +1007,7 @@ zh:{
   aRetry:'AI 建议换更简单的讲法重新讲一遍',
   aTeacher:'同一要点连续未通过 {n} 次，建议找真人老师答疑',
   lblLookup:'知识点', lookupErr:'知识点查询：', unnamed:'（未命名）',
-  lblReview:'复习安排', noReview:'暂无到期复习项', items:'项',
+  lblReview:'复习安排', noReview:'暂无在复习队列的项', items:'项',
   genFail:'生成失败', genNA:'生成单元不可用', diagnostics:'诊断 · {n} 次尝试（稳定 code）',
   lblPractice:'巩固练习', lblUnit:'费曼讲解单元', unitKps:'要点（正向知识）',
   taskKind:'任务类型', qCount:'题量', forbidden:'本回合不会犯（护栏）',
@@ -993,7 +1035,7 @@ zh:{
   repTitle:'AI 学习报告', repGraph:'图谱', repNodes:'节点', repReview:'待复习', repItems:'项', repEdges:'混淆边', repOffenders:'惯犯',
   repWarn:'⚠ 惯犯知识点：{list} —— 建议今日优先巩固',
   repOff:'惯犯 ×{n}', repRep:'撞错 {n} 次', repEmpty:'暂无画像数据 —— 先和助教多聊几句、写几个句子，你的偏误会自动沉淀成报告。',
-  repStored:'（历史快照：当前复习队列无到期项）',
+  repStored:'（历史快照：当前复习队列无待复习项）',
   repSrc:'数据来源：偏误图谱 × 事件账本 × 长期记忆（只读，非 LLM 生成）',
   repLatest:'最近证据：',
   docTitleModal:'阅读材料 → 抽取中文知识点',
@@ -1010,10 +1052,14 @@ zh:{
   errReq:'请求失败：',
   errLLMBody:'自由对话需要配置 LLM API Key。',
   errLlmHint:'两种方法：① 设置 → 模型密钥，添加供应商（OpenAI 兼容，即时生效）；② 复制 .env.example 为 .env，填入 DEEPSEEK_API_KEY 后重启服务',
+  cfgTitle:'未配置模型密钥',
+  cfgSub:'先在「模型密钥」添加一个 OpenAI 兼容的供应商（DeepSeek 已评测），或填写 .env 的 DEEPSEEK_API_KEY 后重启。',
+  cfgBtn:'去配置', cfgClose:'关闭', cfgToast:'请先配置模型密钥（设置 → 模型密钥）',
   errUnknownBody:'未知模型供应商（可能已被删除），请在输入框左上角重新选择',
   errUnknownHint:'该供应商可能已被删除，请重新选择模型',
   errGraph:'无法加载图谱：',
   annotateTitle:'点击在地图定位',
+  whyBtn:'为什么？', whyL1:'可能是母语习惯影响：',
   tabTheme:'界面主题', tabLLM:'模型密钥', tabKeys:'快捷键', tabAbout:'关于', tabLang:'语言', tabPersona:'个性化',
   psH:'个性化你的学习伙伴',
   psSub:'回复风格、称呼、身份与自定义指令——存入学习档案，每轮对话即时生效（打断上限由服务端确定性执行，不依赖模型自觉）。',
@@ -1028,6 +1074,9 @@ zh:{
   psCapHint:'流利时静默；仅在求助、卡壳或连续出错时介入，达上限后只记录不打断。',
   psSave:'保存', psSaving:'保存中…', psSaved:'已保存，下一轮对话生效', psSaveFail:'保存失败：',
   psLoadingPersona:'读取中…',
+  lsH:'学习者 HSK 等级',
+  lsSub:'你的等级会驱动偏误识别、超纲判定与讲解难度。随时可改，下一轮对话即生效。',
+  lsSave:'保存等级', lsSaved:'等级已保存', lsSaveFail:'保存失败：',
   themeH:'界面主题', themeSub:'两套主题（深浅相同、强调色不同），切换只换 token，语义色（图谱类型/偏误红绿）保持不变。',
   themeMemphis:'孟菲斯', themeWarm:'暖橙', theme_midnight:'暗夜', theme_memphis:'孟菲斯', theme_warm:'暖橙', themeToast:'主题 → {name}',
   langH:'语言 / Language',
@@ -1140,6 +1189,47 @@ function addNote(txt,cls,hint){
 function addAiText(text){
   if(!text) return;
   addMsg(el(`<div class="ai-text">${annotate(esc(text))}</div>`));
+}
+
+// ============ 0.26 隐性"为什么"原理（默认折叠，点击展开） ============
+// items: [{fragment, correction, reason, l1?}]；渲染成助教回复尾部的折叠块。
+// 动态内容一律 textContent 注入（防 XSS）；无 items → 不渲染。
+function renderWhy(items){
+  if(!items||!items.length) return;
+  const wrap=el('<div class="why-block"></div>');
+  const btn=el(`<button class="why-toggle" type="button"><span class="chev">▾</span><span>${esc(t('whyBtn'))}</span></button>`);
+  const body=el('<div class="why-body" hidden></div>');
+  items.forEach(it=>{
+    const item=el('<div class="why-item"></div>');
+    const q=el('<div class="why-q"></div>');
+    const f=document.createElement('span');f.textContent=(it.fragment||'');
+    const ar=el('<span class="why-ar">→</span>');
+    const c=document.createElement('span');c.textContent=(it.correction||'');
+    q.appendChild(f);q.appendChild(ar);q.appendChild(c);
+    item.appendChild(q);
+    if(it.reason){const p=el('<div class="why-p"></div>');p.textContent=it.reason;item.appendChild(p);}
+    if(it.l1){const p=el('<div class="why-l1"></div>');p.textContent=t('whyL1')+it.l1;item.appendChild(p);}
+    // 0.29：无条件挂↗/→/↓分支动作；无 kp_id（未锚定/未确认）→ 全灰，
+    // 即"图谱里还没有这条边，不可发散"。守住图谱唯一权威，无自由发散。
+    item.appendChild(branchTools(it.kp_id||'', 'why-tools'));
+    body.appendChild(item);
+  });
+  btn.addEventListener('click',()=>{
+    const next=body.hidden;body.hidden=!next;btn.classList.toggle('open',next);
+  });
+  wrap.appendChild(btn);wrap.appendChild(body);
+  addMsg(wrap);
+}
+
+// ============ 0.27 成果卡随会话持久：恢复会话重建 ============
+// 与实时 runDialog 顺序一致（先 renderTrace 卡，再文本，最后 why 折叠块）。
+function applyHistory(msgs){
+  (msgs||[]).forEach(m=>{
+    if(m.role==='user'){ addUserMsg(m.content); return; }
+    if(Array.isArray(m.cards)&&m.cards.length) renderTrace(m.cards);
+    addAiText(m.content);
+    if(Array.isArray(m.why)&&m.why.length) renderWhy(m.why);
+  });
 }
 
 // ============ Smart Annotation（词表=图谱节点名；点击→地图定位） ============
@@ -1382,7 +1472,8 @@ function renderParse(res){
  *   ↗ 深挖：节点已确认 → 请 AI 费曼讲解
  *   → 相邻：图谱混淆边存在 → 选相邻 KP 讲区别
  *   ↓ 待复习：节点在复习队列 → 出针对性练习
- *   ✕ 删除：仅移除卡片（不影响图谱/记忆）
+ * 0.29：branchTools 抽取复用 —— 偏误识别卡与「为什么」错误行共用，
+ *       图谱唯一权威：灰掉的按钮=图谱里还没有这条边，不可发散。
  * ============================================================ */
 function neighborsOf(kpId){
   const out=[];
@@ -1395,8 +1486,10 @@ function neighborsOf(kpId){
 function inQueue(kpId){return (graph&&graph.queue||[]).some(q=>q.kp_id===kpId);}
 function nodeName(kpId){const n=graph&&graph.nodes&&graph.nodes[kpId];return (n&&n.knowledge_point)||kpId;}
 
-function cardTools(kpId){
-  const bar=el(`<div class="card-tools"></div>`);
+// 三个分支动作（↗→↓），cls=容器类名（card-tools 卡片右上 / why-tools 错误行右上）
+function branchTools(kpId,cls){
+  cls=cls||'card-tools';
+  const bar=el(`<div class="${cls}"></div>`);
   const hasNode=!!(graph&&graph.nodes&&graph.nodes[kpId]);
   const nbs=neighborsOf(kpId);
   const queued=inQueue(kpId);
@@ -1417,7 +1510,14 @@ function cardTools(kpId){
     const nm=nodeName(kpId);
     sendPrompt(tf('rvPrompt',{name:nm}),tf('rvBadge')+nm);
   });
-  mk('✕',t('delTitle'),true,()=>{bar.closest('.card').remove();toast(t('delToast'));});
+  return bar;
+}
+
+function cardTools(kpId){
+  const bar=branchTools(kpId);
+  const del=el(`<button class="tool del" title="${esc(t('delTitle'))}">✕</button>`);
+  del.addEventListener('click',ev=>{ev.stopPropagation();bar.closest('.card').remove();toast(t('delToast'));});
+  bar.appendChild(del);
   return bar;
 }
 
@@ -1756,10 +1856,7 @@ async function switchSession(id,forceNew){
     const msgs=(c&&c.messages)||[];
     if(msgs.length){
       addMsg(el(`<div class="note plain">${tf('restored',{n:msgs.length})}</div>`));
-      msgs.forEach(m=>{
-        if(m.role==='user') addUserMsg(m.content);
-        else addAiText(m.content);
-      });
+      applyHistory(msgs);
     }
   }catch(e){ /* 恢复失败不阻塞新对话 */ }
   loadSessions();
@@ -1992,7 +2089,18 @@ async function loadProviders(){
     state.defaultProvider=(d&&d.default_id)||null;
     renderModelPick();
   }catch(e){ /* 服务未起/端点缺失：选择器保持"默认模型" */ }
+  renderConfigBar();
 }
+function renderConfigBar(){
+  const bar=$('cfgBar');if(!bar)return;
+  bar.classList.toggle('hidden',!!state.providers.length);
+}
+function showConfigBar(){
+  const bar=$('cfgBar');if(bar)bar.classList.remove('hidden');
+}
+const cfgGo=$('cfgGo'),cfgClose=$('cfgClose');
+if(cfgGo)cfgGo.addEventListener('click',()=>{openOverlay('settingsOvl');renderSettingsTab('llm');});
+if(cfgClose)cfgClose.addEventListener('click',()=>{const b=$('cfgBar');if(b)b.classList.add('hidden');});
 function currentProvider(){
   return state.providers.find(p=>p.id===state.providerId)
       || state.providers.find(p=>p.id===state.defaultProvider)
@@ -2150,11 +2258,18 @@ async function runDialog(text){
   applyGraph(res.graph);
   renderTrace(res.trace);
   addAiText(res.text);
+  renderWhy(res.why);
   (res.degraded||[]).forEach(d=>addNote(`⚠ ${d.stage}：${d.reason||''}`,'warn'));
   loadSessions();   // 刷新侧栏标题/计数（首条消息后服务端自动命名）
   return res;
 }
 async function sendPrompt(text,badge){
+  if(!state.providers.length){
+    showConfigBar();
+    toast(t('cfgToast'));
+    const bar=$('cfgBar');if(bar)bar.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
   const emptyEl=$('emptyState');if(emptyEl)emptyEl.remove();
   addUserMsg(text,badge);
   const pend=addPending();
@@ -2222,7 +2337,18 @@ const settingsTabs={
     const p=state.persona||{};
     const cur=p.reply_style||'default';
     const cap=(p.interrupt_cap!=null)?p.interrupt_cap:3;
+    const curLevel=state.userLevel||'HSK3';
     return `
+    <div class="prov-form" style="margin-bottom:14px">
+      <h5>${t('lsH')}</h5>
+      <p class="sub">${t('lsSub')}</p>
+      <div class="frow">
+        <select id="lsLevel" style="width:auto;flex:none;padding:6px 10px">${[1,2,3,4].map(n=>{
+          const v='HSK'+n;return `<option value="${v}" ${v===curLevel?'selected':''}>${v}</option>`;}).join('')}</select>
+        <button class="btn-brand" id="lsSave">${t('lsSave')}</button>
+        <span class="hint" id="lsStatus"></span>
+      </div>
+    </div>
     <h3>${t('psH')}</h3>
     <p class="sub">${t('psSub')}</p>
     <div class="prov-form">
@@ -2306,6 +2432,7 @@ async function loadPersona(){
   const r=await api('/api/profile');
   const p=(r&&r.profile&&r.profile.persona)||null;
   state.persona=p||{};
+  state.userLevel=(r&&r.profile&&r.profile.user_level)||'HSK3';   // 0.25
   return p;
 }
 function bindPersonaTab(){
@@ -2325,10 +2452,25 @@ function bindPersonaTab(){
     $('psInstr').value=p.custom_instructions||'';
     if(p.interrupt_cap!=null)$('psCap').value=p.interrupt_cap;
     const st=$('psStatus');if(st)st.textContent='';
+    const lsel=$('lsLevel');if(lsel&&state.userLevel)lsel.value=state.userLevel;
   };
   // 打开 tab 时拉一次现值（服务端 profile.persona 为权威；空 = 全默认）
   loadPersona().then(fill).catch(()=>{
     const st=$('psStatus');if(st)st.textContent='';
+  });
+  // 0.25 起点分层：独立保存学习者 HSK 等级（profile.user_level）
+  const lSave=$('lsSave');
+  if(lSave)lSave.addEventListener('click',async()=>{
+    const sel=$('lsLevel');if(!sel)return;
+    const v=sel.value;
+    const b=lSave;b.disabled=true;b.textContent=t('psSaving');
+    try{
+      const r=await api('/api/profile',{user_level:v});
+      state.userLevel=(r&&r.user_level)||v;
+      const st2=$('lsStatus');if(st2)st2.textContent='';
+      toast(t('lsSaved'));
+    }catch(e){toast(t('lsSaveFail')+e.message);}
+    b.disabled=false;b.textContent=t('lsSave');
   });
   $('psSave').addEventListener('click',async()=>{
     const active=body.querySelector('.theme-swatch[data-style].active');
@@ -2542,10 +2684,7 @@ $('text').addEventListener('input',function(){this.style.height='auto';this.styl
       if(msgs.length){
         const emptyEl=$('emptyState');if(emptyEl)emptyEl.remove();
         addMsg(el(`<div class="note plain">${tf('restored',{n:msgs.length})}</div>`));
-        msgs.forEach(m=>{
-          if(m.role==='user')addUserMsg(m.content);
-          else addAiText(m.content);
-        });
+        applyHistory(msgs);
       }
     }catch(e){ /* 恢复失败不阻塞新对话 */ }
   }

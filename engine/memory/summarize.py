@@ -62,7 +62,7 @@ def build_profile_summary(graph, ledger: Optional[ErrorLedger] = None,
         # 该 KP 不在复习队列：尝试返回仅它的事件状态（供按需注入仍有点信息）
         repeated = ledger.repeated_count(focus_kp)
         if repeated:
-            lines_review.append(f"- {focus_kp}：重复 {repeated} 次（未到期复习）")
+            lines_review.append(f"- {focus_kp}：重复 {repeated} 次（尚未进入复习队列）")
     if not lines_review:
         return ""
     return "## 常错点 / 复习提醒\n" + "\n".join(lines_review)

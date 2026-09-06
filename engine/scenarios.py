@@ -92,7 +92,9 @@ def build_scene_brief(scene: dict, native_lang: str = "") -> str:
             f"你是{roles.get('learner') or '学习者'}，我是{roles.get('agent') or '对话方'}。\n"
             f"目标：{'、'.join(goals)}。\n"
             + (f"本场景练习知识点：{kp_line}。\n" if kp_line else "")
-            + "请先让我开口；不要逐句纠错，只有我卡壳、说不清或主动求助时才提示。"
+            + "请先让我开口。保持场景自然：若我说错，用整句正确说法自然重述（recast）并"
+              "逐条明确点出识别到的每个错误（每条一两短语，简短、不讲规则、不打断节奏）；"
+              "错误也会在后台静默记录、稍后在图谱/复习中呈现。只有我卡壳、说不清或主动求助时才可深入讲解。"
         )
     skill_line = "、".join(kp_names.values()) if kp_names else ""
     # 英文壳用 roles_en（教学层英文）；缺省回退 roles 中文名
@@ -104,8 +106,11 @@ def build_scene_brief(scene: dict, native_lang: str = "") -> str:
         f"you play the {ltext}, I play the {atext}.\n"
         f"Goal: {' / '.join(goals)}.\n"
         + (f"Skills to practice: {skill_line}.\n" if skill_line else "")
-        + "Let me speak first; do NOT correct sentence-by-sentence. "
-          "Only step in when I am stuck, unclear, or ask for help."
+        + "Let me speak first. Stay in the scene: if I make an error, naturally echo "
+          "the corrected form (recast) and explicitly point out each error detected, "
+          "1-2 short phrases each, no rule lecture, keep the flow; errors are also "
+          "logged silently for later graph/review. Only when I am stuck, unclear, "
+          "or explicitly ask should you explain deeply."
     )
 
 

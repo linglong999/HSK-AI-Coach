@@ -57,7 +57,8 @@ GLOBAL_RULES = (
     "5) 讲解完成后，主动邀请学习者用自己的话复述一遍（费曼式检验，等其复述后调 verify_retell）。\n"
     "6) 不确定或无需任何技能时就只给 text 直接回答。\n"
     "7) 系统提示若附【学习者画像】（该生常错点/惯犯/复习提醒）：讲到相关知识点时主动点出"
-    "其高频偏误（如'你最近常错X'）；对话开场或收尾时若有到期复习项，主动发起复习提醒"
+    "其高频偏误（如'你最近常错X'）；对话开场或收尾时若复习队列有高优先级待复习项，"
+    "可主动发起复习提醒"
     "（可调 get_review_queue 取详情）。无画像则忽略本条。"
 )
 
@@ -103,8 +104,9 @@ GLOBAL_RULES_EN = (
     "7) If the system prompt includes a [Learner profile] (common errors / repeat "
     "offenders / review reminders): when touching a related knowledge point, point out "
     "their high-frequency errors (e.g. \"you often get X wrong lately\"); at the opening "
-    "or closing of the conversation, if reviews are due, proactively raise a review "
-    "reminder (you may call get_review_queue for details). Ignore this rule if no "
+    "or closing of the conversation, if the review queue has high-priority items, you "
+    "may raise a review reminder (you may call get_review_queue for details). Ignore "
+    "this rule if no "
     "profile is attached.\n"
     "8) LANGUAGE POLICY (critical): speak to the learner in natural English — the "
     "teaching layer. All target-language content — the sentence being checked, error "
@@ -119,6 +121,11 @@ GLOBAL_RULES_EN = (
 # 漏注入会让 L1 归因在对话主链静默失效（与 Router.process 漏传同类问题）
 LANG_INJECTED_SKILLS = ("identify_errors", "explain_error", "verify_retell",
                         "generate_unit")
+
+# 0.25 起点分层：HSK 等级由系统确定性注入（等价 native_lang 的"系统约束不靠 LLM"原则）。
+# identify 用 level（超纲宽容判定 + 【学习者】难度），explain 用 user_level（讲解难度）。
+# 两者参数名各异，由 _inject_level 按技能名写入；无级则保持技能默认（HSK3）。
+LEVEL_INJECTED_SKILLS = ("identify_errors", "explain_error")
 
 # 0.21 EN 模式生成单元的语言指令（英壳 + 中文内容载体，与规则 8 同口径）
 _LANG_DIRECTIVE_EN = (
@@ -148,6 +155,7 @@ class Planner:
             learner_id: str = "default",
             profile_summary: Optional[str] = None,
             native_lang: str = "",
+            user_level: str = "",
             scene_brief: str = "",
             persona_brief: str = "",
             intervention_directive: str = "") -> Dict[str, Any]:
@@ -156,6 +164,8 @@ class Planner:
         由上层 serve 从 build_profile_summary(graph, ledger) 计算，planner 不自取。
         native_lang（0.21）：非 zh → 英文全局规则/降级文案，并确定性注入
         explain_error / verify_retell 参数（教学层英文，中文内容载体不变）。
+        user_level（0.25 起点分层）：学习者 HSK 等级（如 'HSK3'/'3'），由上层 serve
+        从画像读取注入 identify_errors / explain_error（识别难度 + 讲解难度），空则技能默认。
         scene_brief（0.22 方向2）：场景对话 [Scene] 段（serve 组好传入），非空时
         追加进 system——让学习者开口习得、不逐句纠错（纠错介入交给方向3）。
         persona_brief（0.22 方向3）：个性化栏 [Persona] 段（风格/称呼/人设/自定义指令）。
@@ -228,6 +238,10 @@ class Planner:
                     if (native_lang and name in LANG_INJECTED_SKILLS
                             and isinstance(params, dict)):
                         params = self._inject_lang(name, params, native_lang)
+                    # 0.25 起分层：HSK 等级确定性注入识别/讲解难度（同"系统约束不靠 LLM"）
+                    if (user_level and name in LEVEL_INJECTED_SKILLS
+                            and isinstance(params, dict)):
+                        params = self._inject_level(name, params, user_level)
                     res = self._dispatch_action(name, params)
                     used.append(name)
                     trace.append({
@@ -287,6 +301,16 @@ class Planner:
         if not params.get("native_lang"):
             return {**params, "native_lang": native_lang}
         return params
+
+    @staticmethod
+    def _inject_level(name: str, params: Dict[str, Any], user_level: str) -> Dict[str, Any]:
+        """0.25 起点分层：HSK 等级确定性写入技能参数。
+        identify_errors 用 level（超纲宽容判定 + 识别难度），explain_error 用
+        user_level（讲解难度）。仅在该技能未自传参数时注入，不覆盖 LLM 已有值。"""
+        key = "level" if name == "identify_errors" else "user_level"
+        if params.get(key):
+            return params
+        return {**params, key: user_level}
 
     def _build_system(self, profile_summary: str = "",
                       native_lang: str = "",

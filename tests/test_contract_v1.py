@@ -42,7 +42,8 @@ META_KEYS = {"start_ts", "end_ts", "elapsed_ms"}
 
 
 def _mock_ok(router):
-    router.recognizer.recognize = lambda text, native_lang="": {
+    # 0.25：router.process 现传 level（起点分层），替身签名需接受
+    router.recognizer.recognize = lambda text, level=3, native_lang="": {
         "errors": [dict(FAKE_CONFIRMED)], "uncertain": [dict(FAKE_UNCERTAIN)],
         "hypotheses": [], "degraded": []}
     router.explainer.explain = lambda err, **kw: {
@@ -137,7 +138,7 @@ class TestContractShape(ContractBase):
             "dropped_fp": [],
             "degraded": "识别引擎不可用，已回退规则匹配（仅超纲词预检）: LLM down",
         }
-        self.router.recognizer.recognize = lambda text, native_lang="": fallback
+        self.router.recognizer.recognize = lambda text, level=3, native_lang="": fallback
         res = self.router.process("我想买苹果很多。", event_key="c9")
         notices = [d for d in res["degraded"] if d.get("stage") == "recognize"]
         self.assertEqual(len(notices), 1)

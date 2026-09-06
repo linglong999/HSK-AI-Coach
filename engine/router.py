@@ -47,6 +47,20 @@ class Router:
         self.graph = ErrorGraph(learner_id)
         self.graph.load()
 
+    def _level_int(self) -> int:
+        """0.25 起点分层：将 user_level（'HSK3'/'3'/3）归一为 int；非法回退 3。"""
+        s = str(self.user_level or "").strip().upper()
+        s = s[len("HSK"):] if s.startswith("HSK") else s
+        try:
+            return max(1, min(6, int(s)))
+        except (TypeError, ValueError):
+            return 3
+
+    def set_level(self, user_level: str):
+        """0.25：外部同步学习者等级（serve 从画像读取后调用），识别/超纲/讲解随之生效。"""
+        self.user_level = user_level
+        self._level_int()   # 触发归一（非法值也会回退默认，不抛错）
+
     def process(self, user_text: str, event_key: str = "") -> dict:
         """一次偏误纠错闭环：识别 → 讲解 → 图谱 → 复习队列。
         返回「JSON 接缝契约 v1」结构化结果（详见 datasets/docs/JSON-接缝契约-v1.md）：
@@ -73,7 +87,9 @@ class Router:
         try:
             # 0.22：native_lang 传入识别（0.21 只接了 explainer/verifier，此路径漏传——
             # 迁移假设与"母语"上下文提示词都依赖它）
-            recog = self.recognizer.recognize(user_text, native_lang=self.native_lang)
+            # 0.25：level 传入识别（曾漏传恒用默认 3，超纲宽容判定 + 识别难度失真）
+            recog = self.recognizer.recognize(
+                user_text, level=self._level_int(), native_lang=self.native_lang)
             confirmed = recog.get("errors", [])
             uncertain = recog.get("uncertain", [])
             # 0.22：L1 迁移假设透传（契约 v1 新增可选键，向后兼容；只读不写图谱）

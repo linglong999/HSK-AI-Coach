@@ -152,9 +152,14 @@ class InterventionTrackerTest(unittest.TestCase):
 class InterventionDirectiveTest(unittest.TestCase):
 
     def test_zh_three_levels(self):
-        none_d = build_intervention_directive("none", "fluent", "zh")
-        self.assertIn("静默记录", none_d)
-        self.assertIn("不要主动纠错", none_d)
+        none_d = build_intervention_directive("none", "fluent", "zh",
+                                              recognition={"errors":
+                                                           [{"fragment": "奶茶"}]})
+        self.assertIn("自然重述", none_d)
+        self.assertIn("明确点出", none_d)
+        self.assertIn("每个错误", none_d)
+        clean_d = build_intervention_directive("none", "fluent", "zh")
+        self.assertIn("未识别到明显偏误", clean_d)
         light_d = build_intervention_directive("light", "streak", "zh")
         self.assertIn("轻介入", light_d)
         self.assertIn("引导", light_d)
@@ -162,8 +167,12 @@ class InterventionDirectiveTest(unittest.TestCase):
         self.assertIn("直接回应", block_d)
 
     def test_en_three_levels(self):
-        none_d = build_intervention_directive("none", "fluent", "en")
-        self.assertIn("stay silent", none_d)
+        none_d = build_intervention_directive("none", "fluent", "en",
+                                              recognition={"errors":
+                                                           [{"fragment": "奶茶"}]})
+        self.assertIn("natural flow", none_d)
+        self.assertIn("recast", none_d)
+        self.assertIn("EACH error", none_d)
         light_d = build_intervention_directive("light", "streak", "en")
         self.assertIn("light touch", light_d)
         block_d = build_intervention_directive("block", "unclear", "en")

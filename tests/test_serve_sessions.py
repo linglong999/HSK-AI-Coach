@@ -16,6 +16,7 @@ import socket
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from http.server import ThreadingHTTPServer
 from unittest import mock
@@ -235,6 +236,50 @@ class SessionManageTest(unittest.TestCase):
         st, _ = _post(self.port, "/api/session/delete",
                       {"conversation_id": "s-ghost"})
         self.assertEqual(st, 404)
+
+
+class CardsPersistenceTest(unittest.TestCase):
+    """0.27 成果卡随会话持久：/api/dialog 落盘 cards + GET /api/conversation 恢复透传。
+    mock(dialog_llm) 下 provider=None → why 不生成不触网；cards 恒持久。"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.router = FakeRouter()
+        cls.llm = ScriptLLM()
+        cls.httpd, cls.port = _start_server(cls.router, dialog_llm=cls.llm)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.httpd.shutdown()
+        cls.httpd.server_close()
+        p = os.path.join(_PROJECT_ROOT, "data", "graph_sess_graph_test.json")
+        if os.path.exists(p):
+            os.remove(p)
+
+    def setUp(self):
+        self.llm.responses = list(_DIALOG_SCRIPT)
+        self.cid = "cards-" + str(int(time.time() * 1000))
+
+    def test_conversation_returns_cards_for_assistant(self):
+        st, res = _post(self.port, "/api/dialog",
+                        {"text": "我想买苹果很多。", "conversation_id": self.cid})
+        self.assertEqual(st, 200)
+        self.assertEqual(res.get("why"), [])  # mock 无 provider → 空数组不触网
+
+        st, conv = _get(self.port, "/api/conversation?id=" + self.cid)
+        self.assertEqual(st, 200)
+        msgs = conv["messages"]
+        ncards = sum(1 for m in msgs if m.get("cards"))
+        self.assertGreaterEqual(ncards, 1)  # 至少一条助教消息带成果卡
+        for m in msgs:
+            if m.get("cards"):
+                names = [c["name"] for c in m["cards"]]
+                self.assertIn("identify_errors", names)
+        # user 消息不透传 cards
+        for m in msgs:
+            if m["role"] == "user":
+                self.assertNotIn("cards", m)
+                self.assertNotIn("why", m)
 
 
 class LearnerMemoryPinDeleteTest(unittest.TestCase):

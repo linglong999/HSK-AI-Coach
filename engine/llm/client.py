@@ -113,22 +113,25 @@ class LLMClient:
         raise RuntimeError(f"LLM 调用失败(已重试): {last_err}")
 
     # ---------- 便捷方法 ----------
-    def chat_json(self, system: str, user: str, temperature: float = 0.2) -> dict:
-        """请求模型返回 JSON，并自动解析（非强制，供宽松场景用）"""
+    def chat_json(self, system: str, user: str, temperature: float = 0.2,
+                  config: Optional[Dict] = None) -> dict:
+        """请求模型返回 JSON，并自动解析（非强制，供宽松场景用）。
+        config: 可选供应商覆盖（0.26 why 复用），透传给 chat()。"""
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ]
-        raw = self.chat(messages, temperature=temperature)
+        raw = self.chat(messages, temperature=temperature, config=config)
         return parse_json(raw)
 
     def chat_json_strict(self, system: str, user: str, temperature: float = 0.2,
-                         retries: int = 1) -> dict:
+                         retries: int = 1, config: Optional[Dict] = None) -> dict:
         """结构化输出的调用层强约束（2.1-2.3 定稿要求）。
 
         - 启用 API 级 JSON 模式（response_format=json_object）；
         - 解析失败重试最多 retries 次（默认 1），仍失败抛 JSONStrictError（由调用方降级）；
         - 绝不静默返回空/坏结果。（P1-1：降级方向不能偏向"通过"）
+        config: 可选供应商覆盖（默认 None → settings 全局配置；0.26 why 需按请求供应商）。
         """
         if retries < 0:
             raise ValueError("retries 必须 >= 0")
@@ -139,7 +142,8 @@ class LLMClient:
                     {"role": "system", "content": system},
                     {"role": "user", "content": user},
                 ]
-                raw = self.chat(messages, temperature=temperature, json_mode=True)
+                raw = self.chat(messages, temperature=temperature,
+                                json_mode=True, config=config)
                 return parse_json(raw)
             except Exception as e:
                 attempt += 1
