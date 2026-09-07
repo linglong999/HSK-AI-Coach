@@ -1,0 +1,5 @@
+# 行尾确定性：关键文件强制按"原始字节"存储，关闭 git 的 text 行尾转换。
+# 背景（P0.9 踩坑）——本环境 core.autocrlf=true 会把工作区 LF 存成 CRLF blob；
+# GitHub runner 的 bash 又把多行 run: 里的 CR 读进命令，导致 then 等关键字
+# 语法错红。用 -text 按二进制原样存 LF，绝对规避。
+.github/workflows/ci.yml -text
