@@ -45,6 +45,7 @@ def valid_practice() -> dict:
         "for_keypoints": ["量词只"],
         "targets_errors": [{"fragment": "*一只鸡", "knowledge_point_id": "kp:只"}],
         "task_kind": "mcq", "questionCount": 3, "difficulty": None,
+        "estimatedDuration": 150,
     }
 
 

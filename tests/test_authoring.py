@@ -107,7 +107,8 @@ class TestValidator(unittest.TestCase):
     def test_forbidden_missing_from_none(self):
         unit = {"id": "x", "type": "practice", "title": "t",
                 "forbidden_errors": None, "keyPoints": ["k"],
-                "task_kind": "mcq", "for_keypoints": ["a"], "questionCount": 3}
+                "task_kind": "mcq", "for_keypoints": ["a"], "questionCount": 3,
+                "estimatedDuration": 150}
         diags = self.v.validate(unit)
         codes = [d.code for d in diags]
         self.assertIn("code_forbidden_missing", codes)
@@ -124,7 +125,8 @@ class TestValidator(unittest.TestCase):
         unit = {"id": "x", "type": "practice", "title": "t",
                 "keyPoints": ["k"], "forbidden_errors": [],
                 "context": {"curriculumAt": "p"}, "for_keypoints": ["a"],
-                "task_kind": "essay", "questionCount": 3}
+                "task_kind": "essay", "questionCount": 3,
+                "estimatedDuration": 150}
         diags = self.v.validate(unit)
         d = next(x for x in diags if x.code == "code_task_kind_invalid")
         self.assertEqual(d.evidence, "essay")
@@ -133,7 +135,8 @@ class TestValidator(unittest.TestCase):
         unit = {"id": "x", "type": "practice", "title": "t",
                 "keyPoints": ["k"], "forbidden_errors": [],
                 "context": {"curriculumAt": "p"}, "for_keypoints": ["a"],
-                "task_kind": "mcq", "questionCount": 99}
+                "task_kind": "mcq", "questionCount": 99,
+                "estimatedDuration": 150}
         diags = self.v.validate(unit)
         self.assertIn("code_question_count_high", [d.code for d in diags])
 
@@ -151,7 +154,8 @@ class TestValidator(unittest.TestCase):
         unit = {"id": "x", "type": "practice", "title": "t",
                 "keyPoints": [], "forbidden_errors": [],
                 "context": {"curriculumAt": "p"}, "for_keypoints": ["a"],
-                "task_kind": "bogus", "questionCount": 99}
+                "task_kind": "bogus", "questionCount": 99,
+                "estimatedDuration": 150}
         diags = self.v.validate(unit)
         orders = [d.repair_order() for d in diags]
         self.assertEqual(orders, sorted(orders), f"应按修复定序升序: {orders}")
@@ -180,6 +184,7 @@ class TestContractConsistency(unittest.TestCase):
         self.assertIn("questionCount", PRACTICE_FIELDS)
         self.assertIn("targets_errors", PRACTICE_FIELDS)
         self.assertIn("difficulty", PRACTICE_FIELDS)
+        self.assertIn("estimatedDuration", PRACTICE_FIELDS)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,10 @@
 import json
 import os
 
+# P0.19 ⑨：recast 教学文案收敛到 intervention.py 单一权威源，这里复用同一常量，
+# 场景教学层与介入层的隐性反馈口径永远一致（消除双份维护的同步成本）。
+from engine.intervention import RECAST_DIRECTIVE_ZH, RECAST_DIRECTIVE_EN
+
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCENARIOS_PATH = os.path.join(_PROJECT_ROOT, "datasets", "scenarios_en.json")
 KNOWLEDGE_POINTS_PATH = os.path.join(_PROJECT_ROOT, "datasets", "knowledge_points_v1_4.json")
@@ -92,9 +96,8 @@ def build_scene_brief(scene: dict, native_lang: str = "") -> str:
             f"你是{roles.get('learner') or '学习者'}，我是{roles.get('agent') or '对话方'}。\n"
             f"目标：{'、'.join(goals)}。\n"
             + (f"本场景练习知识点：{kp_line}。\n" if kp_line else "")
-            + "请先让我开口。保持场景自然：若我说错，用整句正确说法自然重述（recast）并"
-              "逐条明确点出识别到的每个错误（每条一两短语，简短、不讲规则、不打断节奏）；"
-              "错误也会在后台静默记录、稍后在图谱/复习中呈现。只有我卡壳、说不清或主动求助时才可深入讲解。"
+            + "请先让我开口。保持场景自然。「recast 反馈」：" + RECAST_DIRECTIVE_ZH
+              + "只有我卡壳、说不清或主动求助时才可深入讲解。"
         )
     skill_line = "、".join(kp_names.values()) if kp_names else ""
     # 英文壳用 roles_en（教学层英文）；缺省回退 roles 中文名
@@ -106,10 +109,8 @@ def build_scene_brief(scene: dict, native_lang: str = "") -> str:
         f"you play the {ltext}, I play the {atext}.\n"
         f"Goal: {' / '.join(goals)}.\n"
         + (f"Skills to practice: {skill_line}.\n" if skill_line else "")
-        + "Let me speak first. Stay in the scene: if I make an error, naturally echo "
-          "the corrected form (recast) and explicitly point out each error detected, "
-          "1-2 short phrases each, no rule lecture, keep the flow; errors are also "
-          "logged silently for later graph/review. Only when I am stuck, unclear, "
+        + "Let me speak first. Stay in the scene. [Recast feedback]: " + RECAST_DIRECTIVE_EN
+          + " Only when I am stuck, unclear, "
           "or explicitly ask should you explain deeply."
     )
 

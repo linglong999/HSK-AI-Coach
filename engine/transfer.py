@@ -75,9 +75,13 @@ def _sig_classifier(err: dict) -> bool:
 
 
 def _sig_possessive_de(err: dict) -> bool:
-    """'的'遗漏：修正 = 恰好插入'的'（我朋友书→我朋友的书；漂亮衣服→漂亮的衣服）。"""
+    """'的'遗漏（P0.19 规则②收紧）：修正 = 恰好插入'的'，且片段以领属代词/指示代词开头
+    （我朋友书→我朋友的书）。收紧理由：形容词+名词合法（漂亮衣服可加可不加'的'），
+    单删'的'的形容词类不再误报；名词领属（朋友书）纯文本难与名词并列区分，宁漏勿错。"""
     frag, corr = _strip_punct(err.get("fragment", "")), _strip_punct(err.get("correction", ""))
     if not frag or not corr or "的" in frag or "的" not in corr:
+        return False
+    if not frag or frag[0] not in _PRONOUN_TAILS:  # 领属代词/指示代词开头才命中
         return False
     if corr.replace("的", "") != frag:
         return False
@@ -134,6 +138,35 @@ def _sig_wh_fronting(err: dict) -> bool:
                for wh in _WH_WORDS)
 
 
+# 处置动词常见尾部标记（把字句回避检测：frag 缺'把'、corr 引入'把'提取宾语）
+_BA_TAIL_HINTS = ("桌子", "床上", "椅子", "书包", "口袋", "地方", "手里", "车", "房间",
+                  "前面", "上面", "中间")  # 处所/位置宾语常配合处置义"把+宾语+放在+处所"
+
+
+def _sig_ba_avoidance(err: dict) -> bool:
+    """把字句回避（P0.19 规则⑦，补迁移规则）：英语无把字句、以 SVO 语序表达处置义，
+    学习者回避'把'、宾语留在动词后。判据（宁漏勿错，需三重条件 同时满足）：
+      ① corr 引入'把'、frag 不含'把'（把+宾语 属新增处置框架）；
+      ② 同字符集换序：frag 与 corr 去掉'把'后字符可重排一致（语序调整而非增删词）；
+      ③ 含处置/放置动词 + 处所宾语（如'书在桌子上'），排除不含'把'的一般换序误报。
+    局限（触发条件标注）：transfer_match 只对 confirmed 层匹配，而'回避'特征句面无错——
+    纯回避（句面合法、只是没用把字句）静态规则捕获不到，本签名只命中'回避+其他偏误共存'场景；
+    场景驱动的真回避检测进 backlog。"""
+    frag, corr = _strip_punct(err.get("fragment", "")), _strip_punct(err.get("correction", ""))
+    if not frag or not corr or "把" not in corr or "把" in frag:
+        return False
+    # ② 同字符集换序（去标点后）
+    if sorted(frag) != sorted(corr.replace("把", "")):
+        return False
+    # ① ③ 引入'把'且含放置动词 + 处所宾语特征（本签名锚定的处理义语境）
+    has_bind = "放" in frag or "摆" in frag or "挂" in frag or "放" in corr.split("把")[1]
+    has_place = any(h in frag for h in _BA_TAIL_HINTS)
+    # 排除：corr 用了'把'是量词/把持（把门/把车开走）而 frag 无对应处所宾语
+    if not (has_bind and has_place):
+        return False
+    return True
+
+
 _SIGNATURES = {
     "en-classifier-missing": _sig_classifier,
     "en-possessive-de": _sig_possessive_de,
@@ -141,6 +174,7 @@ _SIGNATURES = {
     "en-adj-predicate": _sig_adj_predicate,
     "en-aspect-particle": _sig_aspect_particle,
     "en-wh-fronting": _sig_wh_fronting,
+    "en-ba-avoidance": _sig_ba_avoidance,
 }
 
 

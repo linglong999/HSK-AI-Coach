@@ -14,11 +14,11 @@
     },
     {
       "rule_id": "en-possessive-de",
-      "title": "领属/修饰'的'遗漏",
+      "title": "领属代词'的'遗漏",
       "kp_anchors": ["kp-de-di-de"],
       "types": ["语法"],
-      "l1_anchor": "English marks possession and modification without a particle ('my friend', 'Tom's book', 'beautiful clothes')",
-      "zh_signature": "代词/名词/形容词直接连名词缺'的'（我朋友书→我朋友的书；漂亮衣服→漂亮的衣服）",
+      "l1_anchor": "English marks possession with 's or possessive pronoun without a particle ('my friend', 'Tom's book'); Chinese needs 的 between possessor and possessed",
+      "zh_signature": "代词/指示代词领属缺'的'（我朋友书→我朋友的书；他书包→他的书包）。形容词+名词不加'的'合法（漂亮衣服），不归本规则",
       "conf": 0.45
     },
     {
@@ -35,8 +35,8 @@
       "title": "形容词谓语句：系动词冗余或裸形容词",
       "kp_anchors": ["kp-chengdu-jieci"],
       "types": ["语法"],
-      "l1_anchor": "English requires 'be' before adjectives (She is happy); Chinese adjectives predicate directly, and a bare adjective needs a degree word (很)",
-      "zh_signature": "'是+形容词'（我是高兴→我很高兴），或裸形容词缺程度词（她高兴→她很高兴）",
+      "l1_anchor": "English requires 'be' before adjectives (She is happy); Chinese adjectives predicate directly, and a bare adjective needs a degree word (很). Exception: contrastive contexts (他高，我矮) allow a bare adjective",
+      "zh_signature": "'是+形容词'（我是高兴→我很高兴），或裸形容词缺程度词（她高兴→她很高兴）。仅限非对比语境——对比语境（他高，我矮）光杆形容词合法，不归本规则",
       "conf": 0.45
     },
     {
@@ -56,6 +56,15 @@
       "l1_anchor": "English fronts question words (What do you want?); Chinese keeps them where the answer belongs (你要什么?)",
       "zh_signature": "疑问词留在句首（什么你要→你要什么）",
       "conf": 0.35
+    },
+    {
+      "rule_id": "en-ba-avoidance",
+      "title": "把字句回避",
+      "kp_anchors": ["kp-ba-sentence"],
+      "types": ["语法"],
+      "l1_anchor": "English has no ba-construction and marks disposal via plain SVO + object position; learners avoid 把, keeping the object after the verb instead of preposing it (我把书放在桌子上 vs 我放书在桌子上)",
+      "zh_signature": "处置义应把宾语提前到动词前却留在动词后（我放书在桌子上→我把书放在桌子上）",
+      "conf": 0.38
     }
   ]
 }

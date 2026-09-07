@@ -186,7 +186,7 @@ class ProfileRepeatOffenderTest(unittest.TestCase):
         self.assertEqual(system["role"], "system")
         self.assertIn("## 常错点", system["content"])      # 画像正文（非规则文本）
         self.assertIn("kp-order-many", system["content"])
-        self.assertIn("惯犯", system["content"])
+        self.assertIn("高频×", system["content"])
 
         # 三线汇合：facts 落 M5 profile.common_errors
         prof = LearnerMemory(self.LEARNER, root=self.root).get_profile()

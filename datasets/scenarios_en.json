@@ -41,7 +41,7 @@
       "title": "Seeing a doctor",
       "title_zh": "看医生",
       "level": [3, 4],
-      "kp_ids": ["kp-le-dynamic", "kp-guo", "kp-de-di-de"],
+      "kp_ids": ["kp-le-dynamic", "kp-guo", "kp-zhizhi-dao", "kp-nengyuan-dongci"],
       "goals": ["描述症状", "说明病程", "听懂医嘱"],
       "seed": "你觉得不舒服，去医院看医生，说说哪里疼、病了多少天，并问医嘱和吃什么药。",
       "roles": {"learner": "病人", "agent": "医生"},

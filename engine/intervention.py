@@ -143,6 +143,28 @@ class InterventionTracker:
                 "last_level": self.last_level}
 
 
+# ---------------- 教学法：recast 单一常量 ----------------
+# P0.19 ⑧⑨：none 档（流利产出有隐错）的反馈文案收敛为唯一权威源。
+# intervention.py 与 scenarios.py [Scene] 段共同引用同一常量，消除同步成本。
+# 教学口径（Lyster & Ranta 隐性→引导梯度）：
+#   none = 先整句正确 recast 覆盖需修正处，再只轻点 1 个最关键错误（隐性反馈+单点提示），
+#          不罗列全部、不讲规则、不打断节奏——错误照常后台入图谱，复习环节显性处理。
+RECAST_DIRECTIVE_ZH = (
+    "若我说错：先用一整句正确说法自然重述（recast，把需要修正的地方都带进正确句里），"
+    "然后只轻点 1 个最关键的错误（简短一两短语，如'这里应该是'喝奶茶''），"
+    "不罗列所有错误、不讲语法规则、不打断场景节奏；错误已在后台静默记录，"
+    "稍后会通过图谱/复习呈现。"
+)
+RECAST_DIRECTIVE_EN = (
+    "If I make an error: start by naturally echoing the whole phrase in its corrected "
+    "form (a recast that brings every spot needing a fix into the correct sentence), "
+    "then gently flag only the 1 most important error (a short phrase or two, e.g. "
+    "\"here it should be '喝奶茶'\"). Do not list every error, do not lecture "
+    "grammar, and keep the scene flowing; the error is already logged silently in "
+    "the background and will surface later through the graph / review queue."
+)
+
+
 # ---------------- [Intervention] 注入段（双语） ----------------
 
 _LEVEL_LABEL = {
@@ -201,11 +223,7 @@ def build_intervention_directive(level: str, reason: str, native_lang: str = "",
         head = f"[Intervention] 本轮介入判定：{lvl}（{rsn}）。本段优先于全局规则3的技能选用建议。"
         body_map = {
             "none": ("学习者本轮流利产出——保持场景自然。"
-                     + ("若该句识别到偏误：先用一整句正确说法自然重述（把需要修正的地方都带进正确句里，"
-                        "如'您想喝很多奶茶吧'），然后逐条明确点出本句识别到的每个错误"
-                        "（每条一两短语，如：是'喝'奶茶不是'吃'奶茶；'很多'要放在'奶茶'前面），"
-                        "不遗漏任何一个识别出的错误；简短、不展开语法规则、不打断场景节奏。"
-                        "错误已在后台静默记录，稍后会通过图谱/复习呈现。"
+                     + (RECAST_DIRECTIVE_ZH
                         if has_err else
                         "本句未识别到明显偏误：自然接话推进场景即可，不提示任何错误。")
                      + ("识别已在后台完成，本轮无需再调 identify_errors。" if scanned else "")),
@@ -224,14 +242,7 @@ def build_intervention_directive(level: str, reason: str, native_lang: str = "",
                 "precedence over rule 3's skill-selection advice.")
         body_map = {
             "none": ("The learner is speaking fluently this turn — keep the scene natural. "
-                     + ("Start by giving a fully corrected natural recast of the whole phrase — "
-                        "bring every spot that needs fixing into the correct form "
-                        "(e.g. '您想喝很多奶茶吧') — then explicitly point out EACH "
-                        "error detected in this sentence, one at a time (1-2 short "
-                        "phrases each, e.g. it's '喝奶茶' not '吃奶茶'; '很多' goes "
-                        "before '奶茶'), leaving none out. Stay brief, do not lecture "
-                        "syntax, and keep the scene flowing. The errors are already "
-                        "logged in the background."
+                     + (RECAST_DIRECTIVE_EN
                         if has_err else
                         "No obvious error was detected in this sentence: just respond "
                         "naturally and keep the scene going, without flagging anything.")

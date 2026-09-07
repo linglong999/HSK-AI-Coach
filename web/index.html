@@ -696,7 +696,7 @@
       <h3 data-i18n="htu3T">学习动线（左侧栏）</h3>
       <ul>
         <li data-i18n-html="htu3a"><b>▶ 开始复习</b>：拉取复习队列，对最需要复习的知识点出一道针对性练习。</li>
-        <li data-i18n-html="htu3b"><b>◎ AI 学习报告</b>：基于画像（常错点/惯犯）生成数据报告——只读事实，不编造。</li>
+        <li data-i18n-html="htu3b"><b>◎ AI 学习报告</b>：基于画像（常错点/高频错法）生成数据报告——只读事实，不编造。</li>
         <li data-i18n-html="htu3c"><b>▤ 阅读材料</b>：粘贴文本或上传 txt/md，让 AI 解析并讲解其中的中文知识点。</li>
       </ul>
       <h3 data-i18n="htu4T">会话</h3>
@@ -861,9 +861,8 @@ en:{
   reviewPrompt:'What should I review now? Pull my review queue and give me one targeted practice item for the point that most needs review.',
   reviewBadge:'▶ Start review',
   reportFail:'Report failed to load: ',
-  repTitle:'AI study report', repGraph:'Graph', repNodes:'nodes', repReview:'Review', repItems:'items', repEdges:'Confusion edges', repOffenders:'Repeat offenders',
-  repWarn:'⚠ Repeat-offender points: {list} — prioritize these today',
-  repOff:'Repeat ×{n}', repRep:'Missed {n}×', repEmpty:'No profile data yet — chat a bit more, write a few sentences, and your errors will settle into this report automatically.',
+  repTitle:'AI study report', repGraph:'Graph', repNodes:'nodes', repReview:'Review', repItems:'items', repEdges:'Confusion edges', repOffenders:'High-frequency', repWarn:'⚠ High-frequency points: {list} — prioritize these today',
+  repOff:'High-freq ×{n}', repRep:'Missed {n}×', repEmpty:'No profile data yet — chat a bit more, write a few sentences, and your errors will settle into this report automatically.',
   repStored:'(Historical snapshot: nothing in the current review queue)',
   repSrc:'Data source: error graph × event ledger × long-term memory (read-only, not LLM-generated)',
   repLatest:'Latest evidence: ',
@@ -942,7 +941,7 @@ en:{
   htu2T:'Smart Annotation', htu2L:'Click an <b class="a">underlined term</b> in an AI reply (a knowledge point already in your graph) → jumps into the cognitive map and locates that node.',
   htu3T:'Study flows (left sidebar)',
   htu3a:'<b>▶ Start review</b>: pulls the review queue and gives one targeted practice item for the point that needs it most.',
-  htu3b:'<b>◎ AI study report</b>: a data report built from your profile (common errors / repeat offenders) — read-only facts, no fabrication.',
+  htu3b:'<b>◎ AI study report</b>: a data report built from your profile (common errors / high-frequency patterns) — read-only facts, no fabrication.',
   htu3c:'<b>▤ Reading material</b>: paste text or upload txt/md and let the AI parse and explain the Chinese knowledge points in it.',
   htu4T:'Sessions',
   htu4a:'Each session has its own context (no cross-talk); switching a session syncs to the URL (bookmarkable / restorable).',
@@ -1032,9 +1031,8 @@ zh:{
   reviewPrompt:'我该复习什么了？请拉取我的复习队列，并对最需要复习的知识点给我一道针对性练习。',
   reviewBadge:'▶ 开始复习',
   reportFail:'报告加载失败：',
-  repTitle:'AI 学习报告', repGraph:'图谱', repNodes:'节点', repReview:'待复习', repItems:'项', repEdges:'混淆边', repOffenders:'惯犯',
-  repWarn:'⚠ 惯犯知识点：{list} —— 建议今日优先巩固',
-  repOff:'惯犯 ×{n}', repRep:'撞错 {n} 次', repEmpty:'暂无画像数据 —— 先和助教多聊几句、写几个句子，你的偏误会自动沉淀成报告。',
+  repTitle:'AI 学习报告', repGraph:'图谱', repNodes:'节点', repReview:'待复习', repItems:'项', repEdges:'混淆边', repOffenders:'高频', repWarn:'⚠ 高频知识点：{list} —— 建议今日优先巩固',
+  repOff:'高频 ×{n}', repRep:'撞错 {n} 次', repEmpty:'暂无画像数据 —— 先和助教多聊几句、写几个句子，你的偏误会自动沉淀成报告。',
   repStored:'（历史快照：当前复习队列无待复习项）',
   repSrc:'数据来源：偏误图谱 × 事件账本 × 长期记忆（只读，非 LLM 生成）',
   repLatest:'最近证据：',
@@ -1113,7 +1111,7 @@ zh:{
   htu2T:'Smart Annotation', htu2L:'AI 回答里的<b class="a">下划线名词</b>（你图谱里已有的知识点）点一下 → 自动进入认知地图并定位该节点。',
   htu3T:'学习动线（左侧栏）',
   htu3a:'<b>▶ 开始复习</b>：拉取复习队列，对最需要复习的知识点出一道针对性练习。',
-  htu3b:'<b>◎ AI 学习报告</b>：基于画像（常错点/惯犯）生成数据报告——只读事实，不编造。',
+  htu3b:'<b>◎ AI 学习报告</b>：基于画像（常错点/高频错法）生成数据报告——只读事实，不编造。',
   htu3c:'<b>▤ 阅读材料</b>：粘贴文本或上传 txt/md，让 AI 解析并讲解其中的中文知识点。',
   htu4T:'会话',
   htu4a:'每个会话独立上下文（互不串扰），切换会话同步到网址（可收藏/回访恢复）。',

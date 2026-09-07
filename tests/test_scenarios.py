@@ -198,7 +198,7 @@ class SceneBriefTest(unittest.TestCase):
         self.assertIn("At a restaurant", brief)
         self.assertIn("customer", brief)            # 角色英壳
         self.assertIn("recast", brief)
-        self.assertIn("naturally echo", brief)
+        self.assertIn("Recast feedback", brief)
         self.assertIn("Skills to practice", brief)
 
     def test_brief_zh_hierarchy(self):
@@ -206,8 +206,8 @@ class SceneBriefTest(unittest.TestCase):
         self.assertIn("[Scene]", brief)
         self.assertIn("餐厅点餐", brief)
         self.assertIn("你是顾客", brief)
-        self.assertIn("自然重述", brief)
-        self.assertIn("明确点出", brief)
+        self.assertIn("自然重述", brief)             # P0.19 ⑨：复用 intervention 单一常量
+        self.assertIn("recast 反馈", brief)
         self.assertIn("本场景练习知识点", brief)
 
     def test_brief_invalid_scene_empty(self):

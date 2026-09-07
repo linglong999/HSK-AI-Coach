@@ -37,9 +37,9 @@ def _err(fragment, correction, etype="语法", kp="", **kw):
 
 class TransferRulesTest(unittest.TestCase):
 
-    def test_rules_load_six_with_required_keys(self):
+    def test_rules_load_with_required_keys(self):
         rules = load_rules()
-        self.assertEqual(len(rules), 6)
+        self.assertEqual(len(rules), 7)  # 0.22 六条 + P0.19 规则⑦ en-ba-avoidance
         for r in rules:
             for key in ("rule_id", "kp_anchors", "types", "l1_anchor",
                         "zh_signature", "conf"):
@@ -72,10 +72,16 @@ class TransferRulesTest(unittest.TestCase):
         self.assertEqual(hyp2["rule_id"], "en-classifier-missing")
 
     def test_possessive_de_insertion(self):
+        # P0.19 规则②收紧：领属代词/指示代词开头才命中；形容词+名词不加"的"合法，不归本规则
         hyp = match_one(_err("我朋友书", "我朋友的书", kp="kp-de-di-de"), "en")
         self.assertEqual(hyp["rule_id"], "en-possessive-de")
-        hyp2 = match_one(_err("漂亮衣服", "漂亮的衣服", kp="kp-de-di-de"), "en")
+        hyp2 = match_one(_err("他书包", "他的书包", kp="kp-de-di-de"), "en")
         self.assertEqual(hyp2["rule_id"], "en-possessive-de")
+        # 形容词+名词：漂亮衣服 属合法（可加可不加"的"），不再误报为'的'遗漏
+        self.assertIsNone(match_one(_err("漂亮衣服", "漂亮的衣服", kp="kp-de-di-de"), "en"))
+        # 指示代词领属也命中
+        hyp3 = match_one(_err("这书", "这本书", kp=""), "en")
+        self.assertIsNone(hyp3)  # "这书→这本书" 是量词泛化不是'的'遗漏（签名不符，安全）
 
     def test_quantity_reorder(self):
         hyp = match_one(_err("苹果很多", "很多苹果", kp="kp-zhuangyu-chezhi"), "en")
@@ -96,6 +102,17 @@ class TransferRulesTest(unittest.TestCase):
     def test_wh_fronting(self):
         hyp = match_one(_err("什么你要", "你要什么"), "en")
         self.assertEqual(hyp["rule_id"], "en-wh-fronting")
+
+    def test_ba_avoidance(self):
+        # P0.19 规则⑦：处置义应把宾语提前却留在动词后 → ba-sentence 迁移假设
+        hyp = match_one(_err("放书在桌子上", "把书放在桌子上", kp="kp-ba-sentence"), "en")
+        self.assertEqual(hyp["rule_id"], "en-ba-avoidance")
+        self.assertEqual(hyp["conf"], 0.38)
+        self.assertEqual(hyp["status"], "candidate")
+        # 局限：纯回避（句面合法只是没用把字句）静态捕获不到——本例 frag 含"把"被拒
+        self.assertNotEqual(
+            match_one(_err("把书放桌子上了", "把书放在桌子上", kp="kp-ba-sentence"), "en"),
+            "en-ba-avoidance")
 
     def test_unrelated_error_no_hypothesis(self):
         # 把字句语序错：无任何规则签名命中 → 不追因（宁漏勿错）

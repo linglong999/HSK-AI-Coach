@@ -156,8 +156,10 @@ class InterventionDirectiveTest(unittest.TestCase):
                                               recognition={"errors":
                                                            [{"fragment": "奶茶"}]})
         self.assertIn("自然重述", none_d)
-        self.assertIn("明确点出", none_d)
-        self.assertIn("每个错误", none_d)
+        # P0.19 ⑧：none 档改为 recast + 轻点 1 个（不再逐条点名全部错误）
+        self.assertIn("只轻点 1 个最关键的错误", none_d)
+        self.assertNotIn("明确点出", none_d)
+        self.assertNotIn("每个错误", none_d)
         clean_d = build_intervention_directive("none", "fluent", "zh")
         self.assertIn("未识别到明显偏误", clean_d)
         light_d = build_intervention_directive("light", "streak", "zh")
@@ -172,7 +174,10 @@ class InterventionDirectiveTest(unittest.TestCase):
                                                            [{"fragment": "奶茶"}]})
         self.assertIn("natural flow", none_d)
         self.assertIn("recast", none_d)
-        self.assertIn("EACH error", none_d)
+        # P0.19 ⑧：只轻点 1 个，不再逐条 EACH error
+        self.assertIn("only the 1 most important error", none_d)
+        self.assertNotIn("EACH error", none_d)
+        self.assertNotIn("leaving none out", none_d)
         light_d = build_intervention_directive("light", "streak", "en")
         self.assertIn("light touch", light_d)
         block_d = build_intervention_directive("block", "unclear", "en")

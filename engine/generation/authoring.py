@@ -51,7 +51,7 @@ EXPLAIN_AUTHORING_PROMPT = """【任务】作为 HSK 中文教学专家，为"�
   "pblSpec": null,
   "for_keypoint": "目标知识点（与上下文一致，可空则写 null）",
   "teachingObjective": "一句话教学目标",
-  "estimatedDuration": 90
+  "estimatedDuration": "费曼讲解片段按类型给 60–90 秒内的一个整数"
 }}
 {constraints}"""
 
@@ -88,7 +88,8 @@ PRACTICE_AUTHORING_PROMPT = """【任务】作为 HSK 中文教学专家，为"�
   "targets_errors": "逐项抄录上下文给的 targets_errors（可为 []，但字段必须存在）",
   "task_kind": "fill|mcq|rephrase|correct|open-ended 之一，取自上下文",
   "questionCount": 3,
-  "difficulty": "留空由服务层按图谱掌握度注入（本单元不写死）"
+  "difficulty": "留空由服务层按图谱掌握度注入（本单元不写死）",
+  "estimatedDuration": "练习按类型给 120–180 秒内的一个整数"
 }}
 {constraints}"""
 
@@ -290,7 +291,8 @@ DIALOGUE_FIELDS = ("scene_id", "type", "title", "title_zh", "level",
 UNIT_BASE_FIELDS = ("id", "type", "title", "keyPoints", "forbidden_errors", "context")
 EXPLAIN_FIELDS = UNIT_BASE_FIELDS + ("for_keypoint", "teachingObjective", "estimatedDuration")
 PRACTICE_FIELDS = UNIT_BASE_FIELDS + (
-    "for_keypoints", "targets_errors", "task_kind", "questionCount", "difficulty")
+    "for_keypoints", "targets_errors", "task_kind", "questionCount", "difficulty",
+    "estimatedDuration")
 POSTPONED_FIELDS = ("dialogueSpec", "interactiveSpec", "pblSpec")  # 一律 null
 SCENE_TYPES = ("explain", "practice", "dialogue", "interactive", "pbl")
 PRACTICE_TASK_KINDS = ("fill", "mcq", "rephrase", "correct", "open-ended")
