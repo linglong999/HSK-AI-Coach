@@ -885,6 +885,7 @@ en:{
   cfgBtn:'Configure', cfgClose:'Close', cfgToast:'Please configure a model key first (Settings → Model keys)',
   errUnknownBody:'Unknown model provider (it may have been deleted). Pick the model again at the input box top-left.',
   errUnknownHint:'This provider may have been deleted — pick the model again',
+  errQuotaHint:'Today’s free visitor quota is used up. Add your own API key to talk unlimited — it resets at 00:00 UTC.',
   errGraph:'Failed to load the graph: ',
   annotateTitle:'Click to locate this knowledge point on the map',
   whyBtn:'Why?', whyL1:'Possible L1 influence:',
@@ -1055,6 +1056,7 @@ zh:{
   cfgBtn:'去配置', cfgClose:'关闭', cfgToast:'请先配置模型密钥（设置 → 模型密钥）',
   errUnknownBody:'未知模型供应商（可能已被删除），请在输入框左上角重新选择',
   errUnknownHint:'该供应商可能已被删除，请重新选择模型',
+  errQuotaHint:'今日游客免费额度已用尽，配置自己的 API Key 可无限使用；额度将于 UTC 00:00 重置。',
   errGraph:'无法加载图谱：',
   annotateTitle:'点击在地图定位',
   whyBtn:'为什么？', whyL1:'可能是母语习惯影响：',
@@ -2286,6 +2288,9 @@ function dialogError(e){
   }else if(e.code==='unknown_provider'){
     addNote(e.message,'err',t('errUnknownHint'));
     loadProviders();
+  }else if(e.code==='visitor_quota_exceeded'){
+    addNote(e.message,'warn',t('errQuotaHint'));
+    showConfigBar();   // P0.10 满额 → 引导配置自有 Key 无限使用
   }else{
     addNote(t('errReq')+e.message,'err');
   }

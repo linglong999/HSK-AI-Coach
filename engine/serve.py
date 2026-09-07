@@ -37,6 +37,8 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
+from engine.visitor_gate import VisitorGate   # P0.10 游客配额闸门
+
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
@@ -63,13 +65,15 @@ def _provider_llm(provider):
 
 
 def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=None,
-                 memory_root: str = "data"):
+                 memory_root: str = "data",
+                 gate=None):
     """工厂构造 handler，闭包捕获 Router（每个请求共享同一图谱实例）。
     ThreadingHTTPServer 每请求一线程 → 用一把锁串行化整个闭环
     （process/verify 是多步读写组合，仅靠图谱内部锁防不住交错）。
     generation: 可选 GenerationEngine；默认 None 懒建（共享 router.graph + Writeback）。
     dialog_llm: 可选 planner llm_call 注入（测试 mock；None → 真实 LLMClient.chat）。
-    memory_root: LearnerMemory 落盘根目录（默认 data/；测试注入临时目录）。"""
+    memory_root: LearnerMemory 落盘根目录（默认 data/；测试注入临时目录）。
+    gate: 可选 VisitorGate（P0.10 游客每日配额）；None → 闸门关闭（测试默认豁免）。"""
 
     lock = threading.RLock()
 
@@ -81,6 +85,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
         _planners = {}   # provider_id -> Planner（0.20 BYOK：按供应商缓存；"__mock__"=注入路径）
         _dialog_llm = dialog_llm
         _memory_root = memory_root
+        _gate = gate   # P0.10 游客配额闸门（None = 关闭）
         _memories = {}   # learner_id -> LearnerMemory（M5 多轮记忆）
         _writebacks = {}  # learner_id -> Writeback（M8 事件账本/两段式）
         _interventions = {}  # conversation_id -> InterventionTracker（0.22 方向3）
@@ -349,6 +354,9 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Access-Control-Allow-Origin", "*")
+            vid_cookie = getattr(self, "_vid_cookie", None)   # P0.10 游客 vid 下发（dialog 闸门暂存）
+            if vid_cookie:
+                self.send_header("Set-Cookie", vid_cookie)
             self.end_headers()
             self.wfile.write(body)
 
@@ -480,6 +488,26 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                         scene_brief = build_scene_brief(_scene, native_lang)
                 except Exception:  # noqa: BLE001 场景加载失败 → 退化为自由对话
                     scene_brief = ""
+
+            # P0.10 游客模式闸门（放置在供应商解析之前：满额直接 429，不调模型、不计次、不深校验）。
+            # 判定口径：未带供应商 id、或 id == 环境默认供应商（"env"）＝走 owner Key 的请求 → 计入游客配额；
+            # 显式 BYOK（带非 env 供应商 id）完全豁免。
+            gate = self.__class__._gate
+            if gate is not None:
+                from engine import providers as _prov
+                uses_owner_key = (not provider_id) or (provider_id == _prov.ENV_PROVIDER_ID)
+                if uses_owner_key:
+                    vid = gate.ensure_vid(self)
+                    with self._lock:
+                        ok, remaining, reset = gate.check_and_consume(vid)
+                    if not ok:
+                        self._send_json({
+                            "error": "今日游客额度已用尽，次日 UTC 00:00 重置；"
+                                     "配置你自己的 API Key 可无限使用。",
+                            "code": "visitor_quota_exceeded",
+                            "message": "配置你自己的 API Key 可无限使用",
+                            "remaining": 0, "reset_at": reset}, 429)
+                        return
 
             # fail-loud：真实 LLM 路径必须先有可用供应商（mock 注入路径跳过）
             provider = None
@@ -1103,7 +1131,9 @@ def main():
     if not os.path.isdir(_INDEX_DIR):
         print(f"[serve] 前端壳目录不存在：{_INDEX_DIR}")
         print("[serve] 将仅提供 API（/api/process /api/graph），静态页待 M10 生成 web/index.html")
-    httpd = ThreadingHTTPServer((args.host, args.port), make_handler(router, _INDEX_DIR))
+    httpd = ThreadingHTTPServer((args.host, args.port),
+                                make_handler(router, _INDEX_DIR,
+                                             gate=VisitorGate(root="data")))
     print(f"HSK-AI-Coach 前端壳：http://{args.host}:{args.port}  (learner={args.learner})")
     print("  POST /api/dialog   自由对话（planner 唯一入口，需 LLM Key）")
     print("                      入参 text / learner_id / conversation_id")
