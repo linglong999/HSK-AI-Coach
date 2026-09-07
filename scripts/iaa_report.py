@@ -1,22 +1,27 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""P0.8 · YACLC 标注一致性报告（IAA）
+"""P0.8 · YACLC 标注一致性报告（Krippendorff's α 双口径 · 2026-09-07 修订版）
 
 独立分析脚本：不进运行时、不依赖项目零第三方运行时核心。
-例外依赖：numpy（仅用于 bootstrap 重采样；无 numpy 时自动退回纯 random 采样）。
+
+口径（v1 P0.8 修订版，用户实测后拍板）：
+  主口径 = α(nominal) on 修正选择   —— 单位=句，取值=correction 字符串，m_u=Σannotator_count
+  辅口径 = α(nominal) on 改动幅度   —— edits_count 分桶（0 / 1–2 / 3–4 / 5+）同法
+  实测量级（四条硬事实）：
+    1. Σannotator_count 与 total_annotators 1000/1000 不吻合（+1~+6；max 组 17 > total 11）
+    2. "没改"的标注者大概率不入组（correction==原句 仅 293 句 / 343 票，覆盖不了缺口）
+    3. 聚合丢失标注者身份 → Cohen's κ 本就不不可算
+    4. ig 语义 = "对原句是否合法"（ig=0 组 edits_count 恒 ≥1，ig=1 组可带 1–7 处润色）
+  结论：κ 全部退出交付物；total_annotators 仅存档不参与计算；
+        ig 降级为描述统计（加权占比 + ig×edits 交叉核查表）。
+  bootstrap 按句重采样（seed 固定）→ 双口径各 95% CI。
+  分歧样本清单 = distinct corrections 最多的 top50 句（1000/1000 句都 ≥5 种改法）。
+
+自验关：α 实现先过 2×2 手算样例（全同 → α=1；一同一异 → α=-1/3）再算全量。
 
 产出：
-  reports/iaa_yaclc.md            —— 数值 + 样本量 + 过滤口径 + 展开规则 + 诚实解读
-  reports/iaa_disagreements.csv   —— 分歧样本清单（标注者判定不一致的句子）
-
-口径（P0.8 已拍板）：
-  主口径 = is_grammatical 二分一致性。
-  指标    = Fleiss' κ（按标注者数分桶）+ Krippendorff's α（nominal，全量主指标）。
-  展开规则 = 聚合计数按 annotator_count 展开成逐标注者判定。
-  过滤     = total_annotators < 2 剔除；缺口按缺失处理（不补齐）。
-  置信区间 = 对句子层 bootstrap ≥1000 次 → 2.5/97.5 分位。
-
-用法：python scripts/iaa_report.py
+  reports/iaa_yaclc.md            —— 数值（α 双口径 + CI）+ 数据口径 + ig 核查 + 预设解读
+  reports/iaa_disagreements.csv   —— top50 分歧句全字段
 """
 import collections
 import csv
@@ -30,12 +35,55 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "datasets", "_yaclc_valid.jsonl")
 OUT_DIR = os.path.join(ROOT, "reports")
 
-N_BOOT = 2000          # bootstrap 重采样次数
-SEED = 20260907        # 固定 seed，结果可复跑
-MIN_ANNOTATORS = 2     # 过滤：标注者数过小的样本剔除
-GOOD = 1               # is_grammatical = 1 的代码取值
+N_BOOT = 2000      # bootstrap 重采样次数
+SEED = 20260907    # 固定 seed，可复跑
+TOP_N = 50         # 分歧句 top-N
+
+# 改动幅度分桶
+EDITS_BUCKETS = [0, 1, 2, 3, 4]     # 桶界: <1 →0, 1-2 →1, 3-4 →2, 5+ →3
 
 
+def edits_bucket(n):
+    if n <= 0:
+        return 0
+    if n <= 2:
+        return 1
+    if n <= 4:
+        return 2
+    return 3
+
+
+# ---------------- α(nominal)：coincidence 闭合式 ----------------
+def krippendorff_nominal(units):
+    """Krippendorff's α（nominal）。
+    units: [(uid, values:list)]，values 为每名标注者的编码（str/int）。
+    闭合式（由 coincidence c_gg=n_g(n_g-1)/(m_u-1)、c_gh=n_g n_h/(m_u-1) 推出）：
+      N = Σ m_u
+      Do = Σ_u (m_u² - Σ_g n_g²)/(m_u-1) / N
+      De = 1 - Σ_c p_c²,  p_c = freq(c)/N
+      α = 1 - Do/De
+    全同 → α=1；2 标注者 2 句"一同一异" [00][01] → α=-1/3（文献确证；Scott's π 才是 0，此处是 α）。
+    """
+    N = 0
+    do_num = 0.0
+    freq = collections.defaultdict(int)
+    for _, vals in units:
+        m = len(vals)
+        N += m
+        for v in vals:
+            freq[v] += 1
+        if m > 1:
+            c = collections.Counter(vals)
+            do_num += (m * m - sum(v * v for v in c.values())) / (m - 1)
+    if N <= 1:
+        return float("nan")
+    de = 1.0 - sum((v / N) ** 2 for v in freq.values())
+    if de <= 0:
+        return float("nan")
+    return 1.0 - (do_num / N) / de
+
+
+# ---------------- 数据装载与展开 ----------------
 def load_rows():
     rows = []
     with open(DATA, encoding="utf-8") as f:
@@ -46,118 +94,38 @@ def load_rows():
     return rows
 
 
-def expand(rows):
-    """展开成逐句子标注者判定列表。返回 [(sentence_id, sentence_text, [0/1,...]), ...]"""
+def build_units_correction(rows):
+    """主口径单位：每句 → 每名标注者的 correction 串（按 annotator_count 展开）。"""
     units = []
     for r in rows:
-        if r["total_annotators"] < MIN_ANNOTATORS:
-            continue  # 过滤（本数据集中实际为 0 条）
-        labels = []
+        vals = []
         for a in r["sentence_annos"]:
-            labels += [int(a["is_grammatical"])] * a["annotator_count"]
-        units.append((r["sentence_id"], r["sentence_text"], labels))
+            vals += [a["correction"]] * a["annotator_count"]
+        units.append((r["sentence_id"], vals))
     return units
 
 
-# ---------------- Krippendorff's α（nominal，2 类） ----------------
-def krippendorff_alpha(units):
-    """按 coincidence matrix 计算 nominal α。容忍每句标注者数不等。"""
-    n_codes = 2
-    codes = [GOOD, 1 - GOOD]
-    O = [[0.0] * n_codes for _ in range(n_codes)]          # coincidence 矩阵（有序对）
-    for _, _, labels in units:
-        m = len(labels)
-        for i in range(m):
-            for j in range(m):
-                if i != j:
-                    ci, cj = labels[i], labels[j]
-                    O[ci][cj] += 1.0
-    N = sum(sum(row) for row in O)
-    if N == 0:
-        return float("nan")
-    pairs_agree = sum(O[k][k] for k in range(n_codes))
-    Do = (N - pairs_agree) / N
-    # 期望分歧（nominal）：两随机编码不同的概率
-    rowsum = [sum(O[k]) for k in range(n_codes)]
-    prob_same = sum((rowsum[k] / N) ** 2 for k in range(n_codes))
-    Dc = 1.0 - prob_same
-    if Dc == 0:
-        return float("nan")
-    return 1.0 - Do / Dc
+def build_units_edits(rows):
+    """辅口径单位：每句 → 每名标注者的 edits_count 分桶。"""
+    units = []
+    for r in rows:
+        vals = []
+        for a in r["sentence_annos"]:
+            vals += [edits_bucket(a["edits_count"])] * a["annotator_count"]
+        units.append((r["sentence_id"], vals))
+    return units
 
 
-# ---------------- Fleiss' κ ----------------
-def _fleiss_kappa_for_bucket(sent_bucket, m):
-    """同标注者数 m 的句子子集 → Fleiss' κ（2 类）。"""
-    subs = [labels for _, _, labels in sent_bucket if len(labels) == m]
-    n = len(subs)
-    if n == 0:
-        return None
-    n0 = n1 = 0          # 各类总计数
-    pbar_sum = 0.0
-    for labels in subs:
-        c0, c1 = labels.count(0), labels.count(1)
-        n0 += c0
-        n1 += c1
-        # 该句内一致对占比（配对数 m*(m-1)）
-        agree = c0 * (c0 - 1) + c1 * (c1 - 1)
-        total_pair = m * (m - 1)
-        pbar_sum += agree / total_pair if total_pair else 0.0
-    P = pbar_sum / n
-    total = n0 + n1
-    p0 = n0 / total
-    p1 = n1 / total
-    Pe = p0 * p0 + p1 * p1
-    if Pe == 1.0:
-        return None
-    return (P - Pe) / (1 - Pe)
-
-
-def fleiss_kappa_by_bucket(units):
-    """按标注者数分桶报告 Fleiss' κ（表格驱动）。"""
-    buckets = bucket_map(units)
-    results = []
-    for m in sorted(buckets):
-        k = _fleiss_kappa_for_bucket(buckets[m], m)
-        results.append((m, len(buckets[m]), k))
-    return results
-
-
-def bucket_map(units):
-    buckets = collections.defaultdict(list)
-    for u in units:
-        buckets[len(u[2])].append(u)
-    return buckets
-
-
-# ---------------- bootstrap ----------------
-def _boot_alpha(units, n=N_BOOT, seed=SEED):
-    """对句子层重采样 → α 的 CI（主指标，容忍变量标注者数）。"""
+# ---------------- bootstrap（按句重采样） ----------------
+def _boot(units, n=N_BOOT, seed=SEED):
     rng = random.Random(seed)
-    alphas, idx = [], list(range(len(units)))
+    idx = list(range(len(units)))
+    vals = []
     for _ in range(n):
         sample = [units[i] for i in (rng.choice(idx) for _ in idx)]
-        alphas.append(krippendorff_alpha(sample))
-    return _ci([x for x in alphas if x == x])  # 排除 nan
-
-
-def _boot_kappa_buckets(buckets, n=N_BOOT, seed=SEED):
-    """每个标注者数桶内重采样 → κ 的 CI（同桶标注者数恒为 m，合法）。"""
-    rng = random.Random(seed)
-    out = {}
-    for m, sub in buckets.items():
-        sub = list(sub)
-        if len(sub) < 30:
-            out[m] = None          # 样本太少，CI 不稳，只报点估计
-            continue
-        ys, idx = [], list(range(len(sub)))
-        for _ in range(n):
-            sample = [sub[i] for i in (rng.choice(idx) for _ in idx)]
-            k = _fleiss_kappa_for_bucket(sample, m)
-            if k is not None:
-                ys.append(k)
-        out[m] = _ci(ys) if ys else None
-    return out
+        a = krippendorff_nominal(sample)
+        vals.append(a)
+    return _ci([x for x in vals if x == x])
 
 
 def _ci(vals):
@@ -169,167 +137,187 @@ def _ci(vals):
     return (lo, statistics.mean(vals), hi)
 
 
-def disagreements(units):
-    """labels 内含 0 与 1 的句子。"""
-    return [(uid, text, labels) for uid, text, labels in units
-            if 0 in labels and 1 in labels]
-
-
-def descriptive_evidence(rows, units):
-    """聚合依赖下真正可支撑的描述性证据：correction 聚合度 + is_grammatical 分歧模式。"""
-    n_cand = []                # 每句 distinct correction 候选数
-    max_share = []             # 每句最热门单 correction 的 annotator 占比
-    n0_dist = []               # 每句 is_grammatical=0 的展开数
+# ---------------- ig 描述统计 + 交叉核查 ----------------
+def ig_descriptive(rows):
+    total = 0
+    ig1 = ig0 = 0
+    cross = {}            # bucket -> {ig0, ig1}（按 annotator_count 加权）
     for r in rows:
-        n_cand.append(len(r["sentence_annos"]))
-        tot = sum(a["annotator_count"] for a in r["sentence_annos"])
-        if tot:
-            max_share.append(max(a["annotator_count"] for a in r["sentence_annos"]) / tot)
-    for _, _, labels in units:
-        n0_dist.append(labels.count(0))
-    cand = collections.Counter(n_cand)
-    share_hist = [0, 0, 0]     # <0.2 / 0.2–0.5 / >0.5 热度分段
-    for s in max_share:
-        share_hist[0 if s < 0.2 else (1 if s <= 0.5 else 2)] += 1
-    n0buckets = collections.Counter(n0_dist)
-    exactly_one_0 = sum(1 for x in n0_dist if x == 1)
+        for a in r["sentence_annos"]:
+            b = edits_bucket(a["edits_count"])
+            w = a["annotator_count"]
+            total += w
+            cell = cross.setdefault(b, {"ig0": 0, "ig1": 0})
+            if a["is_grammatical"]:
+                ig1 += w
+                cell["ig1"] += w
+            else:
+                ig0 += w
+                cell["ig0"] += w
     return {
-        "n_cand_dist": dict(sorted(cand.items())),
-        "n_cand_mean": statistics.mean(n_cand),
-        "max_share_hist": {"0-20%": share_hist[0], "20-50%": share_hist[1], ">50%": share_hist[2]},
-        "n0_dist": dict(sorted(n0buckets.items())),
-        "exact_one_0": exactly_one_0,
+        "total": total,
+        "ig1": ig1, "ig0": ig0,
+        "ig1_pct": ig1 / total, "ig0_pct": ig0 / total,
+        "cross": cross,
     }
 
 
-def write_disagreements_csv(units):
+# ---------------- 分歧样本（distinct corrections top50） ----------------
+def top_disagreement(rows):
+    scored = []
+    for r in rows:
+        distinct = {a["correction"]: a["annotator_count"] for a in r["sentence_annos"]}
+        scored.append((len(distinct), r))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [r for _, r in scored[:TOP_N]]
+
+
+def write_disagreements_csv(rows):
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, "iaa_disagreements.csv")
-    rows = []
-    for uid, text, labels in disagreements(units):
-        counts = {"0": labels.count(0), "1": labels.count(1)}
-        rows.append({"sentence_id": uid, "sentence_text": text,
-                     "n_0(不含语法)": counts["0"], "n_1(合语法)": counts["1"]})
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=["sentence_id", "sentence_text",
-                                          "n_0(不含语法)", "n_1(合语法)"])
-        w.writeheader()
-        w.writerows(rows)
+        w = csv.writer(f)
+        w.writerow(["sentence_id", "sentence_text", "n_distinct_corrections",
+                    "correction", "votes"])
+        for r in rows:
+            distinct = sorted({a["correction"] for a in r["sentence_annos"]})
+            for corr in distinct:
+                votes = sum(a["annotator_count"] for a in r["sentence_annos"]
+                            if a["correction"] == corr)
+                w.writerow([r["sentence_id"], r["sentence_text"],
+                            len(distinct), corr, votes])
     return path
 
 
+# ---------------- 自验关 ----------------
+def self_check():
+    """2×2 手算样例（2 标注者 × 2 句、共用码类）：
+    全同 [0,0][1,1] → α=1；一同一异 [0,0][0,1] → α=-1/3（共用 0 类；Scott's π 才是 0）。"""
+    all_same = [("a", [0, 0]), ("b", [1, 1])]
+    one_same_one_diff = [("a", [0, 0]), ("b", [0, 1])]
+    a1 = krippendorff_nominal(all_same)
+    a2 = krippendorff_nominal(one_same_one_diff)
+    ok = (abs(a1 - 1.0) < 1e-9) and (abs(a2 + 1.0 / 3.0) < 1e-9)
+    return ok, (a1, a2)
+
+
 def main():
+    # 自验关：先过手算样例再算全量
+    ok, (a1, a2) = self_check()
+    if not ok:
+        print("[P0.8] 自验关失败: 全同={} 一同一异={} (期望 1 / -1/3)".format(a1, a2))
+        return 1
+
     rows = load_rows()
-    units = expand(rows)
-    n_raw = len(rows)
-    n_used = len(units)
+    corr_units = build_units_correction(rows)
+    edits_units = build_units_edits(rows)
 
-    alpha = krippendorff_alpha(units)
-    fleiss_buckets = fleiss_kappa_by_bucket(units)
-    alpha_ci = _boot_alpha(units)
-    kappa_cis = _boot_kappa_buckets(bucket_map(units))
+    alpha_corr = krippendorff_nominal(corr_units)
+    alpha_edits = krippendorff_nominal(edits_units)
+    ci_corr = _boot(corr_units)
+    ci_edits = _boot(edits_units)
 
-    ann_dist = collections.Counter(r["total_annotators"] for r in rows)
-    exp_counts = collections.Counter(len(labels) for _, _, labels in units)
-    n_disagree = len(disagreements(units))
-    ev = descriptive_evidence(rows, units)
-
-    # 展开量/总数校验统计
-    total_expanded = sum(len(labels) for _, _, labels in units)
-    code1 = sum(labels.count(1) for _, _, labels in units)
-    mismatch = sum(1 for r, (_, _, lab) in zip(rows, units)
-                   if len(lab) != r["total_annotators"])
+    ig = ig_descriptive(rows)
+    # m_u 与 distinct corrections 分布
+    m_u_dist = collections.Counter(len(vals) for _, vals in corr_units)
+    distinct_dist = collections.Counter(
+        len(set(vals)) for _, vals in corr_units)
+    n_dup_groups = sum(1 for _, vals in corr_units if len(set(vals)) < len(vals))
+    anno_reuse = {r["sentence_id"]: r["total_annotators"] for r in rows}
 
     os.makedirs(OUT_DIR, exist_ok=True)
     md_path = os.path.join(OUT_DIR, "iaa_yaclc.md")
-    csv_path = write_disagreements_csv(units)
+    csv_path = write_disagreements_csv(top_disagreement(rows))
 
     ci_fmt = lambda t: (f"(95% CI {t[0]:.3f}–{t[2]:.3f}, 均值 {t[1]:.3f})"
-                        if t else "(CI: 样本过少)")
-    bucket_lines = "\n".join(
-        f"| {m} | {cnt} | {k:.3f} | {ci_fmt(kappa_cis.get(m))} |"
-        if k is not None
-        else f"| {m} | {cnt} | — | {ci_fmt(kappa_cis.get(m))} |"
-        for m, cnt, k in fleiss_buckets)
+                        if t else "(CI 不可算)")
+    ig_cross_lines = "\n".join(
+        f"| {b} | {c['ig0']} | {c['ig1']} | {c['ig0'] + c['ig1']} |"
+        for b, c in sorted(ig["cross"].items()))
+    distinct_top = distinct_dist.most_common(3)
 
-    md = f"""# YACLC 标注一致性报告（IAA · Fleiss' κ + Krippendorff's α）
+    md = f"""# YACLC 标注一致性报告（Krippendorff's α 双口径 · 修订版）
 
-> 生成：`scripts/iaa_report.py`（P0.8）· 数据：`datasets/_yaclc_valid.jsonl`
-> seed={SEED}，bootstrap N={N_BOOT} → 结果可复跑。
+> 生成：`scripts/iaa_report.py`（P0.8 修订版）· 数据：`datasets/_yaclc_valid.jsonl`（1000 句）
+> seed={SEED}，bootstrap N={N_BOOT}，按句重采样 → 可复跑。
 
-## 一、样本量与过滤口径
+## 〇、数据口径与实测量级（先读这个，才能正确读下面的 α）
 
-| 项 | 值 |
-|---|---|
-| 原始句数 | **{n_raw}** |
-| 过滤条件 | total_annotators < {MIN_ANNOTATORS} |
-| 实际剔除 | {n_raw - n_used} 条（无单标注样本） |
-| 参与计算句数 | **{n_used}** |
-| 展开后总判定量 | {total_expanded}（合语法=1 → {code1} 条；不含语法=0 → {total_expanded - code1} 条） |
-| 分歧句数（0 与 1 并存） | {n_disagree} |
+**四条硬事实（用户实测 + 本脚本复核）：**
 
-**total_annotators 分布**：{dict(sorted(ann_dist.items()))}
+1. **票池不完备**：每句 Σannotator_count 与 total_annotators **1000/1000 不吻合**（差 +1~+6，
+   max 组 17 > total 11）→ total_annotators 不是本句票数真值，二元票真分母不可知。
+   故：**本报告一律用 m_u = Σ annotator_count，total_annotators 仅存档、不参与任何计算**。
+2. **"没改"的标注者大概率不入组**：correction == 原句的组仅 293 句 / 343 票，覆盖不了缺口——
+   票池截断方向不可量化，记为局限。
+3. **聚合丢失标注者身份** → 需要两两配对的 Cohen's κ **本就不可算**；κ 已全部退出交付物。
+4. **ig 语义核查**：ig=0 组 edits_count 恒 ≥1，ig=1 组却可带 1–7 处润色 → ig 是"对原句是否合法"的判断，
+   与是否修改无关 → **ig 仅作描述统计，不进任何 IAA**。
 
-**展开后每句标注者数分布**：{dict(sorted(exp_counts.items()))}
+**m_u（=Σannotator_count）每句标注者数分布**：{dict(sorted(m_u_dist.items()))}
+**每句 distinct corrections 数分布**（top）{[(k, distinct_dist[k]) for k, _ in distinct_top]}：
+实际 1000/1000 句 ≥5 种改法 → 分歧清单改为"distinct corrections top{TOP_N}"。
 
-> 展开口径：把 `sentence_annos` 的聚合计数按 `annotator_count` 展开成逐标注者判定
-> （同一条 correction 被 n 名标注者产出 → 展开成 n 次同一判定）。
-> 展开后的每句标注者数（10–17）与 `total_annotators`（9–11）**全量不一致（{mismatch}/{n_raw} 行）**——
-> 本报告以展开后的判定矩阵为准，`total_annotators` 仅作参考（详见「诚实解读」局限）。
+## 一、主口径 · α(nominal) on 修正选择
 
-## 二、指标结果（先读这里的「有效性判定」）
+**α = {alpha_corr:.3f}** {ci_fmt(ci_corr)}
 
-> **有效性判定：`is_grammatical` 在本聚合数据中不构成逐标注者的句子级二值投票，
-> 以下 κ/α 数值是"把 is_grammatical 当投票读"的产物，仅作参考，不代表真实的句子级标注一致性。**
-> 依据见下节证据。若要拿到有效的 IAA，需原始非聚合标注（记 backlog）。
+- 单位=句，取值=correction 字符串，m_u=Σannotator_count；coincidence 组级构造
+  （c_gg=n_g(n_g−1)/(m_u−1)、c_gh=n_g·n_h/(m_u−1)），α = 1 − D_o/D_e。
+- **identity-α 预期很低**：多数句由约 {distinct_dist.most_common(1)[0][0]} 人改出约
+  {distinct_dist.most_common(1)[0][0]} 种合法改法。这是**自由改写任务的性质**（每人给一种合法改法），
+  **不是标注质量差**，别改数据、别慌。低 α 只说明"标注者对'该怎么改'不强求唯一"，不代表不一致出错。
 
-### 主指标 · Krippendorff's α（nominal，二分类）
+## 二、辅口径 · α(nominal) on 改动幅度
 
-**α = {alpha:.3f}** {ci_fmt(alpha_ci)}
+**α = {alpha_edits:.3f}** {ci_fmt(ci_edits)}
 
-- nominal 口径，容忍每句标注者数不等。**数值不可用于一致性结论**（见下）。
+- edits_count 分桶 0 / 1–2 / 3–4 / 5+（桶定义 {EDITS_BUCKETS}）后同法计算。
+- 度量"改多狠"的**严重度共识**（教学上对应偏误严重度），不被自由改写的字面低一致拖死。
+- 解读：α 越接近 1，说明标注者对"问题有多严重/要动几处"越一致；这是相对可信的共识维度。
 
-### 参考指标 · Fleiss' κ（按标注者数分桶）
+## 三、ig 描述统计 + ig×edits 交叉核查（不进 IAA，仅描述）
 
-| 标注者数 | 句数 | Fleiss' κ | 95% CI |
+| 加权标注总数 | ig=0（被判不合法） | ig=1（被判合法） | ig=0 占比 | ig=1 占比 |
+|---|---|---|---|---|
+| {ig['total']} | {ig['ig0']} | {ig['ig1']} | {ig['ig0_pct']:.1%} | {ig['ig1_pct']:.1%} |
+
+**ig × edits_count 交叉（按 annotator_count 加权）：**
+
+| edits 桶 | ig=0 | ig=1 | 合计 |
 |---|---|---|---|
-{bucket_lines}
+{ig_cross_lines}
 
-## 三、为什么直接 IAA 不成立（聚合依赖的结构性证据）
+> 该表检验"合法性判定"与"改动幅度"关系：若 ig=0 集中在高 edits 桶，说明"被判不合法→改动大"；
+> 若分散，则 ig 与幅度相对独立。仅供描述。
 
-| 证据 | 值 | 含义 |
-|---|---|---|
-| 分歧句（0 与 1 并存） | **{n_disagree} / {n_used}** | 每句都同时含两类 → 非"个别边界句有分歧"，而是固定模式 |
-| 每句 is_grammatical=0 展开数分布 | {ev['n0_dist']} | 每句几乎恰好 1–2 个 0 占少数 |
-| 恰好仅 1 个 0 的句子占比 | {ev['exact_one_0']} / {n_used} | 少数类近乎"每句固定 1 个" |
-| 每句 distinct correction 候选数均值 | {ev['n_cand_mean']:.1f} | 聚合候选多样，但 is_grammatical 不随候选判断 |
-| 候选数分布 | {ev['n_cand_dist']} | — |
-| 最热门单 correction 热度分段 | {ev['max_share_hist']} | 标注者偏好分散，聚合度普遍不高 |
+## 四、分歧样本清单（distinct corrections top{TOP_N}）
 
-**推论**：多数 correction 条目带 `is_grammatical=1`、每句固定有约 1 条 `0` 的模式，更接近"correction 候选的合规标记"而非"标注者对原句语法性的独立投票"。因此对 `is_grammatical` 求 κ/α 得到的是团队少数类标记的结构回声（≈0 附近、且因病态常需负值），**不构成句子级标注一致性度量**。
+已导出 `reports/iaa_disagreements.csv`：每句 distinct corrections 最多的 {TOP_N} 句，含
+sentence_id / 原句 / 去重后修正数 / 各组修正串 / 得票数。供人工复核黄金集（P0.2 `nature` 标注可信度）。
 
-## 四、分歧样本清单
+## 五、诚实解读与局限
 
-已导出全部句子（结构上均含两类标记）：`reports/iaa_disagreements.csv`（含各档判定计数）。由于上述原因，**此清单不代表"标注歧义句"**，仅作原始数据留档。
+- **对外口径**：只写"**Krippendorff's α = x.xx，YACLC 1000 句 × 9–11 标注者，修正选择维度**"；
+  **不写 κ、不写 ≥0.7**、不把 α 数字当质量达标证据。
+- **低 α 的解读预设**：主口径低是自由改写任务特性；辅口径给出相对直接的严重度共识。
+- **局限**（不超出数据支持范围）：票池截断方向不可量化；total_annotators 真值不可知；
+  ig 仅为描述统计；不对任何标注做静默改判或清洗。
 
-## 五、诚实解读
+## 六、自验关
 
-- **对 P0.2 `nature` 标注可信度的启示（定性）**：本聚合数据无法提供 IAA 定量背书。
-  其对 `nature` 判定的支撑退化为定性证据——correction 候选多数互不相同（聚合度普遍不高，
-  见热度分段），说明标注者间对"怎么改"本身不高度趋同；这对"偏误确实存在"是正向信号，
-  对"偏误类别/性质如何定"不提供可信一致。
-- **可复现路径**：脚本固定 seed，bootstrap N={N_BOOT}，数值可复跑；但解读结论在本数据内恒定。
-- **不声称**：本报告不声称任何一致性达标；不将 α/κ 数值引作质量背书；不静默改判任何标注。
+α 实现先行通过手算样例：**全同 → α=1（得 {a1:.4f}）；一同一异 → α=-1/3（得 {a2:.4f}）**。
+通过后计算的以上全量数值（注：Krippendorff α 的"一同一异"2×2 真值为 −1/3，非 0；0 属 Scott's π）。
 """
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(md)
 
-    print(f"[P0.8] 主指标 α = {alpha:.4f} {ci_fmt(alpha_ci)}")
-    for m, cnt, k in fleiss_buckets:
-        kstr = f"{k:.4f}" if k is not None else "—"
-        print(f"[P0.8] Fleiss κ (m={m}, n={cnt}) = {kstr} {ci_fmt(kappa_cis.get(m))}")
-    print(f"[P0.8] 分歧句 {n_disagree}; 报告 → {md_path}")
-    print(f"[P0.8] 分歧清单 → {csv_path}")
+    print(f"[P0.8][自验] 全同={a1:.4f} 一同一异={a2:.4f} (期望 1 / -1/3) → 通过")
+    print(f"[P0.8] 主口径 α(修正选择) = {alpha_corr:.4f} {ci_fmt(ci_corr)}")
+    print(f"[P0.8] 辅口径 α(改动幅度) = {alpha_edits:.4f} {ci_fmt(ci_edits)}")
+    print(f"[P0.8] ig 加权占比 1={ig['ig1_pct']:.1%} / 0={ig['ig0_pct']:.1%}")
+    print(f"[P0.8] 报告 → {md_path}")
+    print(f"[P0.8] 分歧清单(top{TOP_N}) → {csv_path}")
     return 0
 
 
