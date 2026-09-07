@@ -2,6 +2,8 @@
 # HSK-AI-Coach · CI 回归保护（P0.9）
 # 零运行时依赖、纯标准库：仅跑 unittest 全集，无需 pip install。
 # 作用：本地改动推上远程 / 开 PR 后自动回归，保护 P0.2-P0.4 等核心 schema 改动。
+# 注意：本文件必须保持 LF 行尾（禁止 CRLF）——GitHub runner 的 bash 会把
+#       多行 run: 脚本里的 CR 当成命令一部分，导致 then/占位语法报错（P0.9 踩坑）。
 # ============================================================
 name: CI
 
@@ -32,7 +34,7 @@ jobs:
         run: |
           # requirements.txt 应为空（仅注释），确认无第三方运行时依赖
           if [ -f requirements.txt ]; then
-            deps=$(grep -v '^\s*#' requirements.txt | grep -v '^\s*$' | wc -l)
+            deps=$(grep -v '^[[:space:]]*#' requirements.txt | grep -v '^[[:space:]]*$' | wc -l)
             if [ "$deps" -ne 0 ]; then
               echo "requirements.txt 含未预期依赖，请检查"; cat requirements.txt; exit 1
             fi
