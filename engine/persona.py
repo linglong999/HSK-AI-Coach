@@ -87,15 +87,38 @@ def normalize_persona(raw: Dict[str, Any],
 
 
 def _l1_is_zh(native_lang: str) -> bool:
+    """判断 UI 语言是否为中文（控制 persona 措辞语言）。
+    注：此函数原本含义为"学习者母语"，v0.3 P0.1 起语义重正为"UI 语言"；
+    新增 _learner_l1_is_zh 处理真正的 L1 判定（C4 多母语迁移用）。
+    v0.3 S2 拆分：字段语义剥离——ui_lang 与 learner_l1 互不混淆。
+    """
     v = str(native_lang or "").strip().lower()
     return v in ("", "zh", "中文", "汉语", "chinese", "汉语官话")
 
 
+def _learner_l1_is_zh(learner_l1: str) -> bool:
+    """判断学习者母语是否为中文。
+    v0.3 P0.1 新增：与 _l1_is_zh 完全独立——只看学习者 L1 字段（learner_l1）。
+    用于 C4 多母语迁移、知识图谱 L1 归因等需要真实 L1 而非 UI 语言的场景。
+    "" / "unknown" → False（无法判定时**不**默认中文，避免污染统计）。"""
+    v = str(learner_l1 or "").strip().lower()
+    if not v or v == "unknown":
+        return False
+    return v in ("zh", "中文", "汉语", "chinese", "汉语官话", "zh-cn", "zh-hans", "zh-hant")
+
+
 def build_persona_brief(persona: Optional[Dict[str, Any]],
-                        native_lang: str = "") -> str:
+                        native_lang: str = "",
+                        *,
+                        learner_l1: str = "") -> str:
     """persona → [Persona] 注入段。全默认（default 风格 + 无自由文本）→ 空串，
     回退 0.21 语言指令默认（设计稿：default 不加额外约束）。
-    interrupt_cap 由 serve 介入判定确定性执行（不依赖 LLM），此处仅作告知。"""
+    interrupt_cap 由 serve 介入判定确定性执行（不依赖 LLM），此处仅作告知。
+
+    v0.3 P0.1 签名扩展：
+    - native_lang：UI/讲解语言（兼容旧调用），决定措辞中/英
+    - learner_l1：学习者母语（新字段），目前 persona 措辞不依赖此字段；
+      留作未来 C4 类 L1 个性化用。同一函数同时支持两种调用形态。"""
     if not isinstance(persona, dict) or not persona:
         return ""
     try:

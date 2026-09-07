@@ -459,8 +459,14 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             conversation_id = str((payload.get("conversation_id") or "")).strip() or "default"
             provider_id = str((payload.get("provider_id") or "")).strip()
             # 0.21 教学层语言：前端语言开关上送；缺省回落启动参数 --lang（Router.native_lang）
-            native_lang = str((payload.get("native_lang") or "")).strip().lower() or \
+            # v0.3 P0.1 S2 拆分：新增 ui_lang（新）与 learner_l1（新）两个字段；
+            # native_lang 保留作为 ui_lang 的兼容别名（旧前端仍可用，旧测试不破坏）。
+            ui_lang = str((payload.get("ui_lang") or payload.get("native_lang") or "")).strip().lower() or \
                 str(getattr(self._router, "native_lang", "") or "")
+            learner_l1 = str((payload.get("learner_l1") or "unknown")).strip().lower()
+            # ui_lang 与 learner_l1 独立：选中文界面 ≠ 中文母语；
+            # learner_l1 缺省 = "unknown"（不污染 L1 统计）。
+            native_lang = ui_lang  # 局部别名：函数内下游调用兼容旧字段
 
             # 0.22 方向2 · 场景对话：scene_id → 编译 [Scene] 段注入主链（D2.2）。
             # 场景缺失/未命中 → scene_brief 空串，planner 照常走自由对话（不阻断）。
@@ -519,7 +525,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 profile_block = mem.get_profile() or {}
                 persona = profile_block.get("persona") if isinstance(
                     profile_block.get("persona"), dict) else {}
-                persona_brief = build_persona_brief(persona, native_lang)
+                persona_brief = build_persona_brief(persona, native_lang, learner_l1=learner_l1)
                 try:
                     cap = int((persona or {}).get("interrupt_cap", DEFAULT_CAP))
                 except (TypeError, ValueError):
@@ -1088,7 +1094,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
 def main():
     ap = argparse.ArgumentParser(description="HSK-AI-Coach 前端壳服务（零依赖）")
     ap.add_argument("--host", default="127.0.0.1")
-    ap.add_argument("--port", type=int, default=8612)
+    ap.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8612)))
     ap.add_argument("--learner", default="demo", help="学习者 id → data/graph_<id>.json")
     ap.add_argument("--lang", default="en", help="讲解/纠错语言：en(英壳+中例句,默认) 或 zh(全中文)")
     args = ap.parse_args()

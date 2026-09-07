@@ -1,0 +1,46 @@
+# ============================================================
+# HSK-AI-Coach · CI 回归保护（P0.9）
+# 零运行时依赖、纯标准库：仅跑 unittest 全集，无需 pip install。
+# 作用：本地改动推上远程 / 开 PR 后自动回归，保护 P0.2-P0.4 等核心 schema 改动。
+# ============================================================
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify zero runtime dependencies
+        shell: bash
+        run: |
+          # requirements.txt 应为空（仅注释），确认无第三方运行时依赖
+          if [ -f requirements.txt ]; then
+            deps=$(grep -v '^\s*#' requirements.txt | grep -v '^\s*$' | wc -l)
+            if [ "$deps" -ne 0 ]; then
+              echo "requirements.txt 含未预期依赖，请检查"; cat requirements.txt; exit 1
+            fi
+          fi
+          echo "OK: 无第三方运行时依赖"
+
+      - name: Run unittest suite
+        shell: bash
+        run: |
+          # 不接管道，确保测试失败时的非零退出码直接上抛，CI 才能正确标红
+          python -m unittest discover -s tests -p "test_*.py"
