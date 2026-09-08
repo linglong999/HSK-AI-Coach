@@ -42,6 +42,9 @@ class Node:
     created_at: str = ""          # 创建时间戳（首建 null 时 aging 按此起算）
     error_kind: str = ""          # P0.2：语言要素主导维度（argmax(error_types)，见 error_kind_map）
     nature: str = ""              # P0.2：鲁健骥四分法主倾向（kp 级映射，未命中回落 type 级/未知）
+    positive_count: int = 0       # P0.3：正向证据计数（正确用法）。只增不碰偏误侧。
+    positive_sources: Dict[str, int] = field(default_factory=dict)  # P0.3：{source: count} 按来源聚合
+    last_positive_at: Optional[str] = None   # P0.3：最近一次正向证据时间戳（UTC）
 
     def to_dict(self) -> dict:
         return {
@@ -55,6 +58,9 @@ class Node:
             "created_at": self.created_at,
             "error_kind": self.error_kind,
             "nature": self.nature,
+            "positive_count": self.positive_count,
+            "positive_sources": self.positive_sources,
+            "last_positive_at": self.last_positive_at,
         }
 
 
@@ -259,6 +265,30 @@ class ErrorGraph:
             return {"status": "node_update", "kp_id": kp_id, "node": node.to_dict(),
                     "verdict": verdict}
 
+    def ingest_positive(self, knowledge_point_id: str, source: str,
+                        event_key: str = "", confidence: float = 1.0,
+                        ts: Optional[str] = None) -> dict:
+        """P0.3 §P0.3 ingest_positive：把"正确用法"也写进图谱（平衡单向偏误信号）。
+        只增 positive_count、按来源聚合 positive_sources、刷新 last_positive_at。
+        不增 error_count、不动 mastery、不动 last_learnt_at、不触发偏误侧任何计数，
+        因此 priority（只看偏误侧）保持**不变**——由单测锁死。
+        - 幂等：event_key 入 _seen_events 判重（同一事件不重复计数）。
+        - 独立建节点路径：正向节点不填 error_kind/nature（保持缺省""，作为"非偏误极性"信号，
+          "未知"是 P0.2 评估语义、不兼职表达正负极性）。
+        - confidence 仅事中判定，不持久化（positive_sources 只存 {source: count}）。"""
+        with self._lock:
+            if event_key and self._event_seen(event_key):
+                return {"status": "idempotent_skip"}
+            node = self._nodes.setdefault(
+                knowledge_point_id,
+                Node(id=knowledge_point_id, knowledge_point=knowledge_point_id,
+                     level="未知", created_at=self._now()))
+            node.positive_count += 1
+            node.positive_sources[source] = node.positive_sources.get(source, 0) + 1
+            node.last_positive_at = ts or self._now()
+            return {"status": "node_positive", "kp_id": knowledge_point_id,
+                    "node": node.to_dict()}
+
     def confirm_item(self, item_key: str, valid: bool, applied_valid: bool = True,
                      c2: Optional[float] = None, learner_marked: bool = False) -> dict:
         """2.4 §七 confirm_item：待确认提升/驳回。
@@ -409,9 +439,17 @@ class ErrorGraph:
                 node = Node(**{k: nd.get(k) for k in
                                ["id", "knowledge_point", "level", "error_types",
                                 "error_count", "mastery", "last_learnt_at",
-                                "error_kind", "nature"]})
+                                "error_kind", "nature", "positive_count",
+                                "positive_sources", "last_positive_at"]})
                 node.id = nid
-                # P0.2：旧数据缺双字段 → 按现有 error_types/kp 现算补齐（防静默丢字段）
+                # P0.2：旧数据缺双字段 → 按现有 error_types/kp 现算补齐（防静默丢字段）。
+                # P0.3：缺正向字段 → 用安全缺省（0/空 dict/None）兜底。
+                if not node.positive_sources:
+                    node.positive_sources = {}
+                if node.positive_count is None:
+                    node.positive_count = 0
+                if "last_positive_at" not in nd:
+                    node.last_positive_at = None
                 if not node.error_kind or not node.nature:
                     dims = resolve(node.error_types, node.id)
                     if not node.error_kind:
