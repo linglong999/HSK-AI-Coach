@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from engine.graph.error_kind_map import resolve
+from engine.scheduler import fsrs
 
 # aging 形态：线性 1 + LAMBDA*days（3.x 定案 T1：λ=0.1/天，敏感区间[0.05,0.2]）
 LAMBDA_AGING = 0.1
@@ -56,6 +57,11 @@ class Node:
     last_positive_at: Optional[str] = None   # P0.3：最近一次正向证据时间戳（UTC）
     unfixed_streak: int = 0       # P0.4：连续复习未纠正次数（pass→0 / fail→+1，落盘）
     fossilized: bool = False      # P0.4：化石化标记（现算，不落盘；读取前须 refresh）
+    # ---- P0.17 间隔调度字段（FSRS）----
+    last_review_at: Optional[str] = None    # 最近一次复习动作时间(UTC)；FSRS elapsed_days 唯一来源
+    next_review_at: Optional[str] = None    # 下次到期时间(UTC)；到期筛选唯一判据(IS NOT NULL AND ≤ now)
+    fsrs_stability: float = 0.0             # S：记忆稳定性(天)，FSRS 回写
+    fsrs_difficulty: float = 5.0            # D：难度[1,10]，FSRS 回写；0 读作首次用 D0(4) 兜底
 
     def to_dict(self) -> dict:
         return {
@@ -73,6 +79,11 @@ class Node:
             "positive_sources": self.positive_sources,
             "last_positive_at": self.last_positive_at,
             "unfixed_streak": self.unfixed_streak,
+            # P0.17 调度字段（fossilized 不落盘，现算）
+            "last_review_at": self.last_review_at,
+            "next_review_at": self.next_review_at,
+            "fsrs_stability": self.fsrs_stability,
+            "fsrs_difficulty": self.fsrs_difficulty,
             # fossilized 不落盘（现算），此处不写
         }
 
@@ -360,23 +371,51 @@ class ErrorGraph:
             node.last_learnt_at = self._now()
             return {"status": "touched", "kp_id": kp_id}
 
-    def review_feedback(self, kp_id: str, correct: bool, event_key: str = "") -> dict:
-        """P0.4：复习环节单点反馈，驱动化石化 streak。
-        与 ingest_verdict 不同——只动 unfixed_streak（correct→0 / incorrect→+1），
-        不改 mastery、不 touch last_learnt_at、不增 error_count（复习反馈语义独立）。
-        幂等：event_key 判重。fossilized 现算不落盘，读 priority 时自动刷新。"""
+    def review_feedback(self, kp_id: str, correct: Optional[bool] = None,
+                        rating: Optional[int] = None, event_key: str = "") -> dict:
+        """P0.17：复习环节单点反馈，融合 FSRS 调度 + P0.4 化石化 streak。
+        rating 直传优先（1忘记/2困难/3想起/4轻松）；未传则 correct 兜底
+        （false→1 / true→3）。顺带同步 mastery？否——本接口只属"复习调度"层：
+        - FSRS：last_review_at=now；next_state 更新 S/D；next_review_at 重算（≥1 天）
+        - streak：rating==1 → unfixed_streak+1，否则 0（P0.4 规则）
+        不 touch mastery / last_learnt_at / error_count（复习调度语义独立）。
+        ingest_verdict 是唯一驱动 mastery 的教学主体，不驱动 FSRS（见边界）。"""
         with self._lock:
             if event_key and self._event_seen(event_key):
                 return {"status": "idempotent_skip"}
             node = self._nodes.get(kp_id)
             if node is None:
                 return {"status": "not_found"}
-            if correct:
-                node.unfixed_streak = 0
+            if rating is None and correct is None:
+                return {"status": "bad_request", "reason": "need rating or correct"}
+            r = rating if rating is not None else (3 if correct else 1)
+
+            now = self._now()
+            # elapsed_days：FSRS 遗忘曲线需要"距上次复习的时间"
+            base_ts = node.last_review_at or node.created_at or now
+            elapsed_days = self._days_since(base_ts)
+
+            # 冷启动（无复习史）：首次用 init_state；否则推进 next_state
+            prev = fsrs.MemoryState(stability=node.fsrs_stability,
+                                    difficulty=node.fsrs_difficulty or 5.0)
+            if node.last_review_at is None and node.fsrs_stability <= 0:
+                st = fsrs.init_state(r)
             else:
-                node.unfixed_streak += 1
+                st = fsrs.next_state(prev, r, elapsed_days)
+
+            node.fsrs_stability = st.stability
+            node.fsrs_difficulty = st.difficulty
+            node.last_review_at = now
+            days = max(1, round(fsrs.interval(st.stability)))
+            node.next_review_at = time.strftime(
+                "%Y-%m-%dT%H:%M:%SZ",
+                time.gmtime(time.time() + days * 86400))
+
+            # P0.4 化石化 streak：rating==1 视为未纠正 → +1，否则 0
+            node.unfixed_streak = (node.unfixed_streak + 1) if r == 1 else 0
             self._refresh_fossilized(node)
             return {"status": "review_feedback", "kp_id": kp_id,
+                    "rating": r, "interval_days": days,
                     "node": node.to_dict(), "fossilized": node.fossilized}
 
     def reject_item(self, item_key: str) -> dict:
@@ -455,6 +494,39 @@ class ErrorGraph:
             result.sort(key=lambda r: r["priority"], reverse=True)
             return result
 
+    # ---------------- P0.17 间隔调度读取 ----------------
+    def due_nodes(self, now: Optional[str] = None) -> List[dict]:
+        """P0.17：到期筛选。严格口径——next_review_at IS NOT NULL AND ≤ now，
+        返回按 priority 降序排（priority 管学什么，这里的顺序是复习先后）。
+        冷启动（next_review_at=None）**不进 due**，走 unscheduled_topn（boost 段）。"""
+        with self._lock:
+            if now is None:
+                now = self._now()
+            result = []
+            for node in self._nodes.values():
+                if node.next_review_at is None:
+                    continue                      # 冷启动未入调度，不进到期
+                if node.next_review_at > now:
+                    continue                      # 未到期
+                result.append({"kp_id": node.id,
+                               "priority": round(self._priority(node), 4),
+                               "next_review_at": node.next_review_at,
+                               "node": node.to_dict()})
+            result.sort(key=lambda r: r["priority"], reverse=True)
+            return result
+
+    def unscheduled_topn(self, n: int = 10) -> List[dict]:
+        """P0.17：未入调度的高优 TopN（供 P0.11 boost 段）。
+        仅取 next_review_at=None 的"从未调度"节点（冷启动），按 priority 取前 n。"""
+        with self._lock:
+            pool = [node for node in self._nodes.values()
+                    if node.next_review_at is None]
+            pool.sort(key=lambda nd: self._priority(nd), reverse=True)
+            return [{"kp_id": nd.id,
+                     "priority": round(self._priority(nd), 4),
+                     "node": nd.to_dict()}
+                    for nd in pool[:n]]
+
     # ---------------- 持久化 ----------------
     def save(self, path: Optional[str] = None):
         path = path or f"data/graph_{self.learner_id}.json"
@@ -488,7 +560,9 @@ class ErrorGraph:
                                 "error_count", "mastery", "last_learnt_at",
                                 "created_at", "error_kind", "nature",
                                 "positive_count", "positive_sources",
-                                "last_positive_at", "unfixed_streak"]})
+                                "last_positive_at", "unfixed_streak",
+                                "last_review_at", "next_review_at",
+                                "fsrs_stability", "fsrs_difficulty"]})
                 node.id = nid
                 # P0.5(修正)：created_at 必须在白名单——旧数据含它，缺失会丢 aging 起算点
                 if not node.created_at:
