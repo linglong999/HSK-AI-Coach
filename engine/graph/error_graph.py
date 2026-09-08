@@ -15,6 +15,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+from engine.graph.error_kind_map import resolve
+
 # aging 形态：线性 1 + LAMBDA*days（3.x 定案 T1：λ=0.1/天，敏感区间[0.05,0.2]）
 LAMBDA_AGING = 0.1
 MASTERY_K = 0.5            # pass 更新 k（3.x 定案 T2：连续3次pass≈0.88掌握）
@@ -38,6 +40,8 @@ class Node:
     mastery: float = 0.0          # 新建=0
     last_learnt_at: Optional[str] = None   # 首建可为 null → aging 按 created_at 起算
     created_at: str = ""          # 创建时间戳（首建 null 时 aging 按此起算）
+    error_kind: str = ""          # P0.2：语言要素主导维度（argmax(error_types)，见 error_kind_map）
+    nature: str = ""              # P0.2：鲁健骥四分法主倾向（kp 级映射，未命中回落 type 级/未知）
 
     def to_dict(self) -> dict:
         return {
@@ -49,6 +53,8 @@ class Node:
             "mastery": self.mastery,
             "last_learnt_at": self.last_learnt_at,
             "created_at": self.created_at,
+            "error_kind": self.error_kind,
+            "nature": self.nature,
         }
 
 
@@ -149,6 +155,14 @@ class ErrorGraph:
     def _edge_key(self, a: str, b: str) -> str:
         return "|".join(sorted([a, b]))
 
+    @staticmethod
+    def _apply_dimensions(node: Node) -> None:
+        """P0.2：按节点当前 error_types/kp_id 计算并回填 error_kind/nature。
+        在 error_types 变更后调用，保证双字段与主导类型同步。"""
+        dims = resolve(node.error_types, node.id)
+        node.error_kind = dims["error_kind"]
+        node.nature = dims["nature"]
+
     # ---------------- 写接口（§三，幂等） ----------------
     def _event_seen(self, event_key: str) -> bool:
         if event_key in self._seen_events:
@@ -182,6 +196,7 @@ class ErrorGraph:
                 node.error_count += 1
                 # 新错误：mastery *= 0.5（§4.1）
                 node.mastery *= MASTERY_NEW_ERROR
+                self._apply_dimensions(node)
                 return {"status": "node_upsert", "kp_id": kp_id, "node": node.to_dict()}
 
             # ② uncertain 或未命中 → 待确认队列
@@ -233,6 +248,7 @@ class ErrorGraph:
                             knowledge_point=bias_ref.get("knowledge_point_name") or kp_id,
                             level=bias_ref.get("level") or "未知", created_at=self._now())
                 self._nodes[kp_id] = node
+                self._apply_dimensions(node)
             # §4.1：pass 提升且 touch；fail 衰减且不 touch（方案 b）
             if verdict == "pass":
                 node.mastery += (1.0 - node.mastery) * MASTERY_K
@@ -272,6 +288,7 @@ class ErrorGraph:
                 node.error_count += merged_count
                 node.error_types[etype] = node.error_types.get(etype, 0) + merged_count
                 node.mastery *= MASTERY_NEW_ERROR  # 单次减半
+                self._apply_dimensions(node)
             item.status = "confirmed"
             item.updated_at = self._now()
             return {"status": "confirmed", "item_key": item_key}
@@ -391,8 +408,16 @@ class ErrorGraph:
             for nid, nd in data.get("nodes", {}).items():
                 node = Node(**{k: nd.get(k) for k in
                                ["id", "knowledge_point", "level", "error_types",
-                                "error_count", "mastery", "last_learnt_at"]})
+                                "error_count", "mastery", "last_learnt_at",
+                                "error_kind", "nature"]})
                 node.id = nid
+                # P0.2：旧数据缺双字段 → 按现有 error_types/kp 现算补齐（防静默丢字段）
+                if not node.error_kind or not node.nature:
+                    dims = resolve(node.error_types, node.id)
+                    if not node.error_kind:
+                        node.error_kind = dims["error_kind"]
+                    if not node.nature:
+                        node.nature = dims["nature"]
                 self._nodes[nid] = node
             self._edges = {}
             for key, ed in data.get("edges", {}).items():
