@@ -44,7 +44,8 @@ class Node:
     """KP 知识点节点（2.4 §2.1）"""
     id: str
     knowledge_point: str
-    level: str
+    level: str              # P0.6：旧粗分字符串化("HSK{n}"/"未知")；level_gf=换算后 GF 级
+    level_gf: Optional[int] = None   # P0.6：GF 三等九级(1-9)；None=未定(显示旧 level)
     error_types: Dict[str, int] = field(default_factory=dict)
     error_count: int = 0
     mastery: float = 0.0          # 新建=0
@@ -68,6 +69,7 @@ class Node:
             "id": self.id,
             "knowledge_point": self.knowledge_point,
             "level": self.level,
+            "level_gf": self.level_gf,
             "error_types": self.error_types,
             "error_count": self.error_count,
             "mastery": self.mastery,
@@ -556,7 +558,8 @@ class ErrorGraph:
             self._nodes = {}
             for nid, nd in data.get("nodes", {}).items():
                 node = Node(**{k: nd.get(k) for k in
-                               ["id", "knowledge_point", "level", "error_types",
+                               ["id", "knowledge_point", "level", "level_gf",
+                                "error_types",
                                 "error_count", "mastery", "last_learnt_at",
                                 "created_at", "error_kind", "nature",
                                 "positive_count", "positive_sources",

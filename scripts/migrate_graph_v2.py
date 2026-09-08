@@ -30,6 +30,7 @@ if _PROJECT_ROOT not in sys.path:
 
 from engine.graph.error_graph import ErrorGraph
 from engine.graph.error_kind_map import resolve
+from engine.levels import legacy_to_gf
 
 # 三迁清单（用户 A1 拍板）：demo(serve默认) + eval_3_5(评测引导) + file_demo(演示并入)
 # graph_plan_trace/transfer_plan 已是新 schema，不入列。
@@ -51,6 +52,7 @@ def node_detail(node_dict: dict) -> dict:
     return {
         "id": node_dict.get("id"),
         "level": node_dict.get("level"),
+        "level_gf(现算)": node_dict.get("level_gf"),
         "error_types": node_dict.get("error_types", {}),
         "error_kind(现算)": dims["error_kind"],
         "nature(现算)": dims["nature"],
@@ -75,6 +77,10 @@ def migrate(path: str, dry_run: bool) -> dict:
 
     g = ErrorGraph(learner)
     g.load(src)          # load 现算补齐（含 created_at 白名单保留）
+    # P0.6：回填 level_gf——现有图谱 level 是旧粗分字符串化("HSK3"/"未知")，
+    # 走 legacy_to_gf(旧粗分→GF)，严禁用 HSK_TO_GF(会标低2级)。manage 单写。
+    for nid, node in g._nodes.items():
+        node.level_gf = legacy_to_gf(node.level)
     g.save(src)          # save 原子写回新 schema
 
     # 迁移后校验
@@ -115,13 +121,14 @@ def report(results: list):
         tag = "DRY" if r.get("dry_run") else "迁移"
         print(f"[{tag}] {r['file']} 节点 {r.get('before')}→{r.get('after')}（不丢={r.get('after')==r.get('before')}）")
         d = r.get("detail", {})
-        print(f"     example: id={d.get('id')} 双维度={d.get('error_kind(现算)')}/{d.get('nature(现算)')} "
+        print(f"     example: id={d.get('id')} level={d.get('level')}→GF{d.get('level_gf(现算)')} "
+              f"双维度={d.get('error_kind(现算)')}/{d.get('nature(现算)')} "
               f"streak={d.get('unfixed_streak')} created_at保留={d.get('created_at保留')}")
         if d.get("备份"):
             print(f"     备份={d['备份']}")
-        # 全节点现状（如 eval 多节点）打印各节点双维度
+        # 全节点现状（如 eval 多节点）打印各节点等级换算 + 双维度
         for nd in current_nodes(r["file"]):
-            print(f"     {nd['id']:24s} kind={nd['error_kind']:2s} nature={nd['nature']:2s}")
+            print(f"     {nd['id']:24s} GF{nd['level_gf']} kind={nd['error_kind']:2s} nature={nd['nature']:2s}")
     print("=" * 60)
 
 
@@ -134,7 +141,8 @@ def current_nodes(name: str):
     path = os.path.join(_PROJECT_ROOT, "data", name)
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
-    nodes = [{"id": k, "error_kind": v.get("error_kind", ""),
+    nodes = [{"id": k, "level_gf": v.get("level_gf"),
+              "error_kind": v.get("error_kind", ""),
               "nature": v.get("nature", "")}
              for k, v in data.get("nodes", {}).items()]
     _cached_nodes[name] = nodes
