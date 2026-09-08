@@ -111,7 +111,10 @@ class GenerateWhyTest(unittest.TestCase):
 
     def test_default_client_used_when_none(self):
         # 不传 client → 内部 LLMClient()；此处用 mock 确认路径被触发即返回空
-        with mock.patch("engine.llm.client.LLMClient") as MC:
+        # 注意 patch 目标必须是 why 模块内的名字绑定（why.py 是
+        # from engine.llm.client import LLMClient），非源模块属性——
+        # 否则模块缓存时序不同会导致 patch 失效（CI 3.11/Ubuntu 曾间歇红）。
+        with mock.patch("engine.generation.why.LLMClient") as MC:
             MC.return_value.chat_json_strict.return_value = {
                 "items": [{"fragment": "a", "correction": "b", "reason": "r"}]}
             out = generate_why(errors=[{"fragment": "a", "correction": "b"}],
