@@ -48,11 +48,22 @@ jobs:
       - name: Run unittest suite
         shell: bash
         run: |
-          # 测试失败时保留退出码上抛（CI 标红），同时把完整输出落盘供 artifact 排查。
-          # 注意 pipefail：若 python 失败，管道退出码由 || 透传，set -e 使步骤变红，
-          # 但仍能拿到 unittest_verbose.log。
+          # 测试失败时保留退出码上抛（CI 标红），同时把完整输出落盘供排查。
           python -m unittest discover -s tests -p "test_*.py" -v \
             > unittest_verbose.log 2>&1 || { ec=$?; echo "== unittest exit code: $ec =="; exit $ec; }
+
+      - name: Emit failure annotations
+        if: failure()
+        shell: bash
+        run: |
+          # 把失败/错误/断言摘要暴露到 GitHub annotations（无需下载 artifact 即可读）。
+          # 逐行取出失败相关的行，每一条作为 ::error:: 输出到日志与 check-run。
+          grep -nE "FAIL:|ERROR:|FAILED|AssertionError|Traceback|In .*\.py:" \
+            unittest_verbose.log || true
+          # 再抓取失败测试名集合（第二个段：RUN 后到 ... FAIL）
+          awk '/^FAIL:/{print "::error::"$0} /^ERROR:/{print "::error::"$0}' \
+            unittest_verbose.log || true
+          echo "== end failure annotations =="
 
       - name: Upload unittest log on failure
         if: failure()
