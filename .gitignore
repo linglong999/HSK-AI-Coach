@@ -19,6 +19,10 @@ datasets/eval/_raw_corpus/
 datasets/eval/cged_recognition.json
 datasets/_yaclc_valid.jsonl
 
+# hsk30_raw 下的扫描版/大纲 PDF（50MB/3.6MB）体积过大不入库；
+# 结构化源 7 个 JSON + 加工 syllabus JSON 正常入库（fetch_syllabus.py 可复现）
+datasets/hsk30_raw/*.pdf
+
 # 系统
 .DS_Store
 Thumbs.db
