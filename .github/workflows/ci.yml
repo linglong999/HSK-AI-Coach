@@ -48,5 +48,16 @@ jobs:
       - name: Run unittest suite
         shell: bash
         run: |
-          # 不接管道，确保测试失败时的非零退出码直接上抛，CI 才能正确标红
-          python -m unittest discover -s tests -p "test_*.py"
+          # 测试失败时保留退出码上抛（CI 标红），同时把完整输出落盘供 artifact 排查。
+          # 注意 pipefail：若 python 失败，管道退出码由 || 透传，set -e 使步骤变红，
+          # 但仍能拿到 unittest_verbose.log。
+          python -m unittest discover -s tests -p "test_*.py" -v \
+            > unittest_verbose.log 2>&1 || { ec=$?; echo "== unittest exit code: $ec =="; exit $ec; }
+
+      - name: Upload unittest log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unittest-verbose-log
+          path: unittest_verbose.log
+          if-no-files-found: error
