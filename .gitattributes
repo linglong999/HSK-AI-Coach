@@ -1,5 +1,6 @@
-# 行尾确定性：关键文件强制按"原始字节"存储，关闭 git 的 text 行尾转换。
-# 背景（P0.9 踩坑）——本环境 core.autocrlf=true 会把工作区 LF 存成 CRLF blob；
-# GitHub runner 的 bash 又把多行 run: 里的 CR 读进命令，导致 then 等关键字
-# 语法错红。用 -text 按二进制原样存 LF，绝对规避。
+# 行尾确定性：ci.yml 必须保持 LF（GitHub runner 用 bash 执行其 run: 脚本）。
+# 本环境 core.autocrlf=true；用 -text 按"原始字节"存储，杜绝 autocrlf 在编辑时
+# 把 LF 写成 CRLF 进 blob。注：此前 CI 全 job 失败的真因并非 CRLF（各提交 blob
+# 实测均为 LF），而是 Verify 步骤 grep 管道在 bash -e -o pipefail 下被 0 行命中
+# 退出 1 触发 set -e（修复见 ci.yml 该步骤的 awk 改写）。此 -text 仅为防行尾漂移。
 .github/workflows/ci.yml -text
