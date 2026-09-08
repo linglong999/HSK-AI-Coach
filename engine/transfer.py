@@ -138,27 +138,28 @@ def _sig_wh_fronting(err: dict) -> bool:
                for wh in _WH_WORDS)
 
 
-# 处置动词常见尾部标记（把字句回避检测：frag 缺'把'、corr 引入'把'提取宾语）
+# 处置动词常见尾部标记（把字句语序偏误检测：frag 缺'把'、corr 引入'把'提取宾语）
 _BA_TAIL_HINTS = ("桌子", "床上", "椅子", "书包", "口袋", "地方", "手里", "车", "房间",
                   "前面", "上面", "中间")  # 处所/位置宾语常配合处置义"把+宾语+放在+处所"
 
 
-def _sig_ba_avoidance(err: dict) -> bool:
-    """把字句回避（P0.19 规则⑦，补迁移规则）：英语无把字句、以 SVO 语序表达处置义，
-    学习者回避'把'、宾语留在动词后。判据（宁漏勿错，需三重条件 同时满足）：
+def _sig_ba_placement(err: dict) -> bool:
+    """把字句语序偏误（P0.19 N3 改名，原 en-ba-avoidance）：处置义宾语未前置。
+    英语无把字句、以 SVO 语序表达处置义，学习者宾语留在动词后（我放书在桌子上）。
+    属**语序偏误**（句面不成立）而非回避（回避=句面合法的非优选结构）。
+    判据（宁漏勿错，需三重条件 同时满足）：
       ① corr 引入'把'、frag 不含'把'（把+宾语 属新增处置框架）；
       ② 同字符集换序：frag 与 corr 去掉'把'后字符可重排一致（语序调整而非增删词）；
       ③ 含处置/放置动词 + 处所宾语（如'书在桌子上'），排除不含'把'的一般换序误报。
-    局限（触发条件标注）：transfer_match 只对 confirmed 层匹配，而'回避'特征句面无错——
-    纯回避（句面合法、只是没用把字句）静态规则捕获不到，本签名只命中'回避+其他偏误共存'场景；
-    场景驱动的真回避检测进 backlog。"""
+    局限（触发条件标注）：transfer_match 只对 confirmed 层匹配，纯回避特征句面无错、
+    静态规则捕获不到，只命中'语序偏误+其他偏误共存'；场景驱动的真回避进 backlog。"""
     frag, corr = _strip_punct(err.get("fragment", "")), _strip_punct(err.get("correction", ""))
     if not frag or not corr or "把" not in corr or "把" in frag:
         return False
     # ② 同字符集换序（去标点后）
     if sorted(frag) != sorted(corr.replace("把", "")):
         return False
-    # ① ③ 引入'把'且含放置动词 + 处所宾语特征（本签名锚定的处理义语境）
+    # ① ③ 引入'把'且含放置动词 + 处所宾语特征（本签名锚定的处置义语境）
     has_bind = "放" in frag or "摆" in frag or "挂" in frag or "放" in corr.split("把")[1]
     has_place = any(h in frag for h in _BA_TAIL_HINTS)
     # 排除：corr 用了'把'是量词/把持（把门/把车开走）而 frag 无对应处所宾语
@@ -174,7 +175,7 @@ _SIGNATURES = {
     "en-adj-predicate": _sig_adj_predicate,
     "en-aspect-particle": _sig_aspect_particle,
     "en-wh-fronting": _sig_wh_fronting,
-    "en-ba-avoidance": _sig_ba_avoidance,
+    "en-ba-placement": _sig_ba_placement,
 }
 
 

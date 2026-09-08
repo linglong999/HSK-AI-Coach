@@ -35,8 +35,8 @@
       "title": "形容词谓语句：系动词冗余或裸形容词",
       "kp_anchors": ["kp-chengdu-jieci"],
       "types": ["语法"],
-      "l1_anchor": "English requires 'be' before adjectives (She is happy); Chinese adjectives predicate directly, and a bare adjective needs a degree word (很). Exception: contrastive contexts (他高，我矮) allow a bare adjective",
-      "zh_signature": "'是+形容词'（我是高兴→我很高兴），或裸形容词缺程度词（她高兴→她很高兴）。仅限非对比语境——对比语境（他高，我矮）光杆形容词合法，不归本规则",
+      "l1_anchor": "English requires 'be' before adjectives (She is happy); Chinese adjectives predicate directly, and a bare adjective needs a degree word (很). Exception (exhaustive): a bare single adjective is legal when it is NOT an independent affirmative predicate — i.e. in an opposition/contrast pair (他高，我矮), a question (他高兴吗？/你忙不忙？), a comparison (他比我高), with a degree complement or 极了/得很 (他高兴极了/他高兴得很), with 了 marking a change (他高兴了), or in a parallel list (屋里干净、明亮、暖和). ONLY a bare adjective as an independent affirmative predicate in a plain statement is judged as 'missing a degree word'.",
+      "zh_signature": "'是+形容词'（我是高兴→我很高兴），或裸形容词缺程度词（她高兴→她很高兴）。仅当形容词作**独立肯定陈述谓语**、且句中无其他程度成分/比较结构/疑问或变化标记时，才判缺程度词；以下语境一律合法——对比或对举（他高，我矮）、疑问（他高兴吗？/你忙不忙？）、比较（他比我高）、带程度补语或'极了/得很'（他高兴极了/他高兴得很）、带'了'表变化（他高兴了）、并列列举（屋里干净、明亮、暖和)",
       "conf": 0.45
     },
     {
@@ -58,13 +58,13 @@
       "conf": 0.35
     },
     {
-      "rule_id": "en-ba-avoidance",
-      "title": "把字句回避",
+      "rule_id": "en-ba-placement",
+      "title": "把字句相关语序偏误（处置义宾语未前置）",
       "kp_anchors": ["kp-ba-sentence"],
       "types": ["语法"],
-      "l1_anchor": "English has no ba-construction and marks disposal via plain SVO + object position; learners avoid 把, keeping the object after the verb instead of preposing it (我把书放在桌子上 vs 我放书在桌子上)",
+      "l1_anchor": "English has no ba-construction and marks disposal via plain SVO with the object in place; learners produce a word-order error by keeping the disposal object after the verb instead of preposing it with 把 (我放书在桌子上 → 我把书放在桌子上). This is a placement/word-order error, not an avoidance choice (avoidance would be a grammatically fine non-preferred structure).",
       "zh_signature": "处置义应把宾语提前到动词前却留在动词后（我放书在桌子上→我把书放在桌子上）",
-      "conf": 0.38
+      "conf": 0.5
     }
   ]
 }

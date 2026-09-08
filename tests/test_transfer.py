@@ -39,7 +39,7 @@ class TransferRulesTest(unittest.TestCase):
 
     def test_rules_load_with_required_keys(self):
         rules = load_rules()
-        self.assertEqual(len(rules), 7)  # 0.22 六条 + P0.19 规则⑦ en-ba-avoidance
+        self.assertEqual(len(rules), 7)  # 0.22 六条 + P0.19 规则⑦ en-ba-placement
         for r in rules:
             for key in ("rule_id", "kp_anchors", "types", "l1_anchor",
                         "zh_signature", "conf"):
@@ -103,16 +103,15 @@ class TransferRulesTest(unittest.TestCase):
         hyp = match_one(_err("什么你要", "你要什么"), "en")
         self.assertEqual(hyp["rule_id"], "en-wh-fronting")
 
-    def test_ba_avoidance(self):
-        # P0.19 规则⑦：处置义应把宾语提前却留在动词后 → ba-sentence 迁移假设
+    def test_ba_placement(self):
+        # P0.19 N3（原 en-ba-avoidance 改名 en-ba-placement）：处置义应把宾语提前却留在动词后 → ba-sentence 迁移假设
         hyp = match_one(_err("放书在桌子上", "把书放在桌子上", kp="kp-ba-sentence"), "en")
-        self.assertEqual(hyp["rule_id"], "en-ba-avoidance")
-        self.assertEqual(hyp["conf"], 0.38)
+        self.assertEqual(hyp["rule_id"], "en-ba-placement")
+        self.assertEqual(hyp["conf"], 0.5)
         self.assertEqual(hyp["status"], "candidate")
-        # 局限：纯回避（句面合法只是没用把字句）静态捕获不到——本例 frag 含"把"被拒
-        self.assertNotEqual(
-            match_one(_err("把书放桌子上了", "把书放在桌子上", kp="kp-ba-sentence"), "en"),
-            "en-ba-avoidance")
+        # 局限：frag 已含"把"（只是位置略异）→ 非本规则定义的宾语未前置，签名拒收
+        self.assertIsNone(
+            match_one(_err("把书放桌子上了", "把书放在桌子上", kp="kp-ba-sentence"), "en"))
 
     def test_unrelated_error_no_hypothesis(self):
         # 把字句语序错：无任何规则签名命中 → 不追因（宁漏勿错）

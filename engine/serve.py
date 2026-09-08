@@ -623,7 +623,8 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                         user_input, max_conf=max_conf,
                         error_flag=error_flag, cap=cap)
                 intervention_directive = build_intervention_directive(
-                    level, reason, native_lang, recognition=pre_scan)
+                    level, reason, native_lang, recognition=pre_scan,
+                    hsk_level=level_int)
 
                 res = self._get_planner(provider).run(
                     user_input, history=history, learner_id=learner_id,
@@ -960,6 +961,20 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             if not (1 <= n <= 6):
                 return None
             return f"HSK{n}"
+
+        @staticmethod
+        def _teaching_lang(native_lang: str, learner_l1: str) -> str:
+            """0.19 N6 · 语言政策判定输入：用真实母语(learner_l1)代替 UI 语言(native_lang)，
+            缺信时回退 UI 语言。非英语亦非中文母语（如 th/ar）→ 回落中文教学壳（不强制英语，
+            与规则8"非英语母语不强制英文"一致；其母语无教学壳时用中文可理解形式兜底）。"""
+            l1 = str(learner_l1 or "").strip().lower()
+            if not l1 or l1 == "unknown":
+                return str(native_lang or "")
+            if l1 in ("en", "english", "英语", "英文"):
+                return "en"
+            if l1 in ("zh", "中文", "汉语", "chinese", "汉语官话", "zh-cn", "zh-hans", "zh-hant"):
+                return "zh"
+            return "zh"  # 其他母语：无对应教学壳，宁用中文可理解形式也不强制英语
 
         # ---------- 会话管理（0.24：右键菜单 置顶/重命名/删除） ----------
 

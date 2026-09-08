@@ -41,10 +41,12 @@ class RecognizerFewShotCoverageTest(unittest.TestCase):
         self.assertIn("knowledge_point_id\":\"kp-zhuangyu-chezhi\"", SYSTEM_PROMPT)
 
     def test_e2_fragment_covers_you(self):
-        # E-2：例3 fragment 圈「你几岁」整段一条报（"你→您"不再另立条目）
+        # E-2：例2 fragment 圈「你几岁」整段一条报（"你→您"不再另立条目）
         from engine.recognizer import SYSTEM_PROMPT
         self.assertIn("fragment\":\"你几岁\"", SYSTEM_PROMPT)
-        self.assertIn("correction\":\"您多大年纪\"", SYSTEM_PROMPT)
+        # N9：correction 弃「您多大年纪」（偏问长者），改「您多大了？」
+        self.assertIn("correction\":\"您多大了？\"", SYSTEM_PROMPT)
+        self.assertNotIn("您多大年纪", SYSTEM_PROMPT)
 
 
 if __name__ == "__main__":

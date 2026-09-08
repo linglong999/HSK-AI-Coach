@@ -144,24 +144,27 @@ class InterventionTracker:
 
 
 # ---------------- 教学法：recast 单一常量 ----------------
-# P0.19 ⑧⑨：none 档（流利产出有隐错）的反馈文案收敛为唯一权威源。
+# P0.19 ⑧⑨⑮：none 档（流利产出有隐错）的反馈文案收敛为唯一权威源。
 # intervention.py 与 scenarios.py [Scene] 段共同引用同一常量，消除同步成本。
-# 教学口径（Lyster & Ranta 隐性→引导梯度）：
-#   none = 先整句正确 recast 覆盖需修正处，再只轻点 1 个最关键错误（隐性反馈+单点提示），
-#          不罗列全部、不讲规则、不打断节奏——错误照常后台入图谱，复习环节显性处理。
+# 教学口径（none/light/block 隐性→引导→显性梯度，类比 Lyster & Ranta；
+# none 档实为"强化式重述 focused recast + 单点聚焦"，非纯隐性 recast，注释按此表述）：
+#   none = 先整句正确 recast 覆盖需修正处；单错 -> 重述即改正、不再点名；
+#          多错 -> 才至多轻点 1 个最关键（不罗列、不讲规则、不打断节奏）。
+#   N8：不向学习者披露"后台记录"——以自然承接句收尾。
 RECAST_DIRECTIVE_ZH = (
-    "若我说错：先用一整句正确说法自然重述（recast，把需要修正的地方都带进正确句里），"
-    "然后只轻点 1 个最关键的错误（简短一两短语，如'这里应该是'喝奶茶''），"
-    "不罗列所有错误、不讲语法规则、不打断场景节奏；错误已在后台静默记录，"
-    "稍后会通过图谱/复习呈现。"
+    "若我说错：先用一整句正确说法自然重述（强化式重述 focused recast，把需要修正的地方"
+    "都带进正确句）。若这句只有 1 个错误，重述即已改正，不必再点名；若确有多个错误，至多"
+    "只轻点最关键的 1 个（简短一两短语，如'这里应该是'喝奶茶''），不罗列所有错误、"
+    "不讲语法规则、不打断场景节奏。我们先继续聊，这个点稍后会再练到。"
 )
 RECAST_DIRECTIVE_EN = (
     "If I make an error: start by naturally echoing the whole phrase in its corrected "
-    "form (a recast that brings every spot needing a fix into the correct sentence), "
-    "then gently flag only the 1 most important error (a short phrase or two, e.g. "
-    "\"here it should be '喝奶茶'\"). Do not list every error, do not lecture "
-    "grammar, and keep the scene flowing; the error is already logged silently in "
-    "the background and will surface later through the graph / review queue."
+    "form (an enhanced / focused recast that brings every spot needing a fix into the "
+    "correct sentence). If the sentence has only ONE error, the recast already fixes it "
+    "— do not flag it again. If there are several errors, gently flag at most the 1 most "
+    "important one (a short phrase or two, e.g. \"here it should be '喝奶茶'\"). Do not "
+    "list every error, do not lecture grammar, and keep the scene flowing. Let's keep "
+    "going, and we will practice this point again later."
 )
 
 
@@ -205,9 +208,11 @@ def _compact_recognition(recognition: Optional[Dict[str, Any]]) -> str:
 
 
 def build_intervention_directive(level: str, reason: str, native_lang: str = "",
-                                 recognition: Optional[Dict[str, Any]] = None) -> str:
+                                 recognition: Optional[Dict[str, Any]] = None,
+                                 hsk_level: int = 3) -> str:
     """把本轮判定编译成注入主链的 [Intervention] 段。
     recognition：预扫识别结果（None=未预扫，如求助句/材料——不限制 identify_errors）。
+    hsk_level：学习者 HSK 等级（1–6，N7②：1–2 级需在 recast 后追加极轻显性提示）。
     返回空串 = 不注入（无判定/材料句）。"""
     if not level or level not in ("none", "light", "block"):
         return ""
@@ -218,12 +223,17 @@ def build_intervention_directive(level: str, reason: str, native_lang: str = "",
                                or recognition.get("uncertain"))
     lvl = _LEVEL_LABEL["zh" if is_zh else "en"].get(level, level)
     rsn = _REASON_LABEL["zh" if is_zh else "en"].get(reason, reason)
+    low_level = hsk_level < 3   # N7②：HSK1–2 初学者注意不到 recast 差异，需极轻显性兜底
 
     if is_zh:
         head = f"[Intervention] 本轮介入判定：{lvl}（{rsn}）。本段优先于全局规则3的技能选用建议。"
+        recast_zh = RECAST_DIRECTIVE_ZH + (
+            "（学习者 HSK{len} 级、语言基础有限：重述后请再加一句极轻的显性提示——把修正处"
+            "再复读一次，或点出\"注意\"喝奶茶\"\"，帮助其注意到重述里改了什么。）".format(len=hsk_level)
+            if low_level else "")
         body_map = {
             "none": ("学习者本轮流利产出——保持场景自然。"
-                     + (RECAST_DIRECTIVE_ZH
+                     + (recast_zh
                         if has_err else
                         "本句未识别到明显偏误：自然接话推进场景即可，不提示任何错误。")
                      + ("识别已在后台完成，本轮无需再调 identify_errors。" if scanned else "")),
@@ -240,9 +250,15 @@ def build_intervention_directive(level: str, reason: str, native_lang: str = "",
     else:
         head = (f"[Intervention] This turn: {lvl} ({rsn}). This section takes "
                 "precedence over rule 3's skill-selection advice.")
+        recast_en = RECAST_DIRECTIVE_EN + (
+            f" (The learner is at HSK{hsk_level}, with limited language foundation: "
+            "after the recast, add ONE extra very light explicit cue — say the "
+            "corrected spot once more or note e.g. \"mind '喝奶茶'\" — so they can notice "
+            "what the recast changed.)"
+            if low_level else "")
         body_map = {
             "none": ("The learner is speaking fluently this turn — keep the scene natural. "
-                     + (RECAST_DIRECTIVE_EN
+                     + (recast_en
                         if has_err else
                         "No obvious error was detected in this sentence: just respond "
                         "naturally and keep the scene going, without flagging anything.")

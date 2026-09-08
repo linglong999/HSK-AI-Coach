@@ -156,8 +156,9 @@ class InterventionDirectiveTest(unittest.TestCase):
                                               recognition={"errors":
                                                            [{"fragment": "奶茶"}]})
         self.assertIn("自然重述", none_d)
-        # P0.19 ⑧：none 档改为 recast + 轻点 1 个（不再逐条点名全部错误）
-        self.assertIn("只轻点 1 个最关键的错误", none_d)
+        # P0.19 N7①：单错误 -> 只 recast 不再点名；多错误才至多轻点最关键的 1 个
+        self.assertIn("重述即已改正，不必再点名", none_d)
+        self.assertIn("至多只轻点最关键的 1 个", none_d)
         self.assertNotIn("明确点出", none_d)
         self.assertNotIn("每个错误", none_d)
         clean_d = build_intervention_directive("none", "fluent", "zh")
@@ -174,8 +175,9 @@ class InterventionDirectiveTest(unittest.TestCase):
                                                            [{"fragment": "奶茶"}]})
         self.assertIn("natural flow", none_d)
         self.assertIn("recast", none_d)
-        # P0.19 ⑧：只轻点 1 个，不再逐条 EACH error
-        self.assertIn("only the 1 most important error", none_d)
+        # P0.19 N7①：单错误不点名；多错误才轻点最关键的 1 个
+        self.assertIn("do not flag it again", none_d)
+        self.assertIn("the 1 most important one", none_d)
         self.assertNotIn("EACH error", none_d)
         self.assertNotIn("leaving none out", none_d)
         light_d = build_intervention_directive("light", "streak", "en")
@@ -341,7 +343,9 @@ class ServeInterventionTest(unittest.TestCase):
         system = self.llm.calls[0][0]
         self.assertEqual(system["role"], "system")
         self.assertIn("[Intervention]", system["content"])
-        self.assertIn("静默记录", system["content"])
+        # N8：自然承接收尾，不向学习者披露"后台记录"（静默记录经账本/图谱呈现，见上 ledger 断言）
+        self.assertIn("这个点稍后会再练到", system["content"])
+        self.assertNotIn("静默记录", system["content"])
 
     def test_help_blocks_without_prescan(self):
         # 求助句：不预扫（识别交 planner 按需），直接阻断讲解

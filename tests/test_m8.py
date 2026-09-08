@@ -145,7 +145,7 @@ class TestSummarize(unittest.TestCase):
         for _ in range(3):
             self.ledger.record("observation_error", "kp-ba-sentence", signature="把")
         out = build_profile_summary(self.graph, self.ledger)
-        self.assertIn("高频×", out)
+        self.assertIn("重现×", out)
 
     def test_empty_graph_safe(self):
         g2 = ErrorGraph(learner_id="m8x")

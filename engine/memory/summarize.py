@@ -52,7 +52,7 @@ def build_profile_summary(graph, ledger: Optional[ErrorLedger] = None,
         repeated = ledger.repeated_count(kp_id)
         tag = ""
         if repeated >= repeat_threshold:
-            tag = f" [高频×{repeated}]"
+            tag = f" [重现×{repeated}]"
         lines_errors.append(f"- {name}（{level_str}）优先级{pr:.1f}{tag}")
 
     for line in lines_errors[:MAX_LINES]:
