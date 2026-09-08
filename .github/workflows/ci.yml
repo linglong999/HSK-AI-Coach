@@ -32,9 +32,13 @@ jobs:
       - name: Verify zero runtime dependencies
         shell: bash
         run: |
-          # requirements.txt 应为空（仅注释），确认无第三方运行时依赖
+          # requirements.txt 应为空（仅注释），确认无第三方运行时依赖。
+          # 注意：GH Actions 以 bash -e -o pipefail 执行 run；勿用 grep|grep|wc 数行——
+          #   全被过滤后首个 grep -v 选中 0 行会以退出码 1 结束，pipefail 传导 + set -e
+          #   会让本步骤误红（此前 CI 全 job 失败的根因）。用 awk（恒定退出 0）数
+          #   "非注释(#打头)且非空"的行。
           if [ -f requirements.txt ]; then
-            deps=$(grep -v '^[[:space:]]*#' requirements.txt | grep -v '^[[:space:]]*$' | wc -l)
+            deps=$(awk 'NF && $1!="#" {c++} END {print c+0}' requirements.txt)
             if [ "$deps" -ne 0 ]; then
               echo "requirements.txt 含未预期依赖，请检查"; cat requirements.txt; exit 1
             fi
