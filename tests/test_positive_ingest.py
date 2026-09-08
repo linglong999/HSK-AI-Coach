@@ -121,6 +121,20 @@ class PositivePersistenceTest(unittest.TestCase):
             self.assertEqual(nd["positive_count"], 1)
             self.assertEqual(nd["positive_sources"], {"exercise": 1})
 
+    def test_save_roundtrip_preserves_created_at(self):
+        # P0.5修复：created_at 进白名单，load→save 不再丢 aging 起算点
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "g.json")
+            g = ErrorGraph("rt2")
+            g.ingest_positive("kp-liangci", source="scenario", event_key="e")
+            before = g.get_kp("kp-liangci")["node"]["created_at"]
+            self.assertTrue(before)  # 有值（非空）
+            g.save(p)
+            g2 = ErrorGraph("rt2")
+            g2.load(p)
+            after = g2.get_kp("kp-liangci")["node"]["created_at"]
+            self.assertEqual(after, before)  # 往返不丢
+
     def test_load_old_data_defaults_positive_fields(self):
         # 旧数据无正向字段 → 缺省 0/{} / None，不炸
         with tempfile.TemporaryDirectory() as d:

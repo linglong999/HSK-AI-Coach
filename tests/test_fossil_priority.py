@@ -91,8 +91,8 @@ class FossilizedTest(unittest.TestCase):
         node2 = _mk("K2", error_count=3, unfixed_streak=99, nature="误代", last=None)
         g._refresh_fossilized(node2)
         self.assertFalse(node2.fossilized)
-        self.assertEqual(g._priority(node2),
-                         min(3, 5) * (1 - 0) * g._aging(node2) * 1.3)
+        expected = min(3, 5) * (1 - 0) * g._aging(node2) * 1.3
+        self.assertAlmostEqual(g._priority(node2), expected, places=6)
 
     def test_fossil_requires_both_conditions(self):
         g = ErrorGraph("f")
@@ -119,8 +119,9 @@ class FossilizedTest(unittest.TestCase):
                    unfixed_streak=3, last=_ts(days_ago=200))
         g._nodes = {"C": node}
         base = min(3, 5) * (1 - 0) * g._aging(node)
-        self.assertEqual(g._priority(node), base * FOSSIL_BOOST)  # 非 base*1.5*1.3
-        self.assertNotEqual(g._priority(node), base * FOSSIL_BOOST * 1.3)
+        self.assertAlmostEqual(g._priority(node), base * FOSSIL_BOOST, places=6)
+        # 互斥证伪：结果 NOT ≈ base*1.5*1.3（差异远大于浮点容差）
+        self.assertNotAlmostEqual(g._priority(node), base * FOSSIL_BOOST * 1.3, places=3)
 
     def test_fossil_boost_rules(self):
         # 断言 FOSSIL_RULE 值被锁定，防 drift（用户 A2 拍板 3/180）

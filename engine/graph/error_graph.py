@@ -486,10 +486,13 @@ class ErrorGraph:
                 node = Node(**{k: nd.get(k) for k in
                                ["id", "knowledge_point", "level", "error_types",
                                 "error_count", "mastery", "last_learnt_at",
-                                "error_kind", "nature", "positive_count",
-                                "positive_sources", "last_positive_at",
-                                "unfixed_streak"]})
+                                "created_at", "error_kind", "nature",
+                                "positive_count", "positive_sources",
+                                "last_positive_at", "unfixed_streak"]})
                 node.id = nid
+                # P0.5(修正)：created_at 必须在白名单——旧数据含它，缺失会丢 aging 起算点
+                if not node.created_at:
+                    node.created_at = ""
                 # P0.2：旧数据缺双字段 → 按现有 error_types/kp 现算补齐（防静默丢字段）。
                 # P0.3：缺正向字段 → 用安全缺省（0/空 dict/None）兜底。
                 if not node.positive_sources:
