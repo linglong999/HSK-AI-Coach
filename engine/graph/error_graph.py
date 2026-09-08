@@ -25,6 +25,15 @@ MASTERY_NEW_ERROR = 0.5    # 新错误 ingest_error 的 mastery 衰减（3.x 定
 CONFIRM_REVISE_C2 = 0.5    # 复合确认门槛 c2（3.x 定案 T5：保守收录）
 ERROR_COUNT_CAP = 5        # 3.4 修复：priority 内 error_count 封顶，削弱"错误次数×(1-mastery)"双重计数致高频霸榜
 
+# P0.4：priority 分类型加权 + 化石化
+NATURE_WEIGHT = {
+    "错序": 1.3,   # 纠错难度高、迁移性强 → 提权
+    "误代": 1.3,
+    # "误加"/"遗漏" → 1.0；未命中/.get 缺省 1.0（含 nature="" 与 "未知"）
+}
+FOSSIL_RULE = {"unfixed_streak": 3, "days_idle": 180}  # 连续≥3次复习未纠正 且 距上次学习≥180天
+FOSSIL_BOOST = 1.5        # 化石化节点 priority 乘数（与 nature 权重互斥，不叠乘）
+
 # 冲突优先级（§八）：跨类按类序（verdict 写 > 识别偏误写 > 图谱自身更新）
 _CLASS_ORDER = {"verdict": 0, "error": 1, "graph": 2}
 
@@ -45,6 +54,8 @@ class Node:
     positive_count: int = 0       # P0.3：正向证据计数（正确用法）。只增不碰偏误侧。
     positive_sources: Dict[str, int] = field(default_factory=dict)  # P0.3：{source: count} 按来源聚合
     last_positive_at: Optional[str] = None   # P0.3：最近一次正向证据时间戳（UTC）
+    unfixed_streak: int = 0       # P0.4：连续复习未纠正次数（pass→0 / fail→+1，落盘）
+    fossilized: bool = False      # P0.4：化石化标记（现算，不落盘；读取前须 refresh）
 
     def to_dict(self) -> dict:
         return {
@@ -61,6 +72,8 @@ class Node:
             "positive_count": self.positive_count,
             "positive_sources": self.positive_sources,
             "last_positive_at": self.last_positive_at,
+            "unfixed_streak": self.unfixed_streak,
+            # fossilized 不落盘（现算），此处不写
         }
 
 
@@ -150,13 +163,26 @@ class ErrorGraph:
         days = self._days_since(base_ts) if base_ts else 0.0
         return 1.0 + LAMBDA_AGING * days
 
+    def _refresh_fossilized(self, node: Node) -> None:
+        """P0.4：现算化石化（不落盘）。连续≥FOSSIL_RULE[unfixed_streak]次复习未纠正
+        且距上次成功学习(last_learnt_at)≥days_idle 天 → fossilized=True。
+        last_learnt_at 为 None（从未成功学习）→ days=0 → 永不误标。"""
+        days = self._days_since(node.last_learnt_at)
+        node.fossilized = (node.unfixed_streak >= FOSSIL_RULE["unfixed_streak"]
+                           and days >= FOSSIL_RULE["days_idle"])
+
     def _priority(self, node: Node) -> float:
-        """2.4 §4.2：priority = error_count × (1-mastery) × aging（不落盘，读取时现算）。
-        3.4 修复：error_count 封顶 min(err, 5) —— 削弱"错误次数×(1-mastery)"双重计数。
-        mastery 会被 ingest_error/fail 衰减，若 error_count 不封顶，高频项会被平方放大霸榜；
-        封顶后 mastery 信号不丢失、中频新错能进队首。"""
-        err = min(node.error_count, ERROR_COUNT_CAP)
-        return err * (1.0 - node.mastery) * self._aging(node)
+        """P0.4：priority = base × 分类型加权（读前先 refresh 化石化）。
+        base = min(error_count,5) × (1-mastery) × aging（3.4 封顶）。
+        加权（A1/A3 拍板）：
+          - 非化石 → × NATURE_WEIGHT.get(nature, 1.0)（错序/误代1.3；误加/遗漏/未知/"" → 1.0）
+          - 化石   → × FOSSIL_BOOST(1.5)，**互斥**：替代 nature 权重，不叠乘
+        fossilized 每次读取前现算，保证 streak 落盘后随时刷新。"""
+        self._refresh_fossilized(node)
+        base = min(node.error_count, ERROR_COUNT_CAP) * (1.0 - node.mastery) * self._aging(node)
+        if node.fossilized:
+            return base * FOSSIL_BOOST
+        return base * NATURE_WEIGHT.get(node.nature, 1.0)
 
     def _edge_key(self, a: str, b: str) -> str:
         return "|".join(sorted([a, b]))
@@ -255,12 +281,14 @@ class ErrorGraph:
                             level=bias_ref.get("level") or "未知", created_at=self._now())
                 self._nodes[kp_id] = node
                 self._apply_dimensions(node)
-            # §4.1：pass 提升且 touch；fail 衰减且不 touch（方案 b）
+            # §4.1：pass 提升且 touch + streak 清零；fail 衰减且不 touch + streak 递增（P0.4）
             if verdict == "pass":
                 node.mastery += (1.0 - node.mastery) * MASTERY_K
                 node.last_learnt_at = self._now()
+                node.unfixed_streak = 0            # P0.4：纠正成功 → 连续未纠正计数归零
             else:  # fail
                 node.mastery *= MASTERY_FAIL_DECAY
+                node.unfixed_streak += 1           # P0.4：未纠正 → streak 递增（化石化依赖）
                 # 不 touch last_learnt_at —— aging 不清零，加速回队首
             return {"status": "node_update", "kp_id": kp_id, "node": node.to_dict(),
                     "verdict": verdict}
@@ -331,6 +359,25 @@ class ErrorGraph:
                 return {"status": "not_found"}
             node.last_learnt_at = self._now()
             return {"status": "touched", "kp_id": kp_id}
+
+    def review_feedback(self, kp_id: str, correct: bool, event_key: str = "") -> dict:
+        """P0.4：复习环节单点反馈，驱动化石化 streak。
+        与 ingest_verdict 不同——只动 unfixed_streak（correct→0 / incorrect→+1），
+        不改 mastery、不 touch last_learnt_at、不增 error_count（复习反馈语义独立）。
+        幂等：event_key 判重。fossilized 现算不落盘，读 priority 时自动刷新。"""
+        with self._lock:
+            if event_key and self._event_seen(event_key):
+                return {"status": "idempotent_skip"}
+            node = self._nodes.get(kp_id)
+            if node is None:
+                return {"status": "not_found"}
+            if correct:
+                node.unfixed_streak = 0
+            else:
+                node.unfixed_streak += 1
+            self._refresh_fossilized(node)
+            return {"status": "review_feedback", "kp_id": kp_id,
+                    "node": node.to_dict(), "fossilized": node.fossilized}
 
     def reject_item(self, item_key: str) -> dict:
         """明确非偏误 → 驳回清除（§七）"""
@@ -440,7 +487,8 @@ class ErrorGraph:
                                ["id", "knowledge_point", "level", "error_types",
                                 "error_count", "mastery", "last_learnt_at",
                                 "error_kind", "nature", "positive_count",
-                                "positive_sources", "last_positive_at"]})
+                                "positive_sources", "last_positive_at",
+                                "unfixed_streak"]})
                 node.id = nid
                 # P0.2：旧数据缺双字段 → 按现有 error_types/kp 现算补齐（防静默丢字段）。
                 # P0.3：缺正向字段 → 用安全缺省（0/空 dict/None）兜底。
@@ -450,6 +498,8 @@ class ErrorGraph:
                     node.positive_count = 0
                 if "last_positive_at" not in nd:
                     node.last_positive_at = None
+                if node.unfixed_streak is None:
+                    node.unfixed_streak = 0   # P0.4：旧数据缺 streak → 0
                 if not node.error_kind or not node.nature:
                     dims = resolve(node.error_types, node.id)
                     if not node.error_kind:
