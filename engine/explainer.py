@@ -172,13 +172,15 @@ class Explainer:
         )
 
         # 0.21：native_lang 非 zh → 英文讲解骨架（英壳+中例句）；否则中文。
-        is_en = bool(native_lang and native_lang.lower() != "zh")
-        filled_system = SYSTEM_PROMPT_EN if is_en else SYSTEM_PROMPT
+        # P0.11：bilingual 恒为"非 zh"，故 en 与 ko（及任意非中文母语）都进入
+        # transfer_hint 归因注入（下方 D1.4 块）。讲解语言策略调整在本批范围外。
+        bilingual = bool(native_lang and native_lang.lower() != "zh")
+        filled_system = SYSTEM_PROMPT_EN if bilingual else SYSTEM_PROMPT
 
         # 0.22 方向1 · D1.4：确定性迁移归因（零 LLM），命中则注入讲解——明示母语成因。
         # 假设只作 candidate：提示词约束 8 要求"标为可能原因，不当定论"。
         transfer_hint = ""
-        if is_en:
+        if bilingual:
             try:
                 hyp = transfer_match_one(error, native_lang)
             except Exception:
@@ -189,7 +191,7 @@ class Explainer:
                     f"| typical Chinese result: {hyp['zh_signature']}"
                 )
 
-        if is_en:
+        if bilingual:
             user_prompt = (
                 f"Original sentence: {sentence}\n"
                 f"Error: {fragment} → correction: {correction}\n"

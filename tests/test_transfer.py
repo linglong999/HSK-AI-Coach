@@ -1,10 +1,11 @@
 # ============================================================
 # 0.22 方向1 · L1 母语迁移归因（迁移带）回归测试
 # 覆盖：
-#   - transfer：规则表结构；zh/空/ko 不产假设；en 六规则正例+负例；假设形态锁 candidate
+#   - transfer：规则表结构；zh 不产假设、空/未知→en 降级、ko→ko 表（不混套 en）
+#     en 七规则 + ko 四规则正例/负例；签名与规则解耦（sig 字段复用）
 #   - recognizer 接线：确认层偏误产 hypotheses、zh 不产、降级路径空
 #   - identify_errors 透传：契约输出含 hypotheses[]、图谱零写入（只 ingest errors/uncertain）
-#   - explainer D1.4：EN 讲解注入 l1_anchor（确定性、零 LLM）；无命中注入 (none)；ZH 不注入
+#   - explainer D1.4：EN/KO 讲解注入 l1_anchor（确定性、零 LLM）；无命中注入 (none)；ZH 不注入
 #   - serve 消费方安全：ledger 编排只读 errors，hypotheses 不产任何账本事件
 # 运行: python -m unittest tests.test_transfer -v
 # ============================================================
@@ -21,7 +22,8 @@ if _PROJECT_ROOT not in sys.path:
 
 from engine.explainer import Explainer
 from engine.recognizer import Recognizer
-from engine.transfer import load_rules, match, match_one
+from engine.transfer import (RULES_KO_PATH, load_rules, match, match_one,
+                             _rules_for_l1)
 from skills.identify_errors import IdentifyErrorsSkill
 
 
@@ -41,21 +43,36 @@ class TransferRulesTest(unittest.TestCase):
         rules = load_rules()
         self.assertEqual(len(rules), 7)  # 0.22 六条 + P0.19 规则⑦ en-ba-placement
         for r in rules:
-            for key in ("rule_id", "kp_anchors", "types", "l1_anchor",
-                        "zh_signature", "conf"):
+            for key in ("rule_id", "sig", "kp_anchors", "types", "nature",
+                        "l1_anchor", "zh_signature", "strategy", "ref", "conf"):
                 self.assertIn(key, r, msg=f"{r.get('rule_id')} 缺 {key}")
             self.assertLess(float(r["conf"]), 0.7)  # 永不到确认阈值
 
-    def test_zh_or_empty_native_lang_no_hypotheses(self):
+    def test_ko_rules_load_with_required_keys(self):
+        ko_rules = load_rules(RULES_KO_PATH)
+        self.assertEqual(len(ko_rules), 4)  # P0.11 classifier/aspect/adj-bare/ba-omission
+        for r in ko_rules:
+            for key in ("rule_id", "sig", "kp_anchors", "types", "nature",
+                        "l1_anchor", "zh_signature", "strategy", "ref", "conf"):
+                self.assertIn(key, r, msg=f"{r.get('rule_id')} 缺 {key}")
+        # 首条即 classifier，且与 en 复用同一 sig（解耦后 ko 复用 en 签名）
+        self.assertTrue(any(r["rule_id"] == "ko-classifier" and r["sig"] == "classifier"
+                            for r in ko_rules))
+
+    def test_zh_or_empty_resolution(self):
+        # zh → 不归因；严格空 → en 通用底座降级（本批定案）
         errs = [_err("三苹果", "三个苹果", kp="kp-liangci")]
         self.assertEqual(match(errs, "zh"), [])
-        self.assertEqual(match(errs, ""), [])
-        self.assertIsNone(match_one(errs[0], "zh"))
+        self.assertEqual(match_one(errs[0], "zh"), None)
+        self.assertEqual(match(errs, "")[0]["rule_id"], "en-classifier-missing")
 
-    def test_ko_does_not_borrow_en_rules(self):
-        # en 规则只对 en 学习者生效（ko 套 en 规则 = 误诊，宁可不归因）
+    def test_ko_uses_own_table_not_en(self):
+        # ko 走 ko 表（产 ko-classifier），绝不套用 en 规则（refuses en-classifier）
         errs = [_err("三苹果", "三个苹果", kp="kp-liangci")]
-        self.assertEqual(match(errs, "ko"), [])
+        ko_hyp = match(errs, "ko")
+        self.assertEqual(len(ko_hyp), 1)
+        self.assertEqual(ko_hyp[0]["rule_id"], "ko-classifier")
+        self.assertNotEqual(ko_hyp[0]["rule_id"], "en-classifier-missing")
 
     def test_language_aliases_normalized(self):
         # "英语"/"English" → en 规则命中；"中文"/"Chinese" → zh 不产假设
@@ -141,6 +158,70 @@ class TransferRulesTest(unittest.TestCase):
         self.assertEqual(len(hyps), 2)  # 每条偏误至多一条
 
 
+# ---------------- P0.11 韩语：签名/别名/降级/解耦 ----------------
+
+class TransferKoTest(unittest.TestCase):
+
+    def test_ko_classifier_and_aspect_reuse_sigs(self):
+        # 解耦后 ko 复用 en 的 classifier/aspect_particle 签名
+        h1 = match_one(_err("一个书", "一本书", kp="kp-liangci"), "ko")
+        self.assertEqual(h1["rule_id"], "ko-classifier")
+        h2 = match_one(_err("我吃", "我吃了", kp="kp-le-dynamic"), "ko")
+        self.assertEqual(h2["rule_id"], "ko-aspect-particle")
+
+    def test_ko_adj_bare_only_b_form(self):
+        # ko-adj-bare 仅承认 B 形态（裸形容词缺'很'）；系词冗余 A 形态（是）拒绝
+        h = match_one(_err("她高兴", "她很高兴", kp="kp-chengdu-fuci"), "ko")
+        self.assertEqual(h["rule_id"], "ko-adj-bare")
+        self.assertIsNone(
+            match_one(_err("我是高兴", "我很高兴", kp="kp-chengdu-fuci"), "ko"))
+
+    def test_ko_ba_omission_single_ba(self):
+        h = match_one(_err("书放桌上", "把书放桌上", kp="kp-ba-sentence"), "ko")
+        self.assertEqual(h["rule_id"], "ko-ba-omission")
+        # frag 已含'把'（只是位置问题）→ 非遗漏（ko 走 ba_omission 只接"缺把"），拒绝
+        self.assertIsNone(
+            match_one(_err("把书放桌子上了", "把书放在桌子上", kp="kp-ba-sentence"), "ko"))
+
+    def test_ko_does_not_touch_en_rules(self):
+        # en 专属规则（possessive_de / wh_fronting 在 ko 表不存在）→ ko 学习者不归因
+        self.assertIsNone(match_one(_err("我朋友书", "我朋友的书", kp="kp-de-di-de"), "ko"))
+        self.assertIsNone(match_one(_err("什么你要", "你要什么"), "ko"))
+
+    def test_ko_language_aliases(self):
+        errs = [_err("一个书", "一本书", kp="kp-liangci")]
+        for alias in ("korean", "한국어", "韩语", "韓語", "韩国语"):
+            self.assertEqual(match(errs, alias)[0]["rule_id"], "ko-classifier",
+                             msg=f"别名 {alias}")
+
+    def test_unknown_language_falls_back_to_en(self):
+        errs = [_err("三苹果", "三个苹果", kp="kp-liangci")]
+        for lang in ("fr", "japanese", "日本語", "xx"):
+            self.assertEqual(match(errs, lang)[0]["rule_id"], "en-classifier-missing",
+                             msg=f"未收录 {lang}")
+
+    def test_ko_corrupt_table_falls_back_to_en_with_warning(self):
+        from unittest import mock as _m
+        errs = [_err("三苹果", "三个苹果", kp="kp-liangci")]
+        with _m.patch("engine.transfer.load_rules",
+                      side_effect=lambda p: [] if p == RULES_KO_PATH else
+                      load_rules()):
+            with self.assertWarns(UserWarning):
+                hyps = match(errs, "ko")
+        self.assertEqual(hyps[0]["rule_id"], "en-classifier-missing")
+
+    def test_sig_field_decoupled_reuse(self):
+        # 两表各取一例：sig 名一致但 rule_id 不同 → 说明签名池与规则解耦、可跨语言复用
+        en_hyp = match_one(_err("三苹果", "三个苹果", kp="kp-liangci"), "en")
+        ko_hyp = match_one(_err("三苹果", "三个苹果", kp="kp-liangci"), "ko")
+        self.assertEqual(en_hyp["rule_id"], "en-classifier-missing")
+        self.assertEqual(ko_hyp["rule_id"], "ko-classifier")
+        en_rule = next(r for r in load_rules() if r["rule_id"] == en_hyp["rule_id"])
+        ko_rule = next(r for r in load_rules(RULES_KO_PATH) if r["rule_id"] == ko_hyp["rule_id"])
+        self.assertEqual(en_rule["sig"], ko_rule["sig"])
+        self.assertIsNotNone(_rules_for_l1("ko"))
+
+
 # ---------------- recognizer 接线 ----------------
 
 class _FakeClient:
@@ -165,12 +246,16 @@ class RecognizerTransferTest(unittest.TestCase):
         self.assertEqual(result["hypotheses"][0]["rule_id"],
                          "en-classifier-missing")
 
-    def test_zh_and_empty_no_hypotheses(self):
-        for lang in ("zh", ""):
-            rec = Recognizer(client=_FakeClient(errors=[
-                _err("三苹果", "三个苹果", kp="kp-liangci")]))
-            result = rec.recognize("我买了三苹果。", level=2, native_lang=lang)
-            self.assertEqual(result["hypotheses"], [], msg=f"native_lang={lang}")
+    def test_zh_and_empty_language_resolution(self):
+        # zh → 永不产假设；空母语 → en 通用底座降级（P0.11 定案）
+        rec_zh = Recognizer(client=_FakeClient(errors=[
+            _err("三苹果", "三个苹果", kp="kp-liangci")]))
+        self.assertEqual(
+            rec_zh.recognize("我买了三苹果。", level=2, native_lang="zh")["hypotheses"], [])
+        rec_empty = Recognizer(client=_FakeClient(errors=[
+            _err("三苹果", "三个苹果", kp="kp-liangci")]))
+        res = rec_empty.recognize("我买了三苹果。", level=2, native_lang="")
+        self.assertEqual(res["hypotheses"][0]["rule_id"], "en-classifier-missing")
 
     def test_uncertain_only_no_hypotheses(self):
         # 低置信偏误进 uncertain，不参与归因（归因只对确认层）
@@ -245,6 +330,16 @@ class ExplainerTransferTest(unittest.TestCase):
                  "knowledge_point_id": "kp-ba-sentence"}
         Explainer(client=client).explain(error, native_lang="en")
         self.assertIn("(none)", cap["system"])
+
+    def test_ko_explain_injects_l1_anchor(self):
+        # P0.11：ko 学习者同样注入 transfer_hint（bilingual 覆盖 en 与 ko）
+        client, cap = self._capturing_client()
+        error = {"sentence": "她很高兴。", "fragment": "她高兴",
+                 "correction": "她很高兴", "type": "语法",
+                 "knowledge_point_id": "kp-chengdu-fuci"}
+        Explainer(client=client).explain(error, native_lang="ko")
+        self.assertIn("ko-adj-bare", cap["system"])
+        self.assertIn("native-language habit", cap["system"])
 
     def test_zh_explain_unaffected(self):
         client, cap = self._capturing_client()

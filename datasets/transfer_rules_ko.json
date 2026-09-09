@@ -1,0 +1,59 @@
+{
+  "l1": "ko",
+  "version": "0.22.1",
+  "note": "韩语母语者→中文高频迁移规则（P0.11）。锚定 recognizer 实际降类 + knowledge_point_id，fragment/correction 签名二次确认。只作 candidate，绝不进确诊图谱。ref 字段为索引线索，供人工核验后定稿。",
+  "rules": [
+    {
+      "rule_id": "ko-classifier",
+      "title": "量词泛化或缺失",
+      "sig": "classifier",
+      "kp_anchors": ["kp-liangci"],
+      "types": ["语法", "词汇"],
+      "nature": "误代",
+      "l1_anchor": "Korean uses the near-universal classifier '개'(个) far more widely than Chinese 个, and often omits a classifier for countable objects",
+      "zh_signature": "一律用'个'量化名词（一个书→一本书），或数词直接连名词（三苹果→三个苹果）",
+      "strategy": "对比韩语'개'的宽泛使用范围与中文各专用量词，用'名量搭配专项'做逐类替换练习",
+      "ref": "韩国学习者汉语量词偏误：'개'与量词'个'泛化迁移研究；韩国学生汉语名量词习得偏误分析",
+      "conf": 0.5
+    },
+    {
+      "rule_id": "ko-aspect-particle",
+      "title": "动态助词'了/着/过'缺失或误加",
+      "sig": "aspect_particle",
+      "kp_anchors": ["kp-le-dynamic", "kp-zhe", "kp-guo"],
+      "types": ["语法"],
+      "nature": "缺失",
+      "l1_anchor": "Korean marks past with the verb suffix '-았/었-' and progressive with '-고 있다'；no direct equivalent of the Chinese perfective particle 了, so learners omit or misplace them",
+      "zh_signature": "完成义缺'了'（昨天我去学校→去了），或体标记误加/误删",
+      "strategy": "把'了/着/过'当作动词后的体标记单列训练，明确韩语过去时前缀与中文'了'不是逐词对应，强调匹配语境条件",
+      "ref": "韩国学习者'了'习得偏误：韩语时态后缀与汉语动态助词对比；韩国学生'了'的偏误类型分析",
+      "conf": 0.4
+    },
+    {
+      "rule_id": "ko-adj-bare",
+      "title": "裸形容词缺程度副词'很'",
+      "sig": "adj_bare",
+      "kp_anchors": ["kp-chengdu-fuci"],
+      "types": ["语法"],
+      "nature": "缺失",
+      "l1_anchor": "Korean adjectives can predicate on their own with no copula and no obligatory degree adverb; learners render the bare predicate directly into Chinese without 很",
+      "zh_signature": "裸形容词作独立肯定陈述谓语缺'很'（她高兴→她很高兴）。不含系词'是'（那是 en 的 A 形态）",
+      "strategy": "讲清中文形容词作肯定陈述谓语通常需程度副词'很'来补足，与韩语可独立作谓语的形容词对勘，并保留比较/疑问等反例判断",
+      "ref": "韩语形容词谓语句与中文'很'的对应：韩国学生程度副词'很'遗漏偏误研究",
+      "conf": 0.45
+    },
+    {
+      "rule_id": "ko-ba-omission",
+      "title": "把字句遗漏",
+      "sig": "ba_omission",
+      "kp_anchors": ["kp-ba-sentence"],
+      "types": ["语法"],
+      "nature": "缺失",
+      "l1_anchor": "Korean is SOV with object case-marking (을/를) and has no disposal construction like 把; learners put the object before the verb but omit the disposal marker 把 entirely",
+      "zh_signature": "处置义单缺'把'标记（书放桌上→把书放桌上；我书放桌子上→我把书放在桌子上）",
+      "strategy": "把'把'引介为对定指对象加以处置/移动的框架标记，用'把+O+V+补语'模板操练，强调韩语用格助词、中文用'把'提取宾语",
+      "ref": "韩国学习者把字句偏误：韩语 목적격 조사(을/를) 与汉语'把'字句对比习得研究",
+      "conf": 0.45
+    }
+  ]
+}

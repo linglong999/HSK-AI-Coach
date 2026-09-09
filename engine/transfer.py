@@ -4,15 +4,23 @@
 # 对识别出的偏误产出"疑似母语迁移"候选假设：
 #   - 纯确定性匹配（规则表 + fragment/correction 签名），零 LLM 调用
 #   - 假设 status 恒为 "candidate"，绝不进偏误图谱 confirmed 层（宁漏勿错）
-#   - native_lang 为 zh/空、或无规则命中 → 返回 []（不追因）
-# 规则表：datasets/transfer_rules_en.json（data/ 被 gitignore，规则是分发资产）
+#   - native_lang 为 zh → 返回 []（不追因）
+#   - 规则表按母语分文件：en = 通用底座；ko = 韩语（P0.11）
+#     ko → ko 表（损坏降级 en+warning）；未知语言/严格空 → en 底座降级
+#   - 签名池以 sig 字符串为键（P0.11 解耦）：规则表字段 sig 引用签名，en/ko 可复用
+# 规则表：datasets/transfer_rules_*.json（data/ 被 gitignore，规则是分发资产）
 # ============================================================
 
 import json
 import os
+import warnings
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RULES_PATH = os.path.join(_PROJECT_ROOT, "datasets", "transfer_rules_en.json")
+RULES_KO_PATH = os.path.join(_PROJECT_ROOT, "datasets", "transfer_rules_ko.json")
+
+# 已有独立规则表的母语（其余/空/未收录统一降级到 en 通用底座）
+SUPPORTED_L1 = ("en", "ko")
 
 # 签名检查用字符集（仅匹配用，不是权威量词表）
 _CLASSIFIERS = set("个本张件部台只条块杯瓶家位匹棵朵封辆间首歌道双对")
@@ -22,31 +30,45 @@ _ASPECT_PARTICLES = ("了", "着", "过")
 _WH_WORDS = ("什么时候", "为什么", "什么", "哪儿", "哪里", "怎么", "谁", "多少", "几")
 _QUANTITY_WORDS = ("很多", "许多", "不少", "好多", "好几个")
 
-# 语言别名归一（边界鲁棒：客户端/旧测试可能送 "英语"/"English"/"中文"）
+# 语言别名归一（边界鲁棒：客户端/旧测试可能送 "英语"/"English"/"한국어" 等）
 _L1_ALIASES = {"english": "en", "英语": "en", "英文": "en",
-               "chinese": "zh", "中文": "zh", "汉语": "zh", "汉语官话": "zh"}
+               "chinese": "zh", "中文": "zh", "汉语": "zh", "汉语官话": "zh",
+               "korean": "ko", "韩语": "ko", "韓語": "ko", "韩国语": "ko", "한국어": "ko"}
 
 
 def _norm_l1(native_lang) -> str:
     v = str(native_lang or "").strip().lower()
     return _L1_ALIASES.get(v, v)
 
-_rules_cache = None
+_rules_cache = {}
 
 
 def load_rules(path: str = RULES_PATH) -> list:
-    """加载迁移规则表（进程内缓存）。文件缺失/损坏 → 空表（不产假设，不阻断）。"""
-    global _rules_cache
-    if _rules_cache is not None:
-        return _rules_cache
+    """加载指定语言规则文件（进程内按文件缓存）。文件缺失/损坏 → 空表（不产假设，调用方可降级）。"""
+    if path in _rules_cache:
+        return _rules_cache[path]
     try:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
         rules = data.get("rules", []) if isinstance(data, dict) else []
     except Exception:
         rules = []
-    _rules_cache = [r for r in rules if r.get("rule_id")]
-    return _rules_cache
+    _rules_cache[path] = [r for r in rules if r.get("rule_id")]
+    return _rules_cache[path]
+
+
+def _rules_for_l1(l1: str) -> list:
+    """按母语路由规则文件（P0.11 多语言）：
+      ko        → ko 专用表；该表缺失/损坏 → 降级 en 通用底座 + warning
+      en/未知/严格空 → en 通用底座（unknown→en、空→en 降级，本批定案）
+    zh 不产假设（调用方在 match_one/match 入口拦截），此处不处理。"""
+    if l1 == "ko":
+        ko_rules = load_rules(RULES_KO_PATH)
+        if not ko_rules:
+            warnings.warn("transfer_rules_ko.json 缺失或损坏，降级到 en 通用底座")
+            return load_rules(RULES_PATH)
+        return ko_rules
+    return load_rules(RULES_PATH)
 
 
 def _strip_punct(s: str) -> str:
@@ -112,6 +134,20 @@ def _sig_adj_predicate(err: dict) -> bool:
     return "很" in corr and "很" not in frag and corr.replace("很", "") == frag
 
 
+def _sig_adj_bare(err: dict) -> bool:
+    """裸形容词（adj_predicate 的 B 形态，ko 专属）：修正恰多一个'很'、无系词参与
+    （她高兴→她很高兴）。韩语形容词可独立做谓语（不加系词），学习者直译时漏加程度副词'很'。
+    与 en 的 A 形态（系词冗余'是'）刻意隔离——凡 frag/corr 含'是'一律拒绝。"""
+    frag, corr = _strip_punct(err.get("fragment", "")), _strip_punct(err.get("correction", ""))
+    if not frag or not corr or frag == corr:
+        return False
+    if "是" in frag or "是" in corr:
+        return False
+    if "很" not in corr or "很" in frag:
+        return False
+    return corr.replace("很", "") == frag
+
+
 def _sig_aspect_particle(err: dict) -> bool:
     """体标记增删：修正与原片段恰差一个'了/着/过'（我吃→我吃了；昨天我去学校→昨天我去了学校；
     他在看书了→他在看书）。要求"体助词是唯一差异"——修正同时动了语序的不算（防把字句假阳性）。"""
@@ -168,44 +204,56 @@ def _sig_ba_placement(err: dict) -> bool:
     return True
 
 
+def _sig_ba_omission(err: dict) -> bool:
+    """把字句遗漏（ko 专属）：修正恰引入'把'、原片段不含'把'，补'把'后字符一致
+    （书放桌上→把书放桌上；我书放桌子上→我把书放在桌子上）。
+    与 en-ba-placement 方向相反：韩语 SOV 语序下宾语天然在动词前，问题不在语序，
+    而在处置标记'把'整体缺失——学习者直接省略。"""
+    frag, corr = _strip_punct(err.get("fragment", "")), _strip_punct(err.get("correction", ""))
+    if not frag or not corr or frag == corr:
+        return False
+    if "把" not in corr or "把" in frag:
+        return False
+    return corr.replace("把", "") == frag
+
+
 _SIGNATURES = {
-    "en-classifier-missing": _sig_classifier,
-    "en-possessive-de": _sig_possessive_de,
-    "en-quantity-adverb-postposed": _sig_quantity_reorder,
-    "en-adj-predicate": _sig_adj_predicate,
-    "en-aspect-particle": _sig_aspect_particle,
-    "en-wh-fronting": _sig_wh_fronting,
-    "en-ba-placement": _sig_ba_placement,
+    "classifier": _sig_classifier,
+    "possessive_de": _sig_possessive_de,
+    "quantity_reorder": _sig_quantity_reorder,
+    "adj_predicate": _sig_adj_predicate,
+    "adj_bare": _sig_adj_bare,
+    "aspect_particle": _sig_aspect_particle,
+    "wh_fronting": _sig_wh_fronting,
+    "ba_placement": _sig_ba_placement,
+    "ba_omission": _sig_ba_omission,
 }
 
 
 def match_one(error: dict, native_lang: str) -> dict:
     """对单个偏误产出迁移假设；无命中返回 None。
     三层判定（宁漏勿错）：
-      ① l1 严格相等 —— 规则表按母语分文件，en 规则只对 en 学习者生效
-         （ko 学习者套 en 规则 = 误诊，宁可不给归因）
+      ① l1 分流 —— 按母语选规则文件：en→en 表、ko→ko 表、未知/空→en 降级、zh→不归因
       ② 锚点命中 —— knowledge_point_id ∈ kp_anchors 或 type ∈ types
-      ③ 签名命中 —— fragment/correction 满足该规则的确定性签名
+      ③ 签名命中 —— fragment/correction 满足该规则 sig 字段引用的确定性签名
     三者同时满足才产假设；每条偏误至多一条（按规则表顺序取首个命中）。"""
-    if not native_lang or _norm_l1(native_lang) == "zh":
-        return None
     if not isinstance(error, dict):
         return None
     l1 = _norm_l1(native_lang)
+    if l1 == "zh":
+        return None
     kp = str(error.get("knowledge_point_id", "") or "")
     etype = str(error.get("type", "") or "")
-    for rule in load_rules():
-        if rule.get("l1", "en") != l1:
-            continue
+    for rule in _rules_for_l1(l1):
         kp_hit = bool(kp) and kp in rule.get("kp_anchors", [])
         type_hit = etype in rule.get("types", [])
         if not (kp_hit or type_hit):
             continue
-        sig = _SIGNATURES.get(rule["rule_id"])
+        sig = _SIGNATURES.get(rule.get("sig"))
         if sig and sig(error):
             return {
                 "rule_id": rule["rule_id"],
-                "l1": rule.get("l1", "en"),
+                "l1": rule.get("l1", l1),
                 "conf": float(rule.get("conf", 0.4)),
                 "status": "candidate",
                 "fragment": error.get("fragment", ""),
@@ -218,7 +266,8 @@ def match_one(error: dict, native_lang: str) -> dict:
 
 def match(errors: list, native_lang: str) -> list:
     """对一批已确认偏误产出迁移假设列表（识别结果 hypotheses[] 的唯一来源）。
-    只对确认层偏误做归因（uncertain 本身未站稳，叠加归因会放大不确定性）。"""
-    if not native_lang or _norm_l1(native_lang) == "zh":
+    只对确认层偏误做归因（uncertain 本身未站稳，叠加归因会放大不确定性）。
+    zh 学习者一律不归因；en/ko 走各自规则表，未知/空母语走 en 通用底座降级。"""
+    if _norm_l1(native_lang) == "zh":
         return []
     return [h for h in (match_one(e, native_lang) for e in errors or []) if h]
