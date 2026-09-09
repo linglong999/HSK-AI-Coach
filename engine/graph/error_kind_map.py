@@ -81,11 +81,16 @@ _NATURE_MAP = {
     "kp-preposition-zaizai": "误代",     # 在/从/给/向介词混用→误代
     "kp-jietiaoyu-tiaojian": "误代",     # 如果/因为等关联词错配→误代
     "kp-haishi-xuanze": "误代",          # 还是/吗 疑问句式误选→误代
-    "kp-chengdu-jieci": "误加",          # 很/太程度副词叠加冗余→误加
+    "kp-chengdu-fuci": "误加",          # 很/太程度副词叠加冗余→误加
     "kp-zhizhi-dao": "错序",             # 时量补语位置/时长句序错→错序
     "kp-zhongci-fugao": "误代",          # 都/也/只/还范围副词混用→误代
+
+    # —— 7-9 转正新 kp（P0.15，全部未知：偏误多源不唯一，用户拍板不硬塞）——
+    "kp-chengdu-buyu": "未知",          # 程度补语：与程度副词叠用=误加、程度词混用=误代，双源
+    "kp-keneng-buyu": "未知",           # 可能补语：en 高频回避致漏用=遗漏、与能/会混=误代，不唯一
+    "kp-dongliang-buyu": "未知",        # 动量补语：漏次/回/遍=遗漏、次回遍混用=误代，en 有 times 非纯漏
 }
-# 断言覆盖：25 条 kp 必须都在映射表内
+# 断言覆盖：28 条 kp 必须都在映射表内
 _KNOWN_KP_IDS = (
     "kp-ba-sentence", "kp-bei-sentence", "kp-liangci", "kp-nengyuan-dongci",
     "kp-bi-sentence", "kp-he-yiyang", "kp-le-dynamic", "kp-zhe", "kp-guo",
@@ -93,12 +98,13 @@ _KNOWN_KP_IDS = (
     "kp-liandong-ju", "kp-standing-shi", "kp-shide-sentence",
     "kp-dongci-shuangbin", "kp-zhuangyu-chezhi", "kp-zhongci-zhitou",
     "kp-preposition-zaizai", "kp-jietiaoyu-tiaojian", "kp-haishi-xuanze",
-    "kp-chengdu-jieci", "kp-zhizhi-dao", "kp-zhongci-fugao",
+    "kp-chengdu-fuci", "kp-zhizhi-dao", "kp-zhongci-fugao",
+    "kp-chengdu-buyu", "kp-keneng-buyu", "kp-dongliang-buyu",
 )
-assert set(_NATURE_MAP) == set(_KNOWN_KP_IDS), "kp 级映射表与 25 个 KP 清单不一致"
+assert set(_NATURE_MAP) == set(_KNOWN_KP_IDS), "kp 级映射表与 28 个 KP 清单不一致"
 assert set(_KIND_MAP) == {"词汇", "语法", "语用", "汉字", "语法-语序"}, "type 级映射表条目异常"
-assert len([v for v in _NATURE_MAP.values() if v == "未知"]) == 9, \
-    "最终未知应为 9/25（4 CGED + 5 维持），见 P0.2 用户裁定"
+assert len([v for v in _NATURE_MAP.values() if v == "未知"]) == 12, \
+    "最终未知应为 12/28（4 CGED + 5 维持 + 3 P0.15 新 kp），见 P0.2/P0.15 用户裁定"
 
 NATURES = ("遗漏", "误加", "误代", "错序", "未知")
 

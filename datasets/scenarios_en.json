@@ -8,7 +8,7 @@
       "title": "At a restaurant",
       "title_zh": "餐厅点餐",
       "level": [1, 2],
-      "kp_ids": ["kp-liangci", "kp-chengdu-jieci", "kp-nengyuan-dongci"],
+      "kp_ids": ["kp-liangci", "kp-chengdu-fuci", "kp-nengyuan-dongci"],
       "goals": ["点菜", "问价", "表达偏好", "请服务员帮忙"],
       "seed": "你走进一家中国餐厅，想点两道菜，问问有什么招牌菜，再问问价格。",
       "roles": {"learner": "顾客", "agent": "服务员"},

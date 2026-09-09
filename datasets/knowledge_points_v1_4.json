@@ -1,253 +1,967 @@
 {
-  "$note": "HSK 1-4 级高频语法点 MVP 清单（骨架验证版 v0.1）。用途：跑通 2.1 识别 candidate → 2.4 建节点 → 2.2 读历史的 schema 挂接。来源=人工整理高频常考点，等级为经验判断，待接入权威 HSK 词表/大纲后校对替换（届时 bump version）。每点键 = knowledge_point_id，供 2.1 合并层校验与 2.4 建节点。",
-  "version": "0.1",
+  "$note": "HSK 1-4 级高频语法点 MVP（v0.2，P0.15 转正内建）。语法点等级以 2025 新 HSK 语法考纲为准（调准 10 项）；词汇超纲判定维持 GF 0025-2021 词表（dichotomy：语法走 2025，词汇走 2021）。每点含 syllabus_refs（考纲条目 sid → in_scope 布尔，1-4 级 true 入库 / 5+ false 记录待启）与 level_span（跨级分布）。新增 程度补语/可能补语/动量补语-动量词 三 kp。kps 结构调整见 adjudication_meta。",
+  "version": "0.2",
   "level_range": [
     1,
     4
   ],
-  "source": "manual-curated (pending authoritative HSK lexicon alignment)",
+  "source": "manual-curated + 2025 HSK grammar syllabus (P0.15 adjudicated)",
   "knowledge_points": {
     "kp-ba-sentence": {
       "id": "kp-ba-sentence",
       "knowledge_point": "“把”字句",
       "level": 3,
+      "level_gf": 5,
       "error_types": [
         "语法"
       ],
+      "scene_tags": [
+        "衣食住行",
+        "日常生活",
+        "因果与结果"
+      ],
+      "question_tags": [
+        "完成句子",
+        "句子改错",
+        "语序排列"
+      ],
+      "prereq": [],
       "note": "重点：结构‘把 + 宾语 + 动词 + 补语’，处置义",
-      "level_gf": 5
+      "syllabus_refs": {
+        "hsk30-g3-067": true,
+        "hsk30-g3-068": true,
+        "hsk30-g3-069": true,
+        "hsk30-g4-055": true,
+        "hsk30-g4-056": true,
+        "hsk30-g4-057": true,
+        "hsk30-g4-058": true,
+        "hsk30-g5-051": false,
+        "hsk30-g5-052": false,
+        "hsk30-g6-041": false,
+        "hsk30-g6-042": false
+      },
+      "level_span": "3-6"
     },
     "kp-bei-sentence": {
       "id": "kp-bei-sentence",
       "knowledge_point": "“被”字句",
-      "level": 4,
+      "level": 3,
+      "level_gf": 5,
       "error_types": [
         "语法"
       ],
+      "scene_tags": [
+        "日常生活",
+        "社交表达",
+        "描述事件"
+      ],
+      "question_tags": [
+        "完成句子",
+        "判断正误",
+        "语序排列"
+      ],
+      "prereq": [],
       "note": "被动义，常与‘把’字句并学",
-      "level_gf": 6
+      "syllabus_refs": {
+        "hsk30-g3-070": true,
+        "hsk30-g3-071": true,
+        "hsk30-g4-059": true,
+        "hsk30-g5-055": false
+      },
+      "level_span": "3-5"
     },
     "kp-liangci": {
       "id": "kp-liangci",
       "knowledge_point": "量词（个/本/张/件…）",
       "level": 1,
+      "level_gf": 1,
       "error_types": [
         "语法",
         "词汇"
       ],
+      "scene_tags": [
+        "购物",
+        "餐厅点餐",
+        "数量与度量"
+      ],
+      "question_tags": [
+        "选词填空",
+        "判断正误",
+        "看图填空"
+      ],
+      "prereq": [],
       "note": "数词+量词+名词；量词误用/缺失是低级别高频偏误",
-      "level_gf": 1
+      "syllabus_refs": {
+        "hsk30-g1-012": true,
+        "hsk30-g1-013": true,
+        "hsk30-g1-014": true,
+        "hsk30-g2-011": true,
+        "hsk30-g2-012": true,
+        "hsk30-g3-012": true,
+        "hsk30-g3-013": true,
+        "hsk30-g3-015": true,
+        "hsk30-g4-003": true,
+        "hsk30-g4-004": true,
+        "hsk30-g5-003": false,
+        "hsk30-g6-004": false,
+        "hsk30-g79-008": false,
+        "hsk30-g79-010": false
+      },
+      "level_span": "1-9"
     },
     "kp-nengyuan-dongci": {
       "id": "kp-nengyuan-dongci",
       "knowledge_point": "能愿动词（能/会/可以/要/想）",
       "level": 2,
+      "level_gf": 3,
       "error_types": [
         "语法"
       ],
+      "scene_tags": [
+        "社交与请求",
+        "日常生活",
+        "选择与意愿"
+      ],
+      "question_tags": [
+        "选词填空",
+        "情景会话",
+        "判断正误"
+      ],
+      "prereq": [],
       "note": "情态动词位置与语义区分",
-      "level_gf": 3
+      "syllabus_refs": {
+        "hsk30-g1-004": true,
+        "hsk30-g1-005": true,
+        "hsk30-g1-006": true,
+        "hsk30-g2-004": true,
+        "hsk30-g3-004": true,
+        "hsk30-g4-001": true
+      },
+      "level_span": "1-4"
     },
     "kp-bi-sentence": {
       "id": "kp-bi-sentence",
       "knowledge_point": "比较句（比/A比B…）",
       "level": 2,
+      "level_gf": 3,
       "error_types": [
         "语法"
       ],
+      "scene_tags": [
+        "购物",
+        "比较与选择",
+        "旅行计划"
+      ],
+      "question_tags": [
+        "完成句子",
+        "判断正误",
+        "语序排列"
+      ],
+      "prereq": [],
       "note": "掌握‘比’字句与‘和…一样’",
-      "level_gf": 3
+      "syllabus_refs": {
+        "hsk30-g2-061": true,
+        "hsk30-g2-062": true,
+        "hsk30-g2-063": true,
+        "hsk30-g2-064": true,
+        "hsk30-g3-073": true,
+        "hsk30-g3-074": true,
+        "hsk30-g3-075": true,
+        "hsk30-g3-076": true,
+        "hsk30-g3-077": true,
+        "hsk30-g4-063": true,
+        "hsk30-g4-064": true,
+        "hsk30-g5-054": false,
+        "hsk30-g79-097": false
+      },
+      "level_span": "2-9"
     },
     "kp-he-yiyang": {
       "id": "kp-he-yiyang",
-      "knowledge_point": "“和…一样”比较",
-      "level": 2,
+      "knowledge_point": "“跟/和……一样”比较",
+      "level": 3,
+      "level_gf": 5,
       "error_types": [
         "语法"
       ],
+      "scene_tags": [
+        "比较与选择",
+        "日常生活"
+      ],
+      "question_tags": [
+        "完成句子",
+        "判断正误",
+        "选词填空"
+      ],
+      "prereq": [],
       "note": "等同比较",
-      "level_gf": 3
+      "syllabus_refs": {
+        "hsk30-g3-074": true,
+        "hsk30-g3-075": true
+      },
+      "level_span": "3-3"
     },
     "kp-le-dynamic": {
       "id": "kp-le-dynamic",
-      "knowledge_point": "动态助词“了”（完成态）",
-      "level": 2,
+      "knowledge_point": "动态助词“了”（了1/了2）",
+      "level": 1,
+      "level_gf": 1,
       "error_types": [
         "语法"
       ],
+      "scene_tags": [
+        "日常生活",
+        "时间与日程",
+        "健康就医"
+      ],
+      "question_tags": [
+        "完成句子",
+        "句子改错",
+        "看图说话"
+      ],
+      "prereq": [],
       "note": "‘了’放动后表完成；误用/缺失常见",
-      "level_gf": 3
+      "syllabus_refs": {
+        "hsk30-g1-062": true,
+        "hsk30-g1-063": true
+      },
+      "level_span": "1-1"
     },
     "kp-zhe": {
       "id": "kp-zhe",
       "knowledge_point": "动态助词“着”（进行/持续态）",
       "level": 2,
+      "level_gf": 3,
       "error_types": [
         "语法"
       ],
-      "level_gf": 3
+      "scene_tags": [
+        "方位与空间",
+        "日常生活",
+        "状态描述"
+      ],
+      "question_tags": [
+        "完成句子",
+        "选词填空",
+        "看图说话"
+      ],
+      "prereq": [],
+      "note": "持续态助词；动词+着表动作/状态持续，常与存现句搭配",
+      "syllabus_refs": {
+        "hsk30-g2-072": true,
+        "hsk30-g2-073": true
+      },
+      "level_span": "2-2"
     },
     "kp-guo": {
       "id": "kp-guo",
       "knowledge_point": "动态助词“过”（经历态）",
       "level": 2,
+      "level_gf": 3,
       "error_types": [
         "语法"
       ],
-      "level_gf": 3
+      "scene_tags": [
+        "学习工作",
+        "旅行计划",
+        "健康就医",
+        "谈论经历"
+      ],
+      "question_tags": [
+        "完成句子",
+        "情景会话",
+        "判断正误"
+      ],
+      "prereq": [],
+      "note": "经历态助词；动词+过表曾经经历，否定式‘没（有）…过’",
+      "syllabus_refs": {
+        "hsk30-g2-074": true
+      },
+      "level_span": "2-2"
     },
     "kp-jiuguo-jiegou": {
       "id": "kp-jiuguo-jiegou",
       "knowledge_point": "结果补语（做完/听懂/学会）",
       "level": 2,
+      "level_gf": 3,
       "error_types": [
         "语法"
       ],
+      "scene_tags": [
+        "日常生活",
+        "完成事件"
+      ],
+      "question_tags": [
+        "完成句子",
+        "句子改错",
+        "语序排列"
+      ],
+      "prereq": [],
       "note": "动词+结果补语",
-      "level_gf": 3
+      "syllabus_refs": {
+        "hsk30-g2-048": true,
+        "hsk30-g3-057": true
+      },
+      "level_span": "2-3"
     },
     "kp-quxiang-buyu": {
       "id": "kp-quxiang-buyu",
       "knowledge_point": "趋向补语（回来/上去/下去）",
-      "level": 3,
+      "level": 2,
+      "level_gf": 3,
       "error_types": [
         "语法"
       ],
-      "level_gf": 5
+      "scene_tags": [
+        "方位与空间",
+        "出行交通",
+        "日常生活",
+        "健康就医"
+      ],
+      "question_tags": [
+        "完成句子",
+        "语序排列",
+        "看图说话"
+      ],
+      "prereq": [],
+      "note": "趋向补语（来/去/上/下/进/出/回/过，复合起来/出来…）；引申义（结果/开始/持续）为难点",
+      "syllabus_refs": {
+        "hsk30-g2-049": true,
+        "hsk30-g2-050": true,
+        "hsk30-g2-051": true,
+        "hsk30-g3-058": true,
+        "hsk30-g3-059": true,
+        "hsk30-g3-060": true,
+        "hsk30-g5-045": false
+      },
+      "level_span": "2-5"
     },
     "kp-de-di-de": {
       "id": "kp-de-di-de",
       "knowledge_point": "结构助词的地得（定语/状语/补语）",
-      "level": 3,
+      "level": 1,
+      "level_gf": 1,
       "error_types": [
         "汉字",
         "语法"
       ],
+      "scene_tags": [
+        "汉字书写",
+        "修饰描述"
+      ],
+      "question_tags": [
+        "选词填空",
+        "句子改错",
+        "判断正误"
+      ],
+      "prereq": [],
       "note": "书面偏误高频：的地得混用",
-      "level_gf": 5
+      "syllabus_refs": {
+        "hsk30-g1-024": true,
+        "hsk30-g2-030": true,
+        "hsk30-g6-018": false
+      },
+      "level_span": "1-6"
     },
     "kp-cunxian-ju": {
       "id": "kp-cunxian-ju",
       "knowledge_point": "存现句（有/在/是处所主语）",
-      "level": 2,
+      "level": 1,
+      "level_gf": 1,
       "error_types": [
         "语法"
       ],
-      "level_gf": 3
+      "scene_tags": [
+        "方位与空间",
+        "问路",
+        "位置描述"
+      ],
+      "question_tags": [
+        "完成句子",
+        "判断正误",
+        "情景会话"
+      ],
+      "prereq": [],
+      "note": "存现句：处所+（是/有/动词+着）+NP，表存在/出现/消失",
+      "syllabus_refs": {
+        "hsk30-g1-054": true,
+        "hsk30-g1-055": true,
+        "hsk30-g2-060": true,
+        "hsk30-g3-078": true,
+        "hsk30-g3-079": true
+      },
+      "level_span": "1-3"
     },
     "kp-liandong-ju": {
       "id": "kp-liandong-ju",
       "knowledge_point": "连动句",
-      "level": 3,
+      "level": 1,
+      "level_gf": 1,
       "error_types": [
         "语法"
       ],
-      "level_gf": 5
+      "scene_tags": [
+        "日常生活",
+        "出行交通",
+        "动作顺序"
+      ],
+      "question_tags": [
+        "语序排列",
+        "完成句子",
+        "看图说话"
+      ],
+      "prereq": [],
+      "note": "连动句：同一主语连用两个动词短语（先后/目的/方式）",
+      "syllabus_refs": {
+        "hsk30-g1-056": true,
+        "hsk30-g1-057": true,
+        "hsk30-g3-072": true,
+        "hsk30-g5-053": false
+      },
+      "level_span": "1-5"
     },
     "kp-standing-shi": {
       "id": "kp-standing-shi",
       "knowledge_point": "兼语句（请/让/叫）",
-      "level": 4,
+      "level": 2,
+      "level_gf": 3,
       "error_types": [
         "语法"
       ],
-      "level_gf": 6
+      "scene_tags": [
+        "社交与请求",
+        "生活场景"
+      ],
+      "question_tags": [
+        "完成句子",
+        "情景会话",
+        "语序排列"
+      ],
+      "prereq": [],
+      "note": "兼语句：请/叫/让/使+人+动词短语，宾语兼作后动主语",
+      "syllabus_refs": {
+        "hsk30-g2-066": true,
+        "hsk30-g4-060": true,
+        "hsk30-g4-061": true,
+        "hsk30-g4-062": true
+      },
+      "level_span": "2-4"
     },
     "kp-shide-sentence": {
       "id": "kp-shide-sentence",
       "knowledge_point": "“是…的”强调句",
-      "level": 3,
+      "level": 2,
+      "level_gf": 3,
       "error_types": [
         "语法"
       ],
-      "level_gf": 5
+      "scene_tags": [
+        "强调",
+        "社交表达",
+        "日常生活"
+      ],
+      "question_tags": [
+        "完成句子",
+        "情景会话",
+        "判断正误"
+      ],
+      "prereq": [],
+      "note": "‘是…的’强调句：强调时间/地点/方式/动作者或说话人看法",
+      "syllabus_refs": {
+        "hsk30-g2-065": true,
+        "hsk30-g3-080": true
+      },
+      "level_span": "2-3"
     },
     "kp-dongci-shuangbin": {
       "id": "kp-dongci-shuangbin",
       "knowledge_point": "双宾语句（V+人+物）",
       "level": 1,
+      "level_gf": 1,
       "error_types": [
         "语法"
       ],
-      "level_gf": 1
+      "scene_tags": [
+        "社交与请求",
+        "购物",
+        "给予与借用"
+      ],
+      "question_tags": [
+        "语序排列",
+        "完成句子",
+        "判断正误"
+      ],
+      "prereq": [],
+      "note": "双宾语句：动词+宾语1（人）+宾语2（物），含‘给’类",
+      "syllabus_refs": {
+        "hsk30-g1-058": true,
+        "hsk30-g2-067": true
+      },
+      "level_span": "1-2"
     },
     "kp-zhuangyu-chezhi": {
       "id": "kp-zhuangyu-chezhi",
       "knowledge_point": "状语语序（时间/地点/方式）",
       "level": 2,
+      "level_gf": 3,
       "error_types": [
         "语法"
       ],
+      "scene_tags": [
+        "时间与日程",
+        "衣食住行",
+        "学习工作"
+      ],
+      "question_tags": [
+        "语序排列",
+        "句子改错",
+        "完成句子"
+      ],
+      "prereq": [],
       "note": "高频：宾语/状语位置错误（受母语语序影响）",
-      "level_gf": 3
+      "syllabus_refs": {
+        "hsk30-g1-040": true,
+        "hsk30-g5-042": false
+      },
+      "level_span": "1-5"
     },
     "kp-zhongci-zhitou": {
       "id": "kp-zhongci-zhitou",
-      "knowledge_point": "代词使用（人称/指示代词）",
+      "knowledge_point": "代词（人称/指示/疑问）",
       "level": 1,
+      "level_gf": 1,
       "error_types": [
         "语法",
         "语用"
       ],
+      "scene_tags": [
+        "社交表达",
+        "日常生活",
+        "方位指称"
+      ],
+      "question_tags": [
+        "选词填空",
+        "情景会话",
+        "判断正误"
+      ],
+      "prereq": [],
       "note": "示例：'他/它'混用归此类",
-      "level_gf": 1
+      "syllabus_refs": {
+        "hsk30-g1-008": true,
+        "hsk30-g1-009": true,
+        "hsk30-g1-010": true,
+        "hsk30-g2-006": true,
+        "hsk30-g2-007": true,
+        "hsk30-g2-008": true,
+        "hsk30-g3-007": true,
+        "hsk30-g3-008": true,
+        "hsk30-g3-009": true,
+        "hsk30-g3-010": true,
+        "hsk30-g3-011": true,
+        "hsk30-g4-002": true,
+        "hsk30-g5-002": false,
+        "hsk30-g6-003": false,
+        "hsk30-g79-006": false,
+        "hsk30-g79-004": false,
+        "hsk30-g79-005": false,
+        "hsk30-g79-007": false
+      },
+      "level_span": "1-9"
     },
     "kp-preposition-zaizai": {
       "id": "kp-preposition-zaizai",
-      "knowledge_point": "介词及其误用（在/从/给/向）",
-      "level": 2,
+      "knowledge_point": "介词（在/从/给/向…）",
+      "level": 1,
+      "level_gf": 1,
       "error_types": [
         "语法"
       ],
-      "level_gf": 3
+      "scene_tags": [
+        "方位与空间",
+        "时间与日程",
+        "出行交通",
+        "社交往来"
+      ],
+      "question_tags": [
+        "选词填空",
+        "判断正误",
+        "完成句子"
+      ],
+      "prereq": [],
+      "note": "介词（在/从/给/向/和/比/跟…）引出时间/处所/对象/原因",
+      "syllabus_refs": {
+        "hsk30-g1-021": true,
+        "hsk30-g1-022": true,
+        "hsk30-g2-021": true,
+        "hsk30-g2-022": true,
+        "hsk30-g2-023": true,
+        "hsk30-g2-024": true,
+        "hsk30-g2-025": true,
+        "hsk30-g2-026": true,
+        "hsk30-g2-027": true,
+        "hsk30-g3-024": true,
+        "hsk30-g3-025": true,
+        "hsk30-g3-026": true,
+        "hsk30-g3-027": true,
+        "hsk30-g3-028": true,
+        "hsk30-g4-014": true,
+        "hsk30-g4-015": true,
+        "hsk30-g4-016": true,
+        "hsk30-g4-017": true,
+        "hsk30-g4-018": true,
+        "hsk30-g5-012": false,
+        "hsk30-g5-013": false,
+        "hsk30-g5-014": false,
+        "hsk30-g5-015": false,
+        "hsk30-g5-016": false,
+        "hsk30-g5-017": false,
+        "hsk30-g6-013": false,
+        "hsk30-g6-014": false,
+        "hsk30-g6-015": false,
+        "hsk30-g6-016": false,
+        "hsk30-g79-019": false,
+        "hsk30-g79-020": false,
+        "hsk30-g79-021": false
+      },
+      "level_span": "1-9"
     },
     "kp-jietiaoyu-tiaojian": {
       "id": "kp-jietiaoyu-tiaojian",
-      "knowledge_point": "关联词/条件复句（如果…就/因为…所以）",
+      "knowledge_point": "复句与关联词语",
       "level": 3,
+      "level_gf": 5,
       "error_types": [
         "语法",
         "语用"
       ],
-      "level_gf": 5
+      "scene_tags": [
+        "因果与条件",
+        "学习工作",
+        "日常推理"
+      ],
+      "question_tags": [
+        "选词填空",
+        "完成句子",
+        "判断正误"
+      ],
+      "prereq": [],
+      "note": "复句与关联词语：条件/假设/因果复句的连接词与语序",
+      "syllabus_refs": {
+        "hsk30-g1-059": true,
+        "hsk30-g1-060": true,
+        "hsk30-g1-061": true,
+        "hsk30-g2-068": true,
+        "hsk30-g2-069": true,
+        "hsk30-g2-070": true,
+        "hsk30-g2-071": true,
+        "hsk30-g3-084": true,
+        "hsk30-g3-085": true,
+        "hsk30-g3-086": true,
+        "hsk30-g3-083": true,
+        "hsk30-g3-088": true,
+        "hsk30-g3-094": true,
+        "hsk30-g3-082": true,
+        "hsk30-g3-087": true,
+        "hsk30-g3-089": true,
+        "hsk30-g3-090": true,
+        "hsk30-g3-091": true,
+        "hsk30-g3-092": true,
+        "hsk30-g3-093": true,
+        "hsk30-g4-066": true,
+        "hsk30-g4-067": true,
+        "hsk30-g4-068": true,
+        "hsk30-g4-076": true,
+        "hsk30-g4-077": true,
+        "hsk30-g4-078": true,
+        "hsk30-g4-079": true,
+        "hsk30-g4-080": true,
+        "hsk30-g4-086": true,
+        "hsk30-g4-087": true,
+        "hsk30-g4-091": true,
+        "hsk30-g4-092": true,
+        "hsk30-g4-069": true,
+        "hsk30-g4-070": true,
+        "hsk30-g4-071": true,
+        "hsk30-g4-072": true,
+        "hsk30-g4-073": true,
+        "hsk30-g4-074": true,
+        "hsk30-g4-075": true,
+        "hsk30-g4-081": true,
+        "hsk30-g4-082": true,
+        "hsk30-g4-083": true,
+        "hsk30-g4-084": true,
+        "hsk30-g4-085": true,
+        "hsk30-g4-088": true,
+        "hsk30-g4-089": true,
+        "hsk30-g4-090": true,
+        "hsk30-g5-057": false,
+        "hsk30-g5-062": false,
+        "hsk30-g5-063": false,
+        "hsk30-g5-068": false,
+        "hsk30-g5-069": false,
+        "hsk30-g5-070": false,
+        "hsk30-g5-056": false,
+        "hsk30-g5-065": false,
+        "hsk30-g5-066": false,
+        "hsk30-g5-058": false,
+        "hsk30-g5-059": false,
+        "hsk30-g5-060": false,
+        "hsk30-g5-061": false,
+        "hsk30-g5-067": false,
+        "hsk30-g5-064": false,
+        "hsk30-g6-043": false,
+        "hsk30-g6-044": false,
+        "hsk30-g6-045": false,
+        "hsk30-g6-046": false,
+        "hsk30-g6-047": false,
+        "hsk30-g6-048": false,
+        "hsk30-g6-050": false,
+        "hsk30-g6-049": false,
+        "hsk30-g79-098": false,
+        "hsk30-g79-099": false,
+        "hsk30-g79-101": false,
+        "hsk30-g79-102": false,
+        "hsk30-g79-103": false,
+        "hsk30-g79-104": false,
+        "hsk30-g79-105": false,
+        "hsk30-g79-106": false,
+        "hsk30-g79-112": false,
+        "hsk30-g79-113": false,
+        "hsk30-g79-121": false,
+        "hsk30-g79-122": false,
+        "hsk30-g79-114": false,
+        "hsk30-g79-115": false,
+        "hsk30-g79-116": false,
+        "hsk30-g79-117": false,
+        "hsk30-g79-118": false,
+        "hsk30-g79-109": false,
+        "hsk30-g79-110": false,
+        "hsk30-g79-111": false,
+        "hsk30-g79-107": false,
+        "hsk30-g79-108": false,
+        "hsk30-g79-119": false,
+        "hsk30-g79-120": false,
+        "hsk30-g79-100": false
+      },
+      "level_span": "1-9"
     },
     "kp-haishi-xuanze": {
       "id": "kp-haishi-xuanze",
-      "knowledge_point": "选择问句（还是）与正反问（…吗/…不…）",
+      "knowledge_point": "选择问（还是）与正反问（…吗/…不…）",
       "level": 1,
+      "level_gf": 1,
       "error_types": [
         "语法"
       ],
-      "level_gf": 1
+      "scene_tags": [
+        "比较与选择",
+        "购物",
+        "日常问答"
+      ],
+      "question_tags": [
+        "选词填空",
+        "情景会话",
+        "判断正误"
+      ],
+      "prereq": [],
+      "note": "选择问与正反问：‘…还是…’‘是不是…’问句的构成与应答",
+      "syllabus_refs": {
+        "hsk30-g1-049": true,
+        "hsk30-g2-056": true
+      },
+      "level_span": "1-2"
     },
-    "kp-chengdu-jieci": {
-      "id": "kp-chengdu-jieci",
+    "kp-chengdu-fuci": {
+      "id": "kp-chengdu-fuci",
       "knowledge_point": "程度副词（很/太/非常/比较）",
       "level": 1,
+      "level_gf": 1,
       "error_types": [
         "语法",
         "词汇"
       ],
-      "level_gf": 1
+      "scene_tags": [
+        "日常生活",
+        "情绪态度",
+        "程度描述"
+      ],
+      "question_tags": [
+        "选词填空",
+        "句子改错",
+        "完成句子"
+      ],
+      "prereq": [],
+      "note": "程度副词（很/太/非常/最…）修饰形容词/心理动词；‘很’冗余误加为高频偏误",
+      "syllabus_refs": {
+        "hsk30-g1-015": true,
+        "hsk30-g2-014": true,
+        "hsk30-g3-016": true,
+        "hsk30-g4-006": true,
+        "hsk30-g5-005": false,
+        "hsk30-g6-006": false,
+        "hsk30-g79-011": false
+      },
+      "level_span": "1-9"
     },
     "kp-zhizhi-dao": {
       "id": "kp-zhizhi-dao",
       "knowledge_point": "时量补语（看了一个小时）",
       "level": 2,
+      "level_gf": 3,
       "error_types": [
         "语法"
       ],
-      "level_gf": 3
+      "scene_tags": [
+        "时间与日程",
+        "健康就医",
+        "学习工作"
+      ],
+      "question_tags": [
+        "完成句子",
+        "判断正误",
+        "语序排列"
+      ],
+      "prereq": [],
+      "note": "时量补语：动词+时间量，表动作持续时长或到某时刻的间隔",
+      "syllabus_refs": {
+        "hsk30-g2-053": true,
+        "hsk30-g2-054": true,
+        "hsk30-g3-064": true
+      },
+      "level_span": "2-3"
     },
     "kp-zhongci-fugao": {
       "id": "kp-zhongci-fugao",
       "knowledge_point": "范围副词（都/也/只/还）",
       "level": 1,
+      "level_gf": 1,
       "error_types": [
         "语法",
         "语用"
       ],
-      "level_gf": 1
+      "scene_tags": [
+        "日常生活",
+        "社交表达",
+        "范围数量"
+      ],
+      "question_tags": [
+        "选词填空",
+        "判断正误",
+        "完成句子"
+      ],
+      "prereq": [],
+      "note": "范围副词（都/也/只/还/一共…）限定数量或范围，位于谓词前",
+      "syllabus_refs": {
+        "hsk30-g1-016": true,
+        "hsk30-g2-015": true,
+        "hsk30-g3-017": true,
+        "hsk30-g4-007": true,
+        "hsk30-g6-007": false,
+        "hsk30-g79-012": false
+      },
+      "level_span": "1-9"
+    },
+    "kp-chengdu-buyu": {
+      "id": "kp-chengdu-buyu",
+      "knowledge_point": "程度补语（得很/极了/死了）",
+      "level": 3,
+      "level_gf": 5,
+      "error_types": [
+        "语法"
+      ],
+      "scene_tags": [
+        "情绪态度",
+        "日常生活",
+        "夸张表达"
+      ],
+      "question_tags": [
+        "完成句子",
+        "句子改错",
+        "选词填空"
+      ],
+      "prereq": [],
+      "note": "从结果补语拆出的独立类：形容词+得很/极了/坏了；心理动词+死了/厉害；得+不得了/透。原被误挂 kp-jiuguo-jiegou；等级以 2025 考纲为准，level=3",
+      "syllabus_refs": {
+        "hsk30-g3-062": true,
+        "hsk30-g3-063": true,
+        "hsk30-g4-051": true,
+        "hsk30-g5-044": false,
+        "hsk30-g6-040": false
+      },
+      "level_span": "3-6"
+    },
+    "kp-keneng-buyu": {
+      "id": "kp-keneng-buyu",
+      "knowledge_point": "可能补语（得/不）",
+      "level": 3,
+      "level_gf": 5,
+      "error_types": [
+        "语法"
+      ],
+      "scene_tags": [
+        "社交与请求",
+        "日常生活",
+        "学习工作"
+      ],
+      "question_tags": [
+        "完成句子",
+        "判断正误",
+        "情景会话"
+      ],
+      "prereq": [],
+      "note": "动词+得/不+动词；得/不+了；得/不得。英语母语者高频回避区，与结果/趋向补语强关联；等级以 2025 考纲为准，level=3",
+      "syllabus_refs": {
+        "hsk30-g3-061": true,
+        "hsk30-g4-052": true,
+        "hsk30-g5-043": false
+      },
+      "level_span": "3-5"
+    },
+    "kp-dongliang-buyu": {
+      "id": "kp-dongliang-buyu",
+      "knowledge_point": "动量补语/动量词（次/回/遍）",
+      "level": 1,
+      "level_gf": 1,
+      "error_types": [
+        "语法"
+      ],
+      "scene_tags": [
+        "日常生活",
+        "学习工作",
+        "健康就医"
+      ],
+      "question_tags": [
+        "完成句子",
+        "判断正误",
+        "选词填空"
+      ],
+      "prereq": [],
+      "note": "动量补语 g1-041 + 动量词（次/口回遍声）。原 g1-041 被误挂 kp-zhizhi-dao、动量词被误挂 kp-liangci；等级以 2025 考纲为准，level=1",
+      "syllabus_refs": {
+        "hsk30-g1-041": true,
+        "hsk30-g2-013": true,
+        "hsk30-g3-014": true,
+        "hsk30-g4-005": true,
+        "hsk30-g5-004": false,
+        "hsk30-g6-005": false,
+        "hsk30-g79-009": false
+      },
+      "level_span": "1-9"
     }
+  },
+  "adjudication_meta": {
+    "date": "2026-09-08",
+    "by": "A角色裁定 + B实现",
+    "basis": "reports/kp_meta_compare-裁定建议.md（改：介词/代词/复句三项确认全采纳）",
+    "decisions": [
+      "10 项离级修正（de-di-de/存现/连动/能愿/了→L1；兼语/是…的/趋向补语→L2；被动→L3；和…一样→L3）",
+      "id 修正：kp-chengdu-jieci→kp-chengdu-fuci（T-6，jieci=介词为命名错误）",
+      "改名：介词/代词/复句全采纳；he-yiyang、le-dynamic（了1/了2）",
+      "新建 3 kp：程度补语 / 可能补语 / 动量补语-动量词",
+      "三处硬错误剔除：程度补语→新kp，动量→新kp，g4-058 把字子项剔出状语",
+      "复句 level 取典型起始级 L3（非绝对最低 L1 的'不用关联词语'条目）——经 A 复核确认 L3",
+      "open_items 全部关闭：error_kind（新3kp置未知）、复句 level=L3 两项均已拍板（2026-09-08）"
+    ],
+    "open_items": []
   }
 }

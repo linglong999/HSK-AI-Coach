@@ -88,9 +88,9 @@ class TransferRulesTest(unittest.TestCase):
         self.assertEqual(hyp["rule_id"], "en-quantity-adverb-postposed")
 
     def test_adj_predicate_both_variants(self):
-        hyp = match_one(_err("我是高兴", "我很高兴", kp="kp-chengdu-jieci"), "en")
+        hyp = match_one(_err("我是高兴", "我很高兴", kp="kp-chengdu-fuci"), "en")
         self.assertEqual(hyp["rule_id"], "en-adj-predicate")
-        hyp2 = match_one(_err("她高兴", "她很高兴", kp="kp-chengdu-jieci"), "en")
+        hyp2 = match_one(_err("她高兴", "她很高兴", kp="kp-chengdu-fuci"), "en")
         self.assertEqual(hyp2["rule_id"], "en-adj-predicate")
 
     def test_aspect_particle_add_and_remove(self):

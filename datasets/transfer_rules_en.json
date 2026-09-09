@@ -24,7 +24,7 @@
     {
       "rule_id": "en-quantity-adverb-postposed",
       "title": "数量词后置",
-      "kp_anchors": ["kp-zhuangyu-chezhi", "kp-chengdu-jieci"],
+      "kp_anchors": ["kp-zhuangyu-chezhi", "kp-chengdu-fuci"],
       "types": ["语法"],
       "l1_anchor": "English splits 'many' (before noun) from 'a lot' (after verb); learners keep the quantity word after the verb phrase",
       "zh_signature": "'很多/不少'等留在动词后（买苹果很多→买很多苹果）",
@@ -33,7 +33,7 @@
     {
       "rule_id": "en-adj-predicate",
       "title": "形容词谓语句：系动词冗余或裸形容词",
-      "kp_anchors": ["kp-chengdu-jieci"],
+      "kp_anchors": ["kp-chengdu-fuci"],
       "types": ["语法"],
       "l1_anchor": "English requires 'be' before adjectives (She is happy); Chinese adjectives predicate directly, and a bare adjective needs a degree word (很). Exception (exhaustive): a bare single adjective is legal when it is NOT an independent affirmative predicate — i.e. in an opposition/contrast pair (他高，我矮), a question (他高兴吗？/你忙不忙？), a comparison (他比我高), with a degree complement or 极了/得很 (他高兴极了/他高兴得很), with 了 marking a change (他高兴了), or in a parallel list (屋里干净、明亮、暖和). ONLY a bare adjective as an independent affirmative predicate in a plain statement is judged as 'missing a degree word'.",
       "zh_signature": "'是+形容词'（我是高兴→我很高兴），或裸形容词缺程度词（她高兴→她很高兴）。仅当形容词作**独立肯定陈述谓语**、且句中无其他程度成分/比较结构/疑问或变化标记时，才判缺程度词；以下语境一律合法——对比或对举（他高，我矮）、疑问（他高兴吗？/你忙不忙？）、比较（他比我高）、带程度补语或'极了/得很'（他高兴极了/他高兴得很）、带'了'表变化（他高兴了）、并列列举（屋里干净、明亮、暖和)",

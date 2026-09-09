@@ -54,8 +54,8 @@ class TestLexicalIndex(unittest.TestCase):
 
     def test_level_filter(self):
         all_hits = self.idx.query("把", kp_only=True)
-        lvl3 = self.idx.query("把", kp_only=True, level=3)
-        self.assertLess(len(lvl3), len(all_hits))   # 过滤生效
+        lvl1 = self.idx.query("把", kp_only=True, level=1)   # "把"相关 kp 均在 L3，过滤到 L1 必收缩
+        self.assertLess(len(lvl1), len(all_hits))   # 过滤生效
 
     def test_version_changes(self):
         v1 = self.idx.compute_version()

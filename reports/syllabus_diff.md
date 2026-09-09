@@ -1,3 +1,5 @@
+> **⚠️ 已废弃（2026-09-08）** — 本报告为早期"字符串精确匹配"方法产物（命中 0，误导性强），已被 `kp_meta_compare.md`（item 判定版）+ 附表 `kp_meta_compare_full.csv` 取代。请勿再以本报告作为对照依据；如需历史保留可移入 `_archive/`。
+
 # 考纲 vs v1_4 知识点对照报告
 
 - 考纲 syllabus_hsk30_2025(593 条) vs v1_4 knowledge_points(25 条)

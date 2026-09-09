@@ -82,10 +82,10 @@ class MapLogicTest(unittest.TestCase):
 
 
 class MappingTableIntegrityTest(unittest.TestCase):
-    """映射表自身完整性：25 kp 全覆盖、未知数恰 9、合法取值。"""
+    """映射表自身完整性：28 kp 全覆盖、未知数恰 12、合法取值。"""
 
     def test_kp_map_coverage(self):
-        # kp 级表必须覆盖 25 个标准 kp 清单
+        # kp 级表必须覆盖 28 个标准 kp 清单（25 原有 + 3 P0.15 转正新增）
         expect = {
             "kp-ba-sentence", "kp-bei-sentence", "kp-liangci",
             "kp-nengyuan-dongci", "kp-bi-sentence", "kp-he-yiyang",
@@ -95,16 +95,18 @@ class MappingTableIntegrityTest(unittest.TestCase):
             "kp-dongci-shuangbin", "kp-zhuangyu-chezhi",
             "kp-zhongci-zhitou", "kp-preposition-zaizai",
             "kp-jietiaoyu-tiaojian", "kp-haishi-xuanze",
-            "kp-chengdu-jieci", "kp-zhizhi-dao", "kp-zhongci-fugao",
+            "kp-chengdu-fuci", "kp-zhizhi-dao", "kp-zhongci-fugao",
+            "kp-chengdu-buyu", "kp-keneng-buyu", "kp-dongliang-buyu",
         }
         self.assertEqual(set(ekm._NATURE_MAP), expect)
 
-    def test_unknown_count_exactly_9(self):
-        # 用户拍板：最终未知恰 9/25（4 CGED + 5 维持）
+    def test_unknown_count_exactly_12(self):
+        # 用户拍板：最终未知恰 12/28（4 CGED + 5 维持 + 3 P0.15 新增多源）
         unknown = {k for k, v in ekm._NATURE_MAP.items() if v == "未知"}
         expect = {"kp-ba-sentence", "kp-bei-sentence", "kp-cunxian-ju",
                   "kp-shide-sentence", "kp-he-yiyang", "kp-le-dynamic",
-                  "kp-zhe", "kp-guo", "kp-standing-shi"}
+                  "kp-zhe", "kp-guo", "kp-standing-shi",
+                  "kp-chengdu-buyu", "kp-keneng-buyu", "kp-dongliang-buyu"}
         self.assertEqual(unknown, expect)
 
     def test_nature_values_legal(self):
@@ -218,12 +220,12 @@ class PersistenceCompatibilityTest(unittest.TestCase):
             p = os.path.join(d, "graph.json")
             g = ErrorGraph("rt")
             g.ingest_error({"fragment": "x", "type": "语法",
-                            "knowledge_point_id": "kp-chengdu-jieci",
+                            "knowledge_point_id": "kp-chengdu-fuci",
                             "knowledge_point_name": "程度副词"}, event_key="e")
             g.save(p)
             g2 = ErrorGraph("rt")
             g2.load(p)
-            nd = g2.get_kp("kp-chengdu-jieci")["node"]
+            nd = g2.get_kp("kp-chengdu-fuci")["node"]
             self.assertEqual(nd["error_kind"], "语法")
             self.assertEqual(nd["nature"], "误加")
 
