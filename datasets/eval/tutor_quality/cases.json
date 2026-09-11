@@ -1,0 +1,461 @@
+{
+  "meta": {
+    "name": "tutor_cases",
+    "version": "0.1",
+    "date": "2026-09-11",
+    "note": "复用 golden/retell 真句，补预期行为与红线"
+  },
+  "cases": [
+    {
+      "id": "TQ-HSK1CLN004",
+      "source": "golden_v1_4",
+      "source_id": "HSK1-CLN-004",
+      "case_type": "clean_guard",
+      "input": "明天我去学校。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": false
+      },
+      "redlines": [
+        "R2"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": 1,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-HSK2CLN007",
+      "source": "golden_v1_4",
+      "source_id": "HSK2-CLN-007",
+      "case_type": "clean_guard",
+      "input": "我去过中国很多次。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": false
+      },
+      "redlines": [
+        "R2"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": 2,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-HSK3CLN010",
+      "source": "golden_v1_4",
+      "source_id": "HSK3-CLN-010",
+      "case_type": "clean_guard",
+      "input": "他把杯子打破了。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": false
+      },
+      "redlines": [
+        "R2"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": 3,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-HSK3CLN011",
+      "source": "golden_v1_4",
+      "source_id": "HSK3-CLN-011",
+      "case_type": "clean_guard",
+      "input": "我学习中文已经三年了。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": false
+      },
+      "redlines": [
+        "R2"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": 3,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-HSK4CLN013",
+      "source": "golden_v1_4",
+      "source_id": "HSK4-CLN-013",
+      "case_type": "clean_guard",
+      "input": "这件事对我来说很重要。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": false
+      },
+      "redlines": [
+        "R2"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": 4,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-HSK4CLN014",
+      "source": "golden_v1_4",
+      "source_id": "HSK4-CLN-014",
+      "case_type": "clean_guard",
+      "input": "我被老师表扬了，很高兴。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": false
+      },
+      "redlines": [
+        "R2"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": 4,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-HSK1ERR001",
+      "source": "golden_v1_4",
+      "source_id": "HSK1-ERR-001",
+      "case_type": "explain",
+      "input": "我有一个猫。",
+      "context": null,
+      "expected_behavior": {
+        "detect": {
+          "span": "一个猫",
+          "type": "语法",
+          "correction": "一只猫"
+        },
+        "must_explain": true,
+        "must_verify": true
+      },
+      "redlines": [
+        "R1",
+        "R3"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": 1,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-HSK1ERR002",
+      "source": "golden_v1_4",
+      "source_id": "HSK1-ERR-002",
+      "case_type": "explain",
+      "input": "我想买苹果很多。",
+      "context": null,
+      "expected_behavior": {
+        "detect": {
+          "span": "苹果很多",
+          "type": "语法",
+          "correction": "很多苹果"
+        },
+        "must_explain": true,
+        "must_verify": true
+      },
+      "redlines": [
+        "R1",
+        "R3"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": 1,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-HSK1ERR003",
+      "source": "golden_v1_4",
+      "source_id": "HSK1-ERR-003",
+      "case_type": "explain",
+      "input": "你喝水吧？",
+      "context": "询问对方是否喝水",
+      "expected_behavior": {
+        "detect": {
+          "span": "吧",
+          "type": "语法",
+          "correction": "吗"
+        },
+        "must_explain": true,
+        "must_verify": true
+      },
+      "redlines": [
+        "R1",
+        "R3"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": 1,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-HSK2ERR005",
+      "source": "golden_v1_4",
+      "source_id": "HSK2-ERR-005",
+      "case_type": "explain",
+      "input": "我把书在桌子上放了。",
+      "context": null,
+      "expected_behavior": {
+        "detect": {
+          "span": "书在桌子上放",
+          "type": "语法",
+          "correction": "书放在桌子上"
+        },
+        "must_explain": true,
+        "must_verify": true
+      },
+      "redlines": [
+        "R1",
+        "R3"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": 2,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-HSK2ERR006",
+      "source": "golden_v1_4",
+      "source_id": "HSK2-ERR-006",
+      "case_type": "explain",
+      "input": "他比我很高。",
+      "context": null,
+      "expected_behavior": {
+        "detect": {
+          "span": "比我很高",
+          "type": "语法",
+          "correction": "比我高"
+        },
+        "must_explain": true,
+        "must_verify": true
+      },
+      "redlines": [
+        "R1",
+        "R3"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": 2,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-HSK2ERR008",
+      "source": "golden_v1_4",
+      "source_id": "HSK2-ERR-008",
+      "case_type": "explain",
+      "input": "我不能说中文很好。",
+      "context": null,
+      "expected_behavior": {
+        "detect": {
+          "span": "不能说中文很好",
+          "type": "语法",
+          "correction": "中文说得不是很好"
+        },
+        "must_explain": true,
+        "must_verify": true
+      },
+      "redlines": [
+        "R1",
+        "R3"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": 2,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-HSK3ERR012",
+      "source": "golden_v1_4",
+      "source_id": "HSK3-ERR-012",
+      "case_type": "explain",
+      "input": "虽然他很累，但是他去上班。",
+      "context": null,
+      "expected_behavior": {
+        "detect": {
+          "span": "他去上班",
+          "type": "语法",
+          "correction": "他还是去上班了"
+        },
+        "must_explain": true,
+        "must_verify": true
+      },
+      "redlines": [
+        "R1",
+        "R3"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": 3,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-RT-001",
+      "source": "retell_golden",
+      "source_id": "440",
+      "case_type": "retell",
+      "input": "静候佳音。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": true,
+        "retell_references": [
+          "没有错误"
+        ]
+      },
+      "redlines": [
+        "R5"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": null,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-RT-002",
+      "source": "retell_golden",
+      "source_id": "297",
+      "case_type": "retell",
+      "input": "我活美国。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": true,
+        "retell_references": [
+          "我生活在美国。",
+          "我在美国生活。"
+        ]
+      },
+      "redlines": [
+        "R5"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": null,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-RT-003",
+      "source": "retell_golden",
+      "source_id": "737",
+      "case_type": "retell",
+      "input": "吃了又健康。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": true,
+        "retell_references": [
+          "好吃又健康。",
+          "吃了很健康。"
+        ]
+      },
+      "redlines": [
+        "R5"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": null,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-RT-004",
+      "source": "retell_golden",
+      "source_id": "232",
+      "case_type": "retell",
+      "input": "昨天下雨很多。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": true,
+        "retell_references": [
+          "昨天下了很多雨。"
+        ]
+      },
+      "redlines": [
+        "R5"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": null,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-RT-005",
+      "source": "retell_golden",
+      "source_id": "438",
+      "case_type": "retell",
+      "input": "还要提一个事。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": true,
+        "retell_references": [
+          "没有错误"
+        ]
+      },
+      "redlines": [
+        "R5"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": null,
+        "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-HSK3ERR012-E1",
+      "source": "golden_v1_4",
+      "source_id": "HSK3-ERR-012",
+      "case_type": "intervention",
+      "input": "虽然他很累，但是他去上班。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": true,
+        "must_verify": true
+      },
+      "redlines": [
+        "R4"
+      ],
+      "gold_judge_hint": null,
+      "metadata": {
+        "learner_level": 3,
+        "native_lang": "英语"
+      }
+    }
+  ]
+}
