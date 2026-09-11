@@ -124,6 +124,12 @@
              color:rgb(var(--tx2));font-size:12px;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap}
   .back-chat:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
   main.mapview .back-chat{display:inline-flex}
+  /* P0.13 独立复习页视图：集中做题，地图留侧栏入口 */
+  main.reviewview .left{display:none}
+  main.reviewview .right{display:none}
+  main.reviewview .back-chat{display:inline-flex}
+  main.reviewview .reviewwrap{display:flex;flex-direction:column;min-height:0}
+  .reviewwrap{display:none}
   .left{background:rgb(var(--panel));display:flex;flex-direction:column;min-height:0}
   .chat{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px;
         align-items:center}
@@ -164,6 +170,20 @@
             background:rgb(var(--bg-sink));border-radius:6px;font-size:14px}
   .why-item{margin:4px 0;position:relative}
   .why-item:hover .why-tools{opacity:1}
+
+  /* ---- P0.18 对话结束评分卡片 ---- */
+  .fb-card{margin:2px 0 8px;opacity:.9}
+  .fb-row{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+  .fb-ask{font-size:12px;color:rgb(var(--ink)/.6);margin-right:6px}
+  .fb-star{background:none;border:none;cursor:pointer;font-size:18px;line-height:1;
+           color:rgb(var(--ink)/.28);padding:1px 2px;transition:transform .12s ease,color .12s ease}
+  .fb-star:hover{color:#f4b400;transform:scale(1.25)}
+  .fb-star:focus-visible{outline:2px solid rgb(var(--brand))}
+  .fb-skip{background:none;border:none;cursor:pointer;color:rgb(var(--ink)/.45);
+           font:inherit;font-size:12px;padding:2px 6px;margin-left:4px}
+  .fb-skip:hover{color:rgb(var(--ink)/.8)}
+  .fb-done{font-size:13px;color:rgb(var(--brand));font-weight:600}
+  .fb-submitted{opacity:.7}
   .why-tools{position:absolute;top:-4px;right:0;display:flex;gap:4px;opacity:0;transition:opacity .15s}
   .why-tools .tool{width:24px;height:24px;font-size:12px}
   .why-q{font-weight:600;color:rgb(var(--tx));padding-right:64px}
@@ -348,6 +368,64 @@
   .qitem{display:flex;gap:9px;align-items:center;font-size:12.5px;padding:5px 7px;border-radius:7px;cursor:pointer}
   .qitem:hover{background:rgb(var(--item))}
   .q-prio{color:rgb(var(--tx2));min-width:42px;text-align:right;font-variant-numeric:tabular-nums}
+
+  /* P0.13 独立复习页做题样式 */
+  .reviewhead{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid rgb(var(--line))}
+  .reviewhead h2{margin:0;font-size:16px}
+  .reviewhead .rv-prog{color:rgb(var(--tx2));font-size:12.5px;margin-left:auto;font-variant-numeric:tabular-nums}
+  .rv-body{flex:1;overflow-y:auto;padding:22px 30px;display:flex;flex-direction:column;gap:20px;align-items:center}
+  .rv-body>*{width:100%;max-width:720px}
+  .rv-empty{text-align:center;color:rgb(var(--tx2));padding:60px 0;font-size:14px}
+  .rv-card{background:rgb(var(--panel2));border:1px solid rgb(var(--line));border-radius:12px;padding:26px 28px;
+           box-shadow:0 2px 14px rgb(var(--shadow)/.06)}
+  .rv-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .rv-tag{font-size:11px;padding:2px 9px;border-radius:20px;background:rgb(var(--item));color:rgb(var(--tx2))}
+  .rv-sent{font-size:21px;line-height:1.75;color:rgb(var(--tx))}
+  .rv-sent b{color:rgb(var(--brand));font-weight:600;letter-spacing:1px}
+  .rv-ans{display:flex;gap:10px;margin-top:18px;align-items:center}
+  .rv-ans input{flex:1;min-width:0;padding:10px 14px;font-size:16px;border:1px solid rgb(var(--line));
+               border-radius:8px;background:rgb(var(--bg));color:rgb(var(--tx))}
+  .rv-ans input:focus{outline:none;border-color:rgb(var(--brand))}
+  .rv-ans button{padding:10px 22px;border-radius:8px;border:none;background:rgb(var(--brand));
+                color:#fff;cursor:pointer;font-size:15px;white-space:nowrap}
+  .rv-ans button:disabled{opacity:.45;cursor:default}
+  .rv-ans.rv-btns{gap:12px;justify-content:center}
+  .rv-btn{font-size:15px;padding:12px 34px;border-radius:9px;border:none;cursor:pointer;font-weight:600}
+  .rv-btn.ok{background:rgb(var(--sem-ok)/.16);color:rgb(var(--sem-ok))}
+  .rv-btn.bad{background:rgb(var(--sem-warn)/.16);color:rgb(var(--sem-warn))}
+  .rv-btn:disabled{opacity:.45;cursor:default}
+  .rv-fb{margin-top:16px;font-size:13.5px;line-height:1.7}
+  .rv-fb.ok{color:rgb(var(--sem-ok))}
+  .rv-fb.bad{color:rgb(var(--sem-warn))}
+  /* ---- P0.12 冷启动引导 ---- */
+  .modal-body.onb{max-width:440px}
+  .onb .onstep{animation:fadeIn .2s ease}
+  .onb .onp{font-size:14px;line-height:1.8;color:rgb(var(--tx3));margin:2px 0 14px}
+  .onopts{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+  .onopt{padding:10px 16px;border:1px solid rgb(var(--line));border-radius:10px;
+        background:rgb(var(--panel2));cursor:pointer;font-size:14px;color:rgb(var(--tx))}
+  .onopt:hover{border-color:rgb(var(--brand))}
+  .onopt.sel{border-color:rgb(var(--brand));background:rgb(var(--brand)/.12);color:rgb(var(--brand));font-weight:600}
+  .onb textarea{width:100%;box-sizing:border-box;min-height:76px;resize:vertical;margin-top:6px;
+        padding:10px 12px;font-size:14px;line-height:1.8;border:1px solid rgb(var(--line));
+        border-radius:10px;background:rgb(var(--panel2));color:rgb(var(--tx))}
+  .onb textarea:focus{outline:none;border-color:rgb(var(--brand))}
+  .onassess-row{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+  .onassess-row .sec{padding:9px 16px;border-radius:9px;border:1px solid rgb(var(--line));
+        background:rgb(var(--panel2));cursor:pointer;color:rgb(var(--tx));font-size:13.5px}
+  .onhint{font-size:12.5px;color:rgb(var(--tx3));line-height:1.7}
+  .onnav{display:flex;align-items:center;gap:12px;margin-top:22px}
+  .onnav .ghost{padding:9px 16px;border-radius:9px;border:1px solid rgb(var(--line));
+        background:transparent;cursor:pointer;color:rgb(var(--tx3));font-size:13.5px}
+  .onnav .pri{padding:10px 22px;border-radius:9px;border:none;background:rgb(var(--brand));
+        color:#fff;cursor:pointer;font-size:14px;font-weight:600}
+  .rv-nav{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+  .rv-nav button{padding:8px 16px;border-radius:8px;border:1px solid rgb(var(--line));background:rgb(var(--panel2));
+                color:rgb(var(--tx));cursor:pointer;font-size:13.5px}
+  .rv-fini{text-align:center;padding:70px 0;color:rgb(var(--tx2))}
+  .rv-fini .tick{font-size:44px;margin-bottom:16px}
+  .rv-fini h3{margin:0 0 10px;font-size:19px;color:rgb(var(--tx))}
+  .rv-fini .stat{font-size:14px;margin:6px 0}
 
   .node{cursor:pointer;transition:opacity .25s ease}
   .node:hover circle.core{filter:brightness(1.15)}
@@ -658,6 +736,17 @@
       <div class="node-detail" id="nodeDetail"></div>
       <div class="queue"><h4><span data-i18n="queueTitle">复习队列 · priority 降序（点击定位）</span></h4><div id="queue"></div></div>
     </section>
+
+    <!-- ================= P0.13 独立复习页 ================= -->
+    <div class="reviewwrap" id="reviewWrap">
+      <div class="reviewhead">
+        <button class="back-chat" id="backReview" data-i18n="backChat">‹ 返回对话</button>
+        <h2 data-i18n="reviewTitle">集中复习</h2>
+        <span class="rv-prog" id="rvProg">— / —</span>
+      </div>
+      <div class="rv-body" id="rvBody">
+      </div>
+    </div>
   </main>
 </div>
 
@@ -708,13 +797,47 @@
   </div>
 </div>
 
+<!-- ================= P0.12 冷启动引导 ================= -->
+<div class="overlay" id="onboardOvl">
+  <div class="modal">
+    <div class="modal-body onb">
+      <h3 data-i18n="onTitle">开始之前，先认识一下你</h3>
+      <div class="onstep" id="onb1">
+        <p class="onp" data-i18n="onL1Q">你的母语是什么？它决定我们会怎样针对性地发现你的中文偏误。</p>
+        <div class="onopts" id="onb1Opts"></div>
+      </div>
+      <div class="onstep" id="onb2" style="display:none">
+        <p class="onp" data-i18n="onLvQ">你目前大致在哪个水平？对话会从这起步（之后随时可调）。</p>
+        <div class="onopts" id="onb2Opts"></div>
+      </div>
+      <div class="onstep" id="onb3" style="display:none">
+        <p class="onp" data-i18n="onQuizQ">可选：随手写 3 句中文，我帮你估个更准的起点。</p>
+        <textarea id="onbTexts" rows="3" data-i18n-ph="onQuizPh"></textarea>
+        <div class="onassess-row">
+          <button id="onbAssess" class="sec" type="button" data-i18n="onAssess">帮我定级（不依赖联网）</button>
+          <span class="onhint" id="onbReason"></span>
+        </div>
+        <div class="onopts" id="onbLvSuggest" style="display:none"></div>
+      </div>
+      <div class="onnav">
+        <button id="onbPrev" class="ghost" type="button" style="display:none" data-i18n="onPrev">上一步</button>
+        <span style="flex:1"></span>
+        <button id="onbSkip" class="ghost" type="button" data-i18n="onSkip">跳过引导</button>
+        <button id="onbNext" class="pri" type="button" data-i18n="onNext">下一步</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ================= 阅读材料 ================= -->
 <div class="overlay" id="docOvl">
   <div class="modal small">
     <button class="close" data-close="docOvl" aria-label="关闭">×</button>
     <h3 data-i18n="docTitleModal">阅读材料 → 抽取中文知识点</h3>
-    <p class="sub" data-i18n-html="docSub">当前支持<b class="a">粘贴文本 / .txt / .md</b>（PDF / Word / OCR 后续版本）。材料将作为对话发给 AI 助教解析。</p>
+    <p class="sub" data-i18n-html="docSub">支持<b class="a">粘贴文本 / .txt / .md / 图片 / PDF</b>。图片与 PDF 会先经本地 OCR 转成文本，再作为对话发给 AI 助教解析。</p>
     <label class="filebtn"><span data-i18n="docFileBtn">选择 .txt / .md 文件</span><input type="file" id="docFile" accept=".txt,.md,.markdown,text/plain,text/markdown"></label>
+    <label class="filebtn"><span data-i18n="docFileOcrBtn">选择图片 / PDF（OCR）</span><input type="file" id="docFileOcr" accept=".pdf,.png,.jpg,.jpeg,.bmp,.webp"></label>
+    <div class="charct" id="ocrStatus" data-i18n="docOcrIdle">可通过"选择图片 / PDF"上传教材截图/扫描件</div>
     <textarea class="docfield" id="docText" placeholder="粘贴中文 / 英中对照段落、邮件、课文…" data-i18n-ph="docPh"></textarea>
     <div class="charct" id="charCt">0 / 6000 字</div>
     <div style="display:flex;gap:10px;margin-top:14px;align-items:center">
@@ -782,6 +905,7 @@ en:{
   aiTutor:'AI Tutor', aiTutorSub:'Local graph-aware · error-driven', aiTutorTip:'Local graph-aware tutor · click for how-to',
   sessions:'Sessions', learnPath:'Learn', newSession:'＋ New session',
   cogMap:'Cognitive map', startReview:'Start review', aiReport:'AI study report', readingMat:'Reading material',
+  fbAsk:'Rate this reply? (optional)', fbSkip:'Skip', fbDone:'Saved ★{n}', fbLow:'Noted — tell the tutor what tripped you up.', fbFirm:'Was this helpful?',
   settings:'Settings', howto:'How to use', foldSide:'Collapse sidebar', expandSide:'Expand sidebar',
   connecting:'Connecting…', disconnected:'Service not connected',
   startFirst:'Start with your first sentence',
@@ -860,6 +984,35 @@ en:{
   newSessionToast:'New session created',
   reviewPrompt:'What should I review now? Pull my review queue and give me one targeted practice item for the point that most needs review.',
   reviewBadge:'▶ Start review',
+  reviewTitle:'Focused review',
+  reviewLoading:'Loading review questions',
+  reviewEmpty:'Nothing to review yet — nothing is due. Talk to the coach first or come back later.',
+  rvSubmit:'Check',
+  rvNext:'Next',
+  rvOk:'Correct',
+  rvBad:'Expected:',
+  rvAgain:'Review again',
+  rvDone:'Review finished',
+  rvRecallQ:'Do you still remember this point?',
+  rvRecallYes:'Remembered',
+  rvRecallNo:'Forgot',
+  rvRecalledNo:'Noted — this point will come back sooner.',
+  onTitle:'Before we start, let us get to know you',
+  onL1Q:'What is your native language? It shapes how we spot your Chinese errors.',
+  onLvQ:'About where is your level? Conversation starts here (adjustable anytime).',
+  onQuizQ:'Optional: write 3 short Chinese sentences and I will suggest a starting level.',
+  onQuizPh:'e.g. 我喜欢吃苹果。我不会说中文。我想学很多。',
+  onAssess:'Suggest a level (no network needed)',
+  onQuizzing:'Assessing…',
+  onQuizEmpty:'Type at least one sentence first.',
+  onQuizFail:'Assessment failed: ',
+  onPrev:'Back',
+  onNext:'Next',
+  onFinish:'Done',
+  onSkip:'Skip tutorial',
+  onNeedL1:'Please pick your native language (or you can Skip).',
+  onOther:'Other',
+  onDone:'Tutorial complete — happy learning!',
   reportFail:'Report failed to load: ',
   repTitle:'AI study report', repGraph:'Graph', repNodes:'nodes', repReview:'Review', repItems:'items', repEdges:'Confusion edges', repOffenders:'Recurring', repWarn:'⚠ Recurring points: {list} — prioritize these today',
   repOff:'Recurred ×{n}', repRep:'Met {n}×', repEmpty:'No profile data yet — chat a bit more, write a few sentences, and your errors will settle into this report automatically.',
@@ -867,8 +1020,9 @@ en:{
   repSrc:'Data source: error graph × event ledger × long-term memory (read-only, not LLM-generated)',
   repLatest:'Latest evidence: ',
   docTitleModal:'Reading material → extract Chinese knowledge points',
-  docSub:'Currently supports <b class="a">pasted text / .txt / .md</b> (PDF / Word / OCR in a later version). The material is sent to the AI tutor as a message for parsing.',
+  docSub:'Supports <b class="a">pasted text / .txt / .md / image / PDF</b>. Images and PDFs are first turned into text by local OCR, then sent to the AI tutor as a message for parsing.',
   docFileBtn:'Choose a .txt / .md file', docPh:'Paste a Chinese / EN–ZH paragraph, email, textbook text…',
+  docFileOcrBtn:'Choose image / PDF (OCR)', docOcrIdle:'Upload a textbook screenshot / scan via "Choose image / PDF"', docOcrBusy:'OCR in progress…', docOcrDone:'OCR done: {n} files, {ms}ms, {chars} chars → pasted below', docOcrEmpty:'No text recognized (OCR installed). The image/PDF may be a scan of a blank area.',
   charCt:'{n} / 6000 chars', charOver:' (excess will be truncated)', docParse:'Parse now',
   docNote:'The parsed result appears in the chat as a "material parsed" card',
   docToastLoaded:'Loaded {name}', docToastFail:'Failed to read the file', docToastEmpty:'Paste text or choose a file first',
@@ -1031,6 +1185,35 @@ zh:{
   newSessionToast:'已新建会话',
   reviewPrompt:'我该复习什么了？请拉取我的复习队列，并对最需要复习的知识点给我一道针对性练习。',
   reviewBadge:'▶ 开始复习',
+  reviewTitle:'集中复习',
+  reviewLoading:'正在加载复习题',
+  reviewEmpty:'暂无待复习内容 —— 当前没有到期知识点。先跟助教练几句，或稍后再来复习。',
+  rvSubmit:'判分',
+  rvNext:'下一题',
+  rvOk:'答对了',
+  rvBad:'应填：',
+  rvAgain:'再复习一轮',
+  rvDone:'本轮复习完成',
+  rvRecallQ:'你还记得这个知识点吗？',
+  rvRecallYes:'记住了',
+  rvRecallNo:'没记住',
+  rvRecalledNo:'已记录 —— 该点会更快回到你的复习队列。',
+  onTitle:'开始之前，先认识一下你',
+  onL1Q:'你的母语是什么？它决定我们会怎样针对性地发现你的中文偏误。',
+  onLvQ:'你目前大致在哪个水平？对话会从这起步（之后随时可调）。',
+  onQuizQ:'可选：随手写 3 句中文，我帮你估个更准的起点。',
+  onQuizPh:'例如：我喜欢吃苹果。我不会说中文。我想学很多。',
+  onAssess:'帮我定级（不依赖联网）',
+  onQuizzing:'评估中…',
+  onQuizEmpty:'请至少先写一句话。',
+  onQuizFail:'定级失败：',
+  onPrev:'上一步',
+  onNext:'下一步',
+  onFinish:'完成',
+  onSkip:'跳过引导',
+  onNeedL1:'请选择你的母语（或可直接"跳过引导"）。',
+  onOther:'其他',
+  onDone:'引导完成 —— 开始愉快学习吧！',
   reportFail:'报告加载失败：',
   repTitle:'AI 学习报告', repGraph:'图谱', repNodes:'节点', repReview:'待复习', repItems:'项', repEdges:'混淆边', repOffenders:'重现', repWarn:'⚠ 重现知识点：{list} —— 建议今日优先巩固',
   repOff:'重现 ×{n}', repRep:'遇到 {n} 次', repEmpty:'暂无画像数据 —— 先和助教多聊几句、写几个句子，你的偏误会自动沉淀成报告。',
@@ -1038,8 +1221,9 @@ zh:{
   repSrc:'数据来源：偏误图谱 × 事件账本 × 长期记忆（只读，非 LLM 生成）',
   repLatest:'最近证据：',
   docTitleModal:'阅读材料 → 抽取中文知识点',
-  docSub:'当前支持<b class="a">粘贴文本 / .txt / .md</b>（PDF / Word / OCR 后续版本）。材料将作为对话发给 AI 助教解析。',
+  docSub:'支持<b class="a">粘贴文本 / .txt / .md / 图片 / PDF</b>。图片与 PDF 会先在本地 OCR 转成文本，再作为对话发给 AI 助教解析。',
   docFileBtn:'选择 .txt / .md 文件', docPh:'粘贴中文 / 英中对照段落、邮件、课文…',
+  docFileOcrBtn:'选择图片 / PDF（OCR）', docOcrIdle:'可上传教材截图/扫描件，先在本地转成文本', docOcrBusy:'OCR 识别中…', docOcrDone:'OCR 完成：{n} 个文件，{ms}ms，共 {chars} 字，已粘贴到下方', docOcrEmpty:'未识别到文字（OCR 已可用）。可能是空白区域扫描件，请直接粘贴文本。',
   charCt:'{n} / 6000 字', charOver:'（超出将截断）', docParse:'开始解析',
   docNote:'解析结果以"材料解析卡"出现在对话流中',
   docToastLoaded:'已载入 {name}', docToastFail:'文件读取失败', docToastEmpty:'先粘贴文本或选择文件',
@@ -1118,6 +1302,11 @@ zh:{
   htu4T:'会话',
   htu4a:'每个会话独立上下文（互不串扰），切换会话同步到网址（可收藏/回访恢复）。',
   htu4b:'会话标题自动取自你的第一句话；图谱和画像跨会话共享（这是"你"的长期记忆）。',
+  fbAsk:'给这条回复打个分？（可选）',
+  fbSkip:'跳过',
+  fbDone:'已记录 ★{n}',
+  fbLow:'已记下 —— 在这句话之后跟助教说说哪里卡住了。',
+  fbFirm:'这位助教对你帮助大吗？'
 }
 };
 let LANG=state.lang;
@@ -1189,6 +1378,37 @@ function addNote(txt,cls,hint){
 function addAiText(text){
   if(!text) return;
   addMsg(el(`<div class="ai-text">${annotate(esc(text))}</div>`));
+}
+// ============ P0.18 对话结束评分卡片（1–5 星可选提交） ============
+// 每轮对话回复尾部渲染一行 1–5 星 + 跳过；评分 POST /api/feedback → feedback_<learner>.json。
+// 动态内容一律 textContent。评分后可转收藏：低分(=1)触发仅本地提示，不阻断。
+function renderFeedbackCard(){
+  const wrap=el('<div class="fb-card"></div>');
+  const ask=document.createElement('span');
+  ask.className='fb-ask'; ask.textContent=t('fbAsk')+'  '+t('fbFirm');
+  const row=el('<div class="fb-row"></div>');
+  row.appendChild(ask);
+  const convId=state.conversation;
+  for(let s=1;s<=5;s++){
+    const b=el(`<button class="fb-star" type="button" data-s="${s}" title="${s}★" aria-label="${s}★">★</button>`);
+    b.onclick=async ()=>{
+      try{
+        b.disabled=true;
+        await api('/api/feedback',{conversation_id:convId,score:s});
+        wrap.innerHTML='';
+        const done=document.createElement('span');
+        done.className='fb-done'; done.textContent=tf('fbDone',{n:'★'.repeat(s)});
+        wrap.appendChild(done); wrap.classList.add('fb-submitted');
+        if(s===1) toast(t('fbLow'));
+      }catch(err){ b.disabled=false; toast(err.message); }
+    };
+    row.appendChild(b);
+  }
+  const skip=el(`<button class="fb-skip" type="button">${esc(t('fbSkip'))}</button>`);
+  skip.onclick=()=>{ wrap.innerHTML=''; wrap.classList.add('fb-submitted'); };
+  row.appendChild(skip);
+  wrap.appendChild(row);
+  return addMsg(wrap);
 }
 
 // ============ 0.26 隐性"为什么"原理（默认折叠，点击展开） ============
@@ -1736,14 +1956,14 @@ function renderNodeDetail(id){
   box.classList.add('show');
   box.querySelector('.nd-close').addEventListener('click',()=>selectNode(null));
   box.querySelector('.nd-dig').addEventListener('click',()=>{
-    setMapView(false);const nm=nodeName(id);
+    setView('chat');const nm=nodeName(id);
     sendPrompt(tf('digPrompt',{name:nm}),tf('digBadge')+nm);
   });
   const adj=box.querySelector('.nd-adj');
   if(nbs.length)adj.addEventListener('click',()=>showNeighborMenu(adj,id));
   const rv=box.querySelector('.nd-rv');
   if(prio>0)rv.addEventListener('click',()=>{
-    setMapView(false);const nm=nodeName(id);
+    setView('chat');const nm=nodeName(id);
     sendPrompt(tf('rvPrompt',{name:nm}),tf('rvBadge')+nm);
   });
 }
@@ -1814,9 +2034,15 @@ function setUrlConversation(id){
 }
 async function loadSessions(){
   try{
-    const p=await api('/api/profile');
+    // P0.12 多用户隔离：?learner=<id> 选择独立用户（画像/引导按用户分开）
+    if(!state.learner){
+      try{state.learner=(new URL(location)).searchParams.get('learner')||'';}catch(e){state.learner='';}
+    }
+    const src='/api/profile'+(state.learner?('?learner='+encodeURIComponent(state.learner)):'');
+    const p=await api(src);
     state.sessions=p.sessions||[];
     renderSessions();
+    checkOnboarding(p);   // P0.12 冷启动引导：仅全新用户触发
   }catch(e){ /* 侧栏列表失败不打断对话 */ }
 }
 function renderSessions(){
@@ -1843,7 +2069,7 @@ function renderSessions(){
 }
 async function switchSession(id,forceNew){
   if(id===state.conversation&&!forceNew) return;
-  if(mapView)setMapView(false);   // 地图视图下点会话 → 自动回对话视图
+  if(mapView)setView('chat');   // 地图视图下点会话 → 自动回对话视图
   state.conversation=id;
   setUrlConversation(id);
   // 0.24 review：场景按会话绑定 → 切会话时同步场景横幅/作用域
@@ -2001,10 +2227,209 @@ function bindChips(root){
 }
 
 /* ============================================================
+ * P0.12 冷启动引导（仅全新用户触发，母语→等级→可选摸底→完成/跳过）
+ * ============================================================ */
+const ONB_L1=[
+  {v:'en',L:'English'},{v:'ko',L:'한국어'},{v:'ja',L:'日本語'},
+  {v:'zh',L:'中文（母语）'},{v:'other',L:'其他 / Other'},
+];
+const LEVEL_CN={1:'入门',2:'基础',3:'初级',4:'中级',5:'中高级',6:'高级'};
+let onb={l1:null,level:null,step:1};
+function checkOnboarding(p){
+  if(p&&p.onboarding_needed&&!state.onboardShown){
+    state.onboardShown=true;
+    renderOnbOpts();
+    showOnbStep(1);
+    openOverlay('onboardOvl');
+  }
+}
+function renderOnbOpts(){
+  const cur=getStateProfile();
+  const l1box=$('onb1Opts'); l1box.innerHTML='';
+  ONB_L1.forEach(o=>{
+    const b=el(`<button type="button" class="onopt" data-v="${o.v}">${esc(o.L)}</button>`);
+    if(cur.l1===o.v){b.classList.add('sel');onb.l1=o.v;}
+    b.addEventListener('click',()=>{onb.l1=o.v;selectOnb(l1box,b);
+      api('/api/profile',{learner_l1:o.v}).catch(()=>{});});
+    l1box.appendChild(b);
+  });
+  const lvbox=$('onb2Opts'); lvbox.innerHTML='';
+  [1,2,3,4,5,6].forEach(n=>{
+    const b=el(`<button type="button" class="onopt" data-v="HSK${n}">HSK${n} · ${esc(LEVEL_CN[n]||'')}</button>`);
+    if(cur.level==='HSK'+n){b.classList.add('sel');onb.level='HSK'+n;}
+    b.addEventListener('click',()=>{onb.level='HSK'+n;selectOnb(lvbox,b);
+      api('/api/profile',{user_level:'HSK'+n}).catch(()=>{});});
+    lvbox.appendChild(b);
+  });
+}
+function getStateProfile(){
+  const s=localStorage.getItem('hsk-prof');
+  let o={}; try{o=s?JSON.parse(s):{}}catch(e){o={};}
+  return o;
+}
+function saveStateProfile(prof){try{localStorage.setItem('hsk-prof',JSON.stringify(prof||{}));}catch(e){}}
+function selectOnb(container,btn){
+  container.querySelectorAll('.onopt').forEach(x=>x.classList.remove('sel'));
+  btn.classList.add('sel');
+}
+function showOnbStep(n){
+  onb.step=n;
+  [1,2,3].forEach(i=>{$( 'onb'+i ).style.display=(i===n)?'':'none';});
+  $('onbPrev').style.display=n>1?'':'none';
+  $('onbNext').textContent= t(n===3?'onFinish':'onNext');
+}
+function onbValid(step){
+  if(step===1&&!onb.l1){toast(t('onNeedL1'));return false;}
+  if(step===2&&!onb.level){onb.level='HSK3';}   // 未选默认 HSK3，不打断
+  return true;
+}
+async function completeOnboarding(){
+  const prof={onboarding_done:true};
+  if(onb.l1)prof.learner_l1=onb.l1;
+  if(onb.level)prof.user_level=onb.level;
+  saveStateProfile(prof);
+  try{await api('/api/profile',prof);}catch(e){}
+  closePopovers();toast(t('onDone'));
+}
+function hideOnboarding(){document.querySelector('#onboardOvl').classList.remove('show');}
+$('onbSkip').addEventListener('click',completeOnboarding);
+$('onbNext').addEventListener('click',()=>{
+  if(!onbValid(onb.step))return;
+  if(onb.step<3){showOnbStep(onb.step+1);}
+  else completeOnboarding();
+});
+$('onbPrev').addEventListener('click',()=>{if(onb.step>1)showOnbStep(onb.step-1);});
+$('onbAssess').addEventListener('click',async()=>{
+  const raw=$('onbTexts').value;
+  const texts=(raw||'').split(/[\n；;]+/).map(s=>s.trim()).filter(Boolean).slice(0,4);
+  const btn=$('onbAssess'),reason=$('onbReason');
+  if(!texts.length){reason.textContent=t('onQuizEmpty');return;}
+  btn.disabled=true;reason.textContent=t('onQuizzing');btn.textContent=t('onQuizzing');
+  try{
+    const r=await api('/api/onboard/assess',{texts});
+    onb.level=r.suggested_level;
+    reason.textContent='';btn.textContent=t('onAssess');
+    const box=$('onbLvSuggest');box.style.display='';box.innerHTML='';
+    [1,2,3,4,5,6].forEach(n=>{
+      const b=el(`<button type="button" class="onopt ${r.suggested_level==='HSK'+n?'sel':''}" data-v="HSK${n}">HSK${n}</button>`);
+      b.addEventListener('click',()=>{onb.level='HSK'+n;selectOnb(box,b);});
+      box.appendChild(b);
+    });
+    const note=el(`<p class="onhint">${esc(r.reason||'')}</p>`);box.appendChild(note);
+  }catch(e){reason.textContent=t('onQuizFail')+e.message;}
+  finally{btn.disabled=false;}
+});
+
+/* ============================================================
  * 学习动线（侧栏）
  * ============================================================ */
+// ---- P0.13 独立复习页：拉队列 → 集中做题 → 逐题回写 ----
+let rvItems=[];          // 本次复习的题目（{question, ...}）
+let rvQueue=[];          // 后端返回的队列 kp（含 kp_id / knowledge_point）
+let rvStates=[];         // {correct:0|1|undefined}，与 rvItems 对齐
+let rvIdx=0;             // 当前题下标
 function beginReview(){
-  sendPrompt(t('reviewPrompt'),t('reviewBadge'));
+  setView('review');
+  loadReview();          // rvBody 为空时 setView 已触发；此处兜底启动
+  $('actReview').classList.add('cur');
+}
+async function loadReview(){
+  const body=$('rvBody');
+  body.innerHTML=`<div class="rv-empty">${esc(t('reviewLoading'))}…</div>`;
+  rvItems=[];rvQueue=[];rvStates=[];rvIdx=0;updateRvProg();
+  try{
+    const data=await api('/api/quiz?limit=10');
+    rvQueue=data.queue||[];
+    rvItems=data.questions||[];
+    if(!rvItems.length){ body.innerHTML=`<div class="rv-empty">${esc(t('reviewEmpty'))}</div>`;updateRvProg();return; }
+    rvStates=rvItems.map(()=>undefined);
+    renderRvCard();
+  }catch(e){
+    body.innerHTML=`<div class="rv-empty">${esc(t('reportFail'))}${esc(e.message)}</div>`;
+  }
+}
+function updateRvProg(){
+  const done=rvStates.filter(s=>s===0||s===1).length;
+  $('rvProg').textContent=`${rvItems.length?done+' / '+rvItems.length:'— / —'}`;
+  $('rvCount').textContent=rvQueue.length||'—';
+}
+function renderRvCard(){
+  if(rvIdx>=rvItems.length){ renderRvFinish();return; }
+  const body=$('rvBody');body.innerHTML='';
+  const q=rvItems[rvIdx];
+  // 该题所属 kp 在队列里的名字（后端可能无，则回退 knowledge_point）
+  const qst=rvQueue.find(r=>r.kp_id===q.kp_id);
+  const kpName=(qst&&(qst.knowledge_point||qst.id))||q.knowledge_point||q.kp_id;
+  const tagLevel=q.level||(qst&&(qst.node&&qst.node.level))||'';
+  let card;
+  if(q.type==='recall'){
+    card=el(`<div class="rv-card">
+      <div class="rv-meta">${tagLevel?`<span class="rv-tag">${esc(tagLevel)}</span>`:''}<span class="rv-tag">${esc(kpName)}</span></div>
+      <div class="rv-sent">${esc(t('rvRecallQ'))}</div>
+      <div class="rv-ans rv-btns"><button class="rv-btn ok" id="rvOK" type="button">${esc(t('rvRecallYes'))}</button><button class="rv-btn bad" id="rvNo" type="button">${esc(t('rvRecallNo'))}</button></div>
+      <div class="rv-fb" id="rvFb"></div>
+      <div class="rv-nav"><button id="rvNext" type="button" style="display:none">${esc(t('rvNext'))}</button></div>
+    </div>`);
+    body.appendChild(card);
+    const choose=(correct)=>{
+      if(card.dataset.done)return;
+      card.dataset.done=1;
+      rvStates[rvIdx]=correct?1:0;updateRvProg();
+      const fb=card.querySelector('#rvFb');
+      fb.className='rv-fb '+(correct?'ok':'bad');
+      fb.textContent = correct? t('rvOk') : t('rvRecalledNo');
+      card.querySelectorAll('.rv-btn').forEach(b=>b.disabled=true);
+      card.querySelector('#rvNext').style.display='';
+      writeback(q,correct);
+    };
+    card.querySelector('#rvOK').addEventListener('click',()=>choose(true));
+    card.querySelector('#rvNo').addEventListener('click',()=>choose(false));
+    card.querySelector('#rvNext').addEventListener('click',()=>{rvIdx++;renderRvCard();});
+    return;
+  }
+  card=el(`<div class="rv-card">
+    <div class="rv-meta"><span class="rv-tag">${esc(q.grammar?q.grammar:'')}</span>${tagLevel?`<span class="rv-tag">${esc(tagLevel)}</span>`:''}<span class="rv-tag">${esc(kpName)}</span></div>
+    <div class="rv-sent">${esc(q.sentence)}</div>
+    <div class="rv-ans"><input type="text" id="rvInput" autocomplete="off"><button id="rvGo" type="button">${esc(t('rvSubmit'))}</button></div>
+    <div class="rv-fb" id="rvFb"></div>
+    <div class="rv-nav"><button id="rvNext" type="button" style="display:none">${esc(t('rvNext'))}</button></div>
+  </div>`);
+  body.appendChild(card);
+  const inp=card.querySelector('#rvInput');inp.focus();
+  const submitAns=()=>{
+    if(card.dataset.done)return;                    // 已判分锁卡
+    const ans=inp.value.trim();if(!ans){inp.focus();return;}
+    const correct = (ans===q.answer)||(ans===q.target_word);
+    card.dataset.done=1;
+    rvStates[rvIdx]=correct?1:0;updateRvProg();
+    const fb=card.querySelector('#rvFb');
+    fb.className='rv-fb '+(correct?'ok':'bad');
+    fb.textContent = correct? t('rvOk') : (t('rvBad')+' '+q.answer);
+    const go=card.querySelector('#rvGo');go.disabled=true;inp.disabled=true;
+    card.querySelector('#rvNext').style.display='';
+    inp.blur();
+    writeback(q,correct);
+  };
+  const go=card.querySelector('#rvGo');go.addEventListener('click',submitAns);
+  inp.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();submitAns();}});
+  card.querySelector('#rvNext').addEventListener('click',()=>{rvIdx++;renderRvCard();});
+}
+function writeback(q,correct){
+  api('/api/quiz/answer',{answers:[{kp_id:q.kp_id,correct:correct,event_key:q.event_key||''}]})
+    .catch(()=>{});                                 // 回写失利不阻断做题
+}
+function renderRvFinish(){
+  const body=$('rvBody');
+  const ok=rvStates.filter(s=>s===1).length,bad=rvStates.length-ok;
+  body.innerHTML=`<div class="rv-fini"><div class="tick">✓</div>
+    <h3>${esc(t('rvDone'))}</h3>
+    <div class="stat">${esc(t('rvOk'))} ${ok} · ${esc(t('rvBad'))} ${bad}</div>
+    <div class="rv-nav" style="justify-content:center">
+      <button id="rvAgain" type="button">${esc(t('rvAgain'))}</button>
+      <button id="rvBackC" type="button">${esc(t('backChat'))}</button>
+    </div></div>`;
+  body.querySelector('#rvAgain').addEventListener('click',loadReview);
+  body.querySelector('#rvBackC').addEventListener('click',()=>setView('chat'));
 }
 async function showReport(){
   const pend=addPending();
@@ -2068,6 +2493,34 @@ $('docFile').addEventListener('change',e=>{
   rd.onload=()=>{$('docText').value=String(rd.result||'');updateCharCt();toast(tf('docToastLoaded',{name:f.name}));};
   rd.onerror=()=>toast(t('docToastFail'));
   rd.readAsText(f,'utf-8');
+});
+/* P0.7 OCR：图片/PDF → 本地识别 → 回填文本域 */
+$('docFileOcr').addEventListener('change',async e=>{
+  const fs=Array.prototype.slice.call(e.target.files||[]).filter(Boolean);
+  if(!fs.length)return;
+  const st=$('ocrStatus'); const set=txt=>{st.textContent=txt;st.style.color='';
+    st.removeAttribute('data-i18n');};
+  set(t('docOcrBusy'));
+  const t0=Date.now();
+  try{
+    const items=[];
+    for(const f of fs){
+      const b64=await new Promise((res,rej)=>{const rd=new FileReader();
+        rd.onload=()=>{const s=String(rd.result||'');res(s.slice(s.indexOf(',')+1));};
+        rd.onerror=rej;rd.readAsDataURL(f);});
+      items.push({name:f.name,data:b64});
+    }
+    const d=await api('/api/ocr',{list:items});
+    const nxt=String(d&&d.text||'').trim();
+    if(!nxt){set(t('docOcrEmpty'));return;}
+    const cur=$('docText').value.trim();
+    $('docText').value=(cur?cur+'\n\n':'')+nxt.slice(0,DOC_CHAR_LIMIT);
+    updateCharCt();
+    set(tf('docOcrDone',{n:d.files,ms:(Date.now()-t0),chars:d.chars}));
+  }catch(err){
+    set(t('docToastFail')); const m=err&&err.message?err.message:String(err);
+    if(!/not supported|ocr_unavailable/i.test(m))toast(m); else toast(t('docToastEmpty'));
+  }finally{ e.target.value=''; }
 });
 $('docParse').addEventListener('click',()=>{
   let tx=$('docText').value.trim();
@@ -2259,6 +2712,7 @@ async function runDialog(text){
   renderTrace(res.trace);
   addAiText(res.text);
   renderWhy(res.why);
+  renderFeedbackCard();
   (res.degraded||[]).forEach(d=>addNote(`⚠ ${d.stage}：${d.reason||''}`,'warn'));
   loadSessions();   // 刷新侧栏标题/计数（首条消息后服务端自动命名）
   return res;
@@ -2598,36 +3052,44 @@ document.addEventListener('keydown',e=>{
 $('actSettings').addEventListener('click',()=>{openOverlay('settingsOvl');renderSettingsTab('theme');});
 $('actHowto').addEventListener('click',()=>openOverlay('howtoOvl'));
 $('resident').addEventListener('click',()=>openOverlay('howtoOvl'));
-$('actReview').addEventListener('click',beginReview);
 $('actReport').addEventListener('click',showReport);
 $('actDoc').addEventListener('click',openDoc);
 $('newSess').addEventListener('click',newSession);
 
-// ---- 认知地图独立视图（0.19：侧栏入口切换主区，地图独占；SVG 同实例复用，切换后按新尺寸重排） ----
+// ---- 主区独立视图切换：对话 / 地图 / 复习三类互斥 ----
 let mapView=false;
-function setMapView(on){
-  mapView=on;
-  document.querySelector('main').classList.toggle('mapview',on);
-  $('actMap').classList.toggle('cur',on);
-  if(on)requestAnimationFrame(()=>{renderMap();renderQueue();});
+let reviewView=false;
+function setView(mode){   // 'chat' | 'map' | 'review'
+  mapView = (mode==='map');
+  reviewView = (mode==='review');
+  const m=document.querySelector('main');
+  m.classList.toggle('mapview',mapView);
+  m.classList.toggle('reviewview',reviewView);
+  $('actMap').classList.toggle('cur',mapView);
+  $('actReview').classList.toggle('cur',reviewView);
+  if(mapView)requestAnimationFrame(()=>{renderMap();renderQueue();});
+  if(reviewView)requestAnimationFrame(()=>{if($('rvBody').children.length===0)beginReview();});
 }
-$('actMap').addEventListener('click',()=>setMapView(!mapView));
-$('backChat').addEventListener('click',()=>setMapView(false));
+$('actMap').addEventListener('click',()=>setView(mapView?'chat':'map'));
+$('actReview').addEventListener('click',beginReview);
+$('backChat').addEventListener('click',()=>setView('chat'));
+$('backReview').addEventListener('click',()=>setView('chat'));
+// 地图/复习的返回按钮沿用 maptitle 内 backChat；复习视图下左栏隐藏但也可经 actReview 再进
 // 下一步推荐条：动作回对话主链（先切回对话视图再发）
 $('nbGo').addEventListener('click',()=>{
   if(!nextRec||!(graph&&graph.nodes&&graph.nodes[nextRec.id]))return;
-  setMapView(false);const nm=nodeName(nextRec.id);
+  setView('chat');const nm=nodeName(nextRec.id);
   sendPrompt(tf('rvPrompt',{name:nm}),tf('rvBadge')+nm);
 });
 $('nbExplain').addEventListener('click',()=>{
   if(!nextRec||!(graph&&graph.nodes&&graph.nodes[nextRec.id]))return;
-  setMapView(false);const nm=nodeName(nextRec.id);
+  setView('chat');const nm=nodeName(nextRec.id);
   sendPrompt(tf('digPrompt',{name:nm}),tf('digBadge')+nm);
 });
 
 // 地图不常驻后：对话流内点知识点 → 自动切到地图视图并定位
 function locateKp(id){
-  if(!mapView)setMapView(true);
+  if(!mapView)setView('map');
   selectedNode=null;
   selectNode(id);
 }

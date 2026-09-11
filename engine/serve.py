@@ -30,10 +30,12 @@
 
 from typing import Optional
 import argparse
+import base64
 import json
 import os
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -403,6 +405,13 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             if not restatement:
                 self._send_json({"error": "empty restatement"}, 400)
                 return
+            # 边界校验：key_points 契约是 dict 列表（含 text）；畸形入参给 400，
+            # 不把它透传给 verifier 炸成内部 500（此前实测畸形输入会 AttributeError）
+            if (not isinstance(key_points, list)
+                    or not all(isinstance(kp, dict) and str(kp.get("text") or "").strip()
+                               for kp in key_points)):
+                self._send_json({"error": "invalid key_points: 需 [{text}, …]"}, 400)
+                return
             with self._lock:
                 out = self._router.verify_rephrase(
                     explanation, key_points, restatement,
@@ -538,7 +547,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 from engine.intervention import (
                     MAX_SCAN_CHARS, DEFAULT_CAP, build_intervention_directive,
                     detect_help_intent)
-                from engine.persona import build_persona_brief
+                from engine.persona import build_persona_brief, build_tutor_style_directive
                 mem = self._get_memory(learner_id)
                 wb = self._get_writeback(learner_id)
                 history = mem.to_llm_history(conversation_id)
@@ -554,6 +563,9 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 persona = profile_block.get("persona") if isinstance(
                     profile_block.get("persona"), dict) else {}
                 persona_brief = build_persona_brief(persona, native_lang, learner_l1=learner_l1)
+                # P0.16：tutor 措辞规范（[Style] 去 AI 味）——无条件全局注入（D1=A），
+                # 独立于 persona 是否配置；与 [Persona] 人设层并列、正交。
+                style_directive = build_tutor_style_directive(native_lang)
                 try:
                     cap = int((persona or {}).get("interrupt_cap", DEFAULT_CAP))
                 except (TypeError, ValueError):
@@ -630,6 +642,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                     user_input, history=history, learner_id=learner_id,
                     profile_summary=profile_summary, native_lang=native_lang,
                     user_level=level_label, scene_brief=scene_brief, persona_brief=persona_brief,
+                    style_directive=style_directive,
                     intervention_directive=intervention_directive)
                 # M8 两段式·账本侧：识别命中→observation_error；复述 pass→concept_confirmed
                 m8_notices = scan_notices + self._writeback_ledger_events(
@@ -696,7 +709,9 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             if path in ("/api/process", "/api/verify", "/api/generate", "/api/dialog",
                         "/api/providers", "/api/providers/test",
                         "/api/providers/default", "/api/profile",
-                        "/api/session/update", "/api/session/delete"):
+                        "/api/session/update", "/api/session/delete",
+                        "/api/quiz/answer", "/api/onboard/assess", "/api/ocr",
+                        "/api/feedback"):
                 try:
                     length = int(self.headers.get("Content-Length", 0))
                     raw = self.rfile.read(length) if length else b"{}"
@@ -709,6 +724,34 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                     self._do_api_process(payload)
                 except Exception as e:
                     self._send_json({"error": f"process failed: {e}"}, 500)
+                return
+            if path == "/api/quiz/answer":
+                # P0.13 复习页答完回写：逐 kp review_feedback（多知识点回写）
+                try:
+                    self._do_api_quiz_answer(payload)
+                except Exception as e:
+                    self._send_json({"error": f"quiz answer failed: {e}"}, 500)
+                return
+            if path == "/api/onboard/assess":
+                # P0.12 冷启动摸底：对引导里填的句子做识别预扫 → 定级建议（可改）
+                try:
+                    self._do_api_onboard_assess(payload)
+                except Exception as e:
+                    self._send_json({"error": f"onboard assess failed: {e}"}, 500)
+                return
+            if path == "/api/ocr":
+                # P0.7 OCR：图片/PDF → 干净文本（仅识字，识别交给 recognizer）
+                try:
+                    self._do_api_ocr(payload)
+                except Exception as e:
+                    self._send_json({"error": f"ocr failed: {e}"}, 500)
+                return
+            if path == "/api/feedback":
+                # P0.18 评分入口：对话结束 1–5 星可选提交 → 写 feedback_<learner>.json
+                try:
+                    self._do_api_feedback(payload)
+                except Exception as e:
+                    self._send_json({"error": f"feedback failed: {e}"}, 500)
                 return
             if path == "/api/verify":
                 try:
@@ -808,11 +851,69 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 except Exception as e:  # noqa: BLE001 场景库不可用 → 空列表不报错
                     self._send_json({"scenes": [], "count": 0, "error": str(e)})
                 return
+            if path == "/api/quiz":
+                # P0.13 独立复习页：拉复习队列 + 确定性挖空造题
+                try:
+                    self._do_api_quiz(parsed)
+                except Exception as e:  # noqa: BLE001
+                    self._send_json({"errors": [], "queue": [],
+                                     "error": f"quiz failed: {e}"}, 500)
+                return
+            if path == "/api/metrics":
+                # P0.18 效果度量：聚合全部 learner 的 4 指标（实时算，不靠手工跑）
+                try:
+                    from engine.metrics import all_metrics
+                    self._send_json(all_metrics(self._memory_root))
+                except Exception as e:  # noqa: BLE001
+                    self._send_json({"learners": {}, "generated_at": 0,
+                                     "error": f"metrics failed: {e}"}, 500)
+                return
             # 静态：根 → index.html
             rel = parsed.path or "/"
             if rel == "/" or rel == "":
                 rel = "/index.html"
             self._send_static(rel)
+
+        def _do_api_quiz(self, parsed):
+            """P0.13 独立复习页 GET：拉复习队列 → 用确定性挖空引擎造题。
+            队列里的 kp：有例句能挖到空 → cloze；否则降级为 recall 记忆自检。
+            （对齐：无例句点造题时降级处理）返回 {queue, questions}。"""
+            qs = parse_qs(parsed.query)
+            limit = int((qs.get("limit") or ["10"])[0])
+            with self._lock:
+                queue = self._router.graph.get_review_queue()
+                sub = queue[:limit]
+                from engine.quiz import build_review_items
+                questions = build_review_items(sub)
+            self._send_json({
+                "queue": sub,
+                "count": len(questions),
+                "questions": questions,
+            })
+
+        def _do_api_quiz_answer(self, payload):
+            """P0.13 复习页答完回写：接收 [{kp_id, correct}]，逐 kp review_feedback。
+            多知识点回写：每次提交可含多个 kp，逐个调度（FSRS + 化石化）。
+            rating：correct=True→3(想起) / False→1(忘记)。"""
+            answers = payload.get("answers") or payload.get("items") or []
+            results = []
+            with self._lock:
+                for a in answers:
+                    kp_id = a.get("kp_id")
+                    correct = a.get("correct")
+                    event_key = a.get("event_key", "")
+                    if not kp_id or correct is None:
+                        results.append({"kp_id": kp_id, "status": "bad_request"})
+                        continue
+                    try:
+                        res = self._router.graph.review_feedback(
+                            kp_id, rating=(3 if correct else 1),
+                            event_key=event_key)
+                        results.append({"kp_id": kp_id, "status": res.get("status"),
+                                        "interval_days": res.get("interval_days")})
+                    except Exception as e:  # noqa: BLE001
+                        results.append({"kp_id": kp_id, "status": "error", "msg": str(e)})
+            self._send_json({"results": results, "count": len(results)})
 
         def _do_api_profile(self, parsed):
             """只读画像 + 会话列表（0.19 前端 v2：AI 学习报告 / 侧栏数据源）。
@@ -859,9 +960,14 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                                  if f.get("repeat_offender")]
                 except Exception:  # noqa: BLE001
                     offenders = []
+                # ---- P0.12 冷启动引导判定 ----
+                # 全新用户（未完成引导 且 无任何学习数据）→ 弹引导；老用户不受影响
+                onboarding_done = bool(profile.get("onboarding_done"))
+                has_learning_data = bool(raw_sessions) or bool(snap.get("nodes", {}))
                 self._send_json({
                     "learner_id": learner_id,
                     "profile": profile,
+                    "onboarding_needed": (not onboarding_done) and (not has_learning_data),
                     "common_errors": facts,
                     "summary_text": summary_text,
                     "sessions": sessions,
@@ -910,8 +1016,13 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 self._router.learner_id
             raw = payload.get("persona")
             raw_level = payload.get("user_level")
-            if raw is None and raw_level is None:
-                self._send_json({"error": "无可更新字段（persona/user_level）",
+            raw_l1 = payload.get("learner_l1")
+            raw_uilang = payload.get("ui_lang") or payload.get("native_lang")
+            raw_onboard = payload.get("onboarding_done")
+            if (raw is None and raw_level is None and raw_l1 is None
+                    and raw_uilang is None and raw_onboard is None):
+                self._send_json({"error": "无可更新字段"
+                                            "（persona/user_level/learner_l1/ui_lang/onboarding_done）",
                                  "code": "nothing_to_update"}, 400)
                 return
             with self._lock:
@@ -947,7 +1058,169 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                         except Exception:  # noqa: BLE001 同步失败不阻断
                             pass
                     result["user_level"] = label
+                # ---- P0.12 冷启动引导落库：learner_l1 / ui_lang / onboarding_done ----
+                if raw_l1 is not None:
+                    s = str(raw_l1).strip().lower()
+                    if not s or len(s) > 16:
+                        self._send_json({"error": "learner_l1 应为非空语言代码",
+                                         "code": "invalid_learner_l1"}, 400)
+                        return
+                    mem.update_profile(learner_l1=s)
+                    result["learner_l1"] = s
+                if raw_uilang is not None:
+                    s = str(raw_uilang).strip().lower()
+                    if not s or len(s) > 16:
+                        self._send_json({"error": "ui_lang 应为非空语言代码",
+                                         "code": "invalid_ui_lang"}, 400)
+                        return
+                    mem.update_profile(native_lang=s)
+                    result["native_lang"] = s
+                if raw_onboard is not None:
+                    mem.update_profile(onboarding_done=bool(raw_onboard))
+                    result["onboarding_done"] = bool(raw_onboard)
             self._send_json(result)
+
+        def _do_api_onboard_assess(self, payload):
+            """P0.12 · 冷启动摸底定级（建议，可改，落库由完成端点管）。
+            对引导里填的 1-4 句跑识别预扫：句内识别到确认层偏误记为偏误句。
+            保守启发式：偏误率高 → 建议下调起点等级；3 句太少不自动上调（防高估）。
+            复用 _get_identify_skill（确定性规则，无 LLM 依赖 → 无 Key 也能摸底）。"""
+            learner_id = str(payload.get("learner") or "").strip() or \
+                self._router.learner_id
+            texts = payload.get("texts")
+            if not isinstance(texts, list) or not 1 <= len(texts) <= 4:
+                self._send_json({"error": "texts 应为 1-4 条句子",
+                                 "code": "invalid_texts"}, 400)
+                return
+            texts = [str(t).strip() for t in texts]
+            texts = [t for t in texts if t]
+            if not texts:
+                self._send_json({"error": "texts 不能全为空",
+                                 "code": "invalid_texts"}, 400)
+                return
+            with self._lock:
+                mem = self._get_memory(learner_id)
+                prof = mem.get_profile()
+                raw_level = payload.get("user_level") or prof.get("user_level")
+                base = self._normalize_user_level(raw_level)
+                base = 3 if base is None else int(base[3:])
+                # 只读预扫：构造无 graph 的识别器（不写图谱），并把真实母语喂给迁移规则
+                from skills.identify_errors import IdentifyErrorsSkill
+                identify = IdentifyErrorsSkill(
+                    recognizer=getattr(self._router, "recognizer", None),
+                    graph=None)
+                learner_l1 = str(prof.get("learner_l1") or "").strip()
+                err_sentences, total = 0, 0
+                failures = 0
+                for t in texts:
+                    total += 1
+                    try:
+                        pre = identify.run({"text": t, "level": f"HSK{base}",
+                                            "native_lang": learner_l1})
+                        if isinstance(pre, dict) and pre.get("errors"):
+                            err_sentences += 1
+                    except Exception:  # noqa: BLE001 单句失败不阻断其余
+                        failures += 1
+            # 偏误率高 → 下调；过低/无错 → 维持（冷启动样本小，宁低位慎重）
+            if total == 0:
+                suggest = base
+            elif failures == total:
+                suggest = base          # 全判定失败 → 回退基线，不硬降
+            else:
+                er = err_sentences / total
+                if er >= 0.8 and base > 2:
+                    suggest = base - 2
+                elif er >= 0.6 and base > 1:
+                    suggest = base - 1
+                else:
+                    suggest = base
+                suggest = max(1, min(6, suggest))
+            reason = (f"摸底 {total} 句，检测到 {err_sentences} 句含偏误"
+                      f"（{round(err_sentences * 100 / total)}%）。"
+                      + (f"建议先定在 HSK{suggest}（看基础弱，先降档更踏实；之后可随时调整）。"
+                         if suggest < base
+                         else f"未检出明显偏误，建议维持 HSK{suggest}（3 句样本少，不急于跳级）。")
+                      if total else "无有效句子，未给出定级建议。")
+            if failures:
+                reason += (f"（{failures} 句判定失败，按剩余句子计）")
+            self._send_json({
+                "learner_id": learner_id,
+                "suggested_level": f"HSK{suggest}",
+                "base_level": f"HSK{base}",
+                "error_sentence_count": err_sentences,
+                "total": total,
+                "reason": reason,
+            })
+
+        def _do_api_ocr(self, payload):
+            """P0.7 OCR：图片/PDF（base64）→ 干净文本。仅识字层，识别交给 recognizer。
+            入参：data=base64 字节码 / {data, name}；或 list=files[{data,name}]。
+            name 以 .pdf 结尾 → 走 PDF→图→OCR；否则按图片处理。
+            RapidOCR 缺失 → 优雅降级为 422（前端提示"不支持图片"）。"""
+            from engine.ocr import (OcrUnavailable, extract_text_from_images,
+                                    extract_text_from_pdf)
+            files = payload.get("list")
+            if files is None:
+                if not isinstance(payload.get("data"), str):
+                    self._send_json({"error": "data 应传 base64 字符串",
+                                     "code": "invalid_data"}, 400)
+                    return
+                files = [payload]
+            if not isinstance(files, list) or not files:
+                self._send_json({"error": "files 应为非空列表", "code": "invalid_files"}, 400)
+                return
+            pdf_buf, img_bytes = b"", []
+            for f in files:
+                try:
+                    raw = base64.b64decode(str(f.get("data", "")), validate=False)
+                except Exception as e:  # noqa: BLE001
+                    self._send_json({"error": f"base64 解码失败：{e}",
+                                     "code": "invalid_data"}, 400)
+                    return
+                if str(f.get("name") or "").lower().endswith(".pdf"):
+                    pdf_buf = raw
+                else:
+                    img_bytes.append(raw)
+            start_ms = int(round(time.time() * 1000))
+            try:
+                text_parts = []
+                if img_bytes:
+                    text_parts.append(extract_text_from_images(img_bytes))
+                if pdf_buf:
+                    text_parts.append(extract_text_from_pdf(pdf_buf))
+            except OcrUnavailable as e:
+                self._send_json({"error": str(e), "code": "ocr_unavailable",
+                                 "message": "不支持图片/PDF（OCR 能力未安装，可先粘贴文本）"},
+                                422)
+                return
+            text = "\n\n".join(p for p in text_parts if p)
+            elapsed_ms = int(round(time.time() * 1000)) - start_ms
+            self._send_json({
+                "text": text,
+                "chars": len(text),
+                "files": len(files),
+                "elapsed_ms": elapsed_ms,
+            })
+
+        def _do_api_feedback(self, payload):
+            """P0.18 评分入口落盘：对话结束 1–5 星可选提交 → feedback_<learner>.json。
+            learner 沿用 router.learner_id（与 dialog 一致）；评分越界/非数由
+            record_feedback 拒绝并回 400。"""
+            from engine.metrics import record_feedback
+            learner = str(payload.get("learner") or "").strip() or \
+                self._router.learner_id
+            ok = record_feedback(
+                root=self._memory_root,
+                learner=learner,
+                score=payload.get("score"),
+                conversation_id=payload.get("conversation_id", ""),
+                comment=payload.get("comment", ""),
+            )
+            if not ok:
+                self._send_json({"error": "invalid score (1-5 required)",
+                                 "code": "invalid_score"}, 400)
+                return
+            self._send_json({"ok": True, "learner": learner})
 
         @staticmethod
         def _normalize_user_level(raw) -> Optional[str]:

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="memphis">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HSK-AI-Coach · 效果度量面板</title>
+<style>
+:root{
+  --brand:214 107 140;          /* 孟菲斯 brand #df6b8c */
+  --bg:#faf8f3; --bg-sink:#f1ece2; --tx:#2c2a26;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#2c2a26;font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;line-height:1.6}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 20px 60px}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:#8a8578;font-size:13px;margin-bottom:22px}
+.toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.btn{border:1px solid #d8d3c6;background:#fff;border-radius:8px;padding:7px 14px;cursor:pointer;font:inherit;font-size:13px}
+.btn:hover{border-color:var(--brand);color:var(--brand)}
+.meta{font-size:12px;color:#8a8578}
+.learners{display:grid;grid-template-columns:1fr;gap:18px}
+.lcard{background:#fff;border:1px solid #eee6da;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.lhead{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+.lname{font-size:17px;font-weight:700}
+.lrank{font-size:12px;color:#8a8578}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.m{background:#faf7f1;border:1px solid #efe8db;border-radius:10px;padding:12px 14px}
+.m h3{margin:0 0 6px;font-size:12px;color:#8a8578;font-weight:600;letter-spacing:.2px}
+.m .val{font-size:24px;font-weight:700;margin-bottom:2px}
+.m .val.void{color:#b9b2a2;font-size:16px;font-weight:500}
+.m .n{font-size:12px;color:#9a9384}
+.m .win{font-size:11px;color:#a8a193;margin-top:4px}
+.m .caveat{font-size:11px;color:#8a8578;margin-top:6px;padding-top:6px;border-top:1px dashed #e2dbc9}
+.empty{padding:40px;text-align:center;color:#8a8578;background:#fff;border:1px dashed #d8d3c6;border-radius:12px}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:10px}
+.tbl th,.tbl td{border:1px solid #eee6da;padding:6px 10px;text-align:left}
+.tbl th{background:#faf7f1;font-weight:600}
+.err{color:#c0392b;background:#fdf0ef;border:1px solid #f2ceca;border-radius:8px;padding:10px 14px;font-size:13px}
+.pos{color:#2e7d32}.neg{color:#c0392b}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>HSK-AI-Coach · 效果度量面板</h1>
+  <div class="sub">P0.18 效果度量与数据闭环 · 4 指标实时计算（数据源：ledger / graph / memory / feedback，纯本地，不下发）。</div>
+  <div class="toolbar">
+    <button class="btn" id="refresh">刷新</button>
+    <span class="meta" id="meta">加载中…</span>
+  </div>
+  <div id="root"></div>
+</div>
+<script>
+var COLORS={brand:'#df6b8c',neg:'#c0392b',pos:'#2e7d32'};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function fmtValue(key,m){
+  if(m.value==null)return {cls:'void',html:'无数据 <span class="n">(n='+m.n+')</span>'};
+  var v,cls='';
+  if(key==='pass_rate_delta'){v=m.value>=0?('+'+m.value.toFixed(4)):m.value.toFixed(4);v+=' 错/天';cls=m.value<0?'pos':'neg';}
+  else if(key==='interactions_to_pass'){v=m.value.toFixed(1)+' 轮';}
+  else if(key==='continue_learning_rate'){v=(m.value*100).toFixed(0)+'%';}
+  else if(key==='satisfaction'){v=m.value.toFixed(2)+' / 5';cls=m.value>=4?'pos':(m.value<=2.5?'neg':'');}
+  else v=m.value;
+  return {cls:cls?'':'',html:'<span class="'+(cls?'val '+cls:'val')+'">'+v+'</span>'};
+}
+var LABELS={
+  pass_rate_delta:'① 通过率变化（负=进步）',
+  interactions_to_pass:'② 达标交互数',
+  continue_learning_rate:'③ 续学率',
+  satisfaction:'④ 答疑满意度'
+};
+function learnerCard(name,m){
+  if(!m)return '';
+  var cells='';
+  Object.keys(LABELS).forEach(function(key){
+    var mm=m[key]||{value:null,n:0};
+    var fv=fmtValue(key,mm);
+    cells+='<div class="m"><h3>'+esc(LABELS[key])+'</h3>'+
+      fv.html+
+      '<div class="win">口径：'+esc(mm.window||'-')+'</div>'+
+      '<div class="caveat">'+esc(mm.caveats||'')+'</div></div>';
+  });
+  return '<div class="lcard"><div class="lhead"><span class="lname">'+esc(name)+'</span>'+
+    '<span class="lrank"></span></div><div class="metrics">'+cells+'</div></div>';
+}
+async function load(){
+  var root=document.getElementById('root');
+  var meta=document.getElementById('meta');
+  root.innerHTML='<div class="empty">正在读取 /api/metrics …</div>';
+  try{
+    var r=await fetch('/api/metrics');
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    var d=await r.json();
+    meta.textContent='生成时间：'+new Date(d.generated_at*1000).toLocaleString('zh-CN');
+    var ls=Object.keys(d.learners||{});
+    if(!ls.length){root.innerHTML='<div class="empty">暂无有效学习者数据（需要存在 ledger_*.json 才会纳入统计）。先用对话/复习产生一些数据。</div>';return;}
+    root.innerHTML=ls.map(function(n){return learnerCard(n,d.learners[n]);}).join('');
+  }catch(e){
+    meta.textContent='';
+    root.innerHTML='<div class="err">无法连接指标接口：'+esc(e.message)+'。<br>请确认服务已启动（python -m engine.serve）并通过 HTTP 访问（如 http://localhost:8000/metrics.html），而非直接双击文件。</div>';
+  }
+}
+document.getElementById('refresh').addEventListener('click',load);
+load();
+</script>
+</body>
+</html>

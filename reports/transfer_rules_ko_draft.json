@@ -1,0 +1,59 @@
+{
+  "l1": "ko",
+  "version": "0.1-draft",
+  "note": "韩语母语者→中文迁移规则（P0.11 首批，2026-09-09 裁决版）。结构沿用 en 表实际 schema + sig/strategy/nature/ref 四扩展字段。ref 已经两轮检索核源，但最终以用户（汉教专业）逐条核验为准——核验不过的条目删条不降级。假设只作 candidate，绝不进确诊图谱。",
+  "rules": [
+    {
+      "rule_id": "ko-classifier",
+      "sig": "classifier",
+      "title": "量词缺失或泛化",
+      "kp_anchors": ["kp-liangci"],
+      "types": ["语法", "词汇"],
+      "l1_anchor": "Korean has a classifier system, but 개 (general counter for inanimate objects) covers a much wider range than Chinese 个; learners overgeneralize 个 as the closest equivalent, or omit the classifier when unsure. (Korean also orders noun+number+classifier; postposing errors are a separate backlog item.)",
+      "zh_signature": "数词直接连名词（三苹果→三个苹果），或一律泛化用'个'（一个手机→一部手机；三个奶粉→三罐奶粉）",
+      "strategy": "对比韩语 개/장/권 与中文 个/张/本 的适用范围差异，明确'개≈个'只是近似而非等价；从高频名词-量词搭配对（一本书/一张桌子/一部手机）做最小对练习；同时提醒韩语'名词+数词+量词'语序不可直迁。",
+      "nature": "误代",
+      "ref": "雷冬平、李霞《中高级韩国留学生汉语容器量词习得偏误与教学研究》，载雷冬平、何亮主编《语言研究与应用》第1辑，中西书局，2025（个泛化与量名语序均有语料例证）",
+      "conf": 0.4
+    },
+    {
+      "rule_id": "ko-aspect-particle",
+      "sig": "aspect_particle",
+      "title": "动态助词'了/着/过'缺失或误加",
+      "kp_anchors": ["kp-le-dynamic", "kp-zhe", "kp-guo"],
+      "types": ["语法"],
+      "l1_anchor": "Korean marks TENSE on the verb suffix (-았/었- past, -고 있다 progressive) while Chinese marks ASPECT with particles 了/着/过; learners equate -았/었- with 了 and overuse it for any past-time context, and underuse 过 which has no Korean counterpart.",
+      "zh_signature": "该用'了'未用或凡是过去时间都误加'了'（上星期五没有教了生词／我寒假就要回国家），'过'的经历义表达缺失；体标记是唯一差异",
+      "strategy": "核心=区分'时'（tense）与'体'（aspect）：-았/었 表动作与时间的关系，'了'表完成实现、与说话时间无关——用时间轴图示；否定句'没（有）'后不用'了'等共现限制列负面清单；'过'无韩语对应，作新语法项专门强化。",
+      "nature": "未知",
+      "ref": "杨德峰、弓耀楠、姚骏《韩国学生动态助词\"了\"的偏误发展及产生原因分析》，《海外华文教育》2015年第4期（DOI:10.14095/j.cnki.oce.2015.04.006，语料库统计，主因=母语负迁移）；韩在均（2003，转引自杨文）：把'了'简单等同于韩国语过去时助词'였다'是偏误主因；潘心怡《韩国学生学习\"了\"的母语负迁移研究》，苏州大学硕士学位论文，2014。误加/遗漏两向并见，故 nature 标未知",
+      "conf": 0.45
+    },
+    {
+      "rule_id": "ko-adj-bare",
+      "sig": "adj_bare",
+      "title": "形容词谓语缺程度词（裸形容词）",
+      "kp_anchors": ["kp-chengdu-fuci"],
+      "types": ["语法"],
+      "l1_anchor": "Korean adjectives (형용사) conjugate like verbs and predicate directly with NO degree adverb and NO copula ('그녀는 예쁘다' = she is pretty); a bare adjective as an independent affirmative predicate is ungrammatical in Chinese and needs a degree word (default 很). NOTE: the '是+adjective' pattern is NOT covered here — Korean adjectives take no copula, so that pattern has no Korean L1 basis (see en-adj-predicate).",
+      "zh_signature": "裸形容词作独立肯定陈述谓语（她高兴→她很高兴；宿舍里的人们对我热情→对我很热情）。对比/疑问/比较/带程度补语/带'了'表变化等语境合法，不判",
+      "strategy": "建立类型学对比：韩语形容词是谓词、自身完成断言，中文形容词作肯定谓语必须带程度成分；'很'在肯定陈述中已弱化为占位标记（不带强调义），防止学生为表强调而刻意回避；操练'主语+很+形容词'的同时给出裸形容词合法语境清单，防矫枉过正。",
+      "nature": "遗漏",
+      "ref": "《한국인 학습자의 중국어 정도부사 '很'의 오류 분석》（韩国学习者汉语程度副词'很'的偏误分析，KCI 收录）：'光杆形容词作谓语时缺漏很'为缺漏类首条，成因明载'韩国语的形容词可以单独作句子的谓语'；另见《海外华文教育》'很'的遗漏研究（厦门大学国际中文教育学院）：'很'的单纯型遗漏'主要是受到了韩语负迁移的影响，因为在韩国语中，形容词前不加程度副词通常是合法的'（该文作者信息以原文为准，待核验）",
+      "conf": 0.4
+    },
+    {
+      "rule_id": "ko-ba-omission",
+      "sig": "ba_omission",
+      "title": "把字句遗漏'把'（宾语已前置）",
+      "kp_anchors": ["kp-ba-sentence"],
+      "types": ["语法"],
+      "l1_anchor": "Korean is SOV: the object already precedes the verb with only the accusative marker -을/를, so learners prepose the object but omit 把 itself ('我终于这件事完成了' → '我终于把这件事完成了'). Omitting 把 with the object already preposed is among the most frequent ba-construction errors for Korean learners — distinct from the English pattern where the object stays after the verb.",
+      "zh_signature": "宾语已在动词前但缺'把'（我终于这件事完成了→我终于把这件事完成了；请你的照相机借给我→请把你的照相机借给我）；修正恰为单插一个'把'",
+      "strategy": "对比韩语宾格标记 -을/를 与中文'把'：韩语宾语提前靠格标记即可，汉语提前宾语须由'把'引出——'只提前不加把'是半截迁移；同时讲透'把'字句宾语的有定性与动词的处置性，防止学生学会加'把'后反向泛化到非处置动词（那是另一条 backlog 规则）。",
+      "nature": "遗漏",
+      "ref": "《基于语料库的韩国学习者\"把\"字句偏误类型分析》（全球汉语中介语语料库+HSK动态作文语料库2.0，670条韩国中高级学生语料，KCI）：'省略把'列为最高频偏误之一，成因含母语负迁移；《韩国学生汉语语法偏误分析》，《世界汉语教学》2000年第2期：例（35）（36）宾语前置而缺'把'，原文按语'也许这些偏误的产生只是母语主宾谓语序负迁移的结果'（作者信息以原文为准，待核验）",
+      "conf": 0.45
+    }
+  ]
+}

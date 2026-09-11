@@ -151,4 +151,38 @@ def build_persona_brief(persona: Optional[Dict[str, Any]],
     return "\n".join(lines)
 
 
-__all__ = ["REPLY_STYLES", "DEFAULT_PERSONA", "normalize_persona", "build_persona_brief"]
+# ---------------- P0.16 · 去 AI 味措辞规范（精简注入版） ----------------
+# 规范管措辞、persona 管人设：本段独立于 reply_style/identity，对默认 persona 同样生效
+# （决策 D1=A：无条件全局注入，不因 learner 未配 persona 而缺失）。
+# 运行注入的精简要点抄录自 skills/tutor-style/SKILL.md（全量规范/正反例以该文件为准）。
+# 教学准确性一票否决：去味手法不得牺牲内容正确，准确与自然冲突时保住准确，用短话消歧。
+_STYLE_DIRECTIVE_ZH = (
+    "[Style] 措辞（P0.16 规范）：短句为主、长短交错，单句尽量 ≤30 字；称呼自然，并回引"
+    "学习者刚说过的具体词（让他感到被听见）；鼓励要具体到点——指出做对在哪、为什么对，"
+    "不空洞夸；纠错先肯定对的、再只点最关键的一处，聚焦模式不逐条批斗；能引导学习者自己"
+    "说出来就不直接给完整答案，一次只问一个问题；讲解按段、每段 30-45 字，段间用自然过渡。"
+    "禁止：排比式连问、『首先/其次/最后』式套话、空洞『你真棒』、术语堆砌、一口气喂完整"
+    "答案。教学准确性优先于篇幅与华丽。"
+)
+_STYLE_DIRECTIVE_EN = (
+    "[Style] Wording (P0.16 spec): use short, mixed-length sentences (≤30 chars most "
+    "of the time); address the learner naturally and echo a specific word they just said "
+    "so they feel heard; praise specifically — name what was right and why, never hollow "
+    "'good job'; when correcting, affirm what works first, then fix only the single most "
+    "important spot, focusing on the pattern rather than a list of faults; if you can "
+    "guide the learner to say it themselves, do not hand over the full answer, and ask "
+    "ONE question at a time; break explanations into 30-45 char chunks with natural "
+    "transitions. Avoid: rhetorical question stacking, 'first/second/finally' clichés, "
+    "hollow praise, jargon piles, and dumping complete answers. Accuracy outranks polish."
+)
+
+
+def build_tutor_style_directive(native_lang: str = "") -> str:
+    """P0.16：tutor 措辞规范精简注入段（[Style]，中英双语）。
+    无条件返回非空——与 persona 是否配置无关（D1=A），由 serve 常驻注入。
+    native_lang 语义与 build_persona_brief 一致：决定措辞语言（zh 其余=中/英文）。"""
+    return _STYLE_DIRECTIVE_ZH if _l1_is_zh(native_lang) else _STYLE_DIRECTIVE_EN
+
+
+__all__ = ["REPLY_STYLES", "DEFAULT_PERSONA", "normalize_persona",
+           "build_persona_brief", "build_tutor_style_directive"]

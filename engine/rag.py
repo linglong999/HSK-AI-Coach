@@ -17,6 +17,7 @@ if _PROJECT_ROOT not in sys.path:
 
 KB_PATH = os.path.join(_PROJECT_ROOT, "datasets", "knowledge_points_v1_4.json")
 LEXICON_PATH = os.path.join(_PROJECT_ROOT, "datasets", "lexicon_hsk1_4.json")
+CORRECTIONS_PATH = os.path.join(_PROJECT_ROOT, "datasets", "ocr_corrections")
 
 _CJK_CHAR = re.compile(r'[\u4e00-\u9fff]')
 _LATIN = re.compile(r'[A-Za-z0-9_]+')
@@ -136,6 +137,48 @@ class HSKLexicalIndex:
                 chunk["in_graph"] = True
         return len(queue)
 
+    def ingest_corrections(self, path: str = CORRECTIONS_PATH) -> int:
+        """P0.7：把 OCR 校正数据喂进索引（"喂更好语料，不重写检索"）。
+        校正记录 JSON：[{原文, 校正, 依据, 日期}]；每条约可参考的知识点文本入索引，
+        检索受图中带 '校正' 标记。目录不存在/为空 → 返回 0，不报错（OCR 校正可后补）。"""
+        if not os.path.isdir(path):
+            return 0
+        n = 0
+        for fn in sorted(os.listdir(path)):
+            if not fn.endswith(".json"):
+                continue
+            fp = os.path.join(path, fn)
+            try:
+                with open(fp, encoding="utf-8") as f:
+                    data = json.load(f)
+            except Exception:  # noqa: BLE001 单文件损坏跳过
+                continue
+            if isinstance(data, dict):
+                data = [data]
+            if not isinstance(data, list):
+                continue
+            for i, rec in enumerate(data):
+                if not isinstance(rec, dict):
+                    continue
+                original = str(rec.get("原文") or rec.get("original") or "").strip()
+                corrected = str(rec.get("校正") or rec.get("corrected") or "").strip()
+                if not corrected:
+                    continue
+                self._add_chunk({
+                    "id": f"ocr_corr:{fn}:{i}",
+                    "source": "correction",
+                    "text": corrected + (" " + original if original and original != corrected else ""),
+                    "kp_id": rec.get("kp_id"),
+                    "knowledge_point": corrected[:40],
+                    "level": rec.get("level", ""),
+                    "error_types": [],
+                    "heading": corrected[:20],
+                    "note": "OCR 人工校正",
+                    "in_graph": False,
+                })
+                n += 1
+        return n
+
     def _add_chunk(self, record: dict):
         cid = record["id"]
         self._chunks[cid] = record
@@ -221,12 +264,14 @@ class HSKLexicalIndex:
 
 def build_hsk_index(include_lexicon: bool = True, max_lexicon_words: int = 4000,
                     graph=None) -> HSKLexicalIndex:
-    """一键构建三源索引（决策 D）。graph 可注入（偏误图谱实例或 None）。"""
+    """一键构建三源索引（决策 D）。graph 可注入（偏误图谱实例或 None）。
+    P0.7：若存在 datasets/ocr_corrections/，额外摄入 OCR 人工校正语料。"""
     idx = HSKLexicalIndex()
     idx.ingest_knowledge_points()
     if include_lexicon:
         idx.ingest_lexicon(max_words=max_lexicon_words)
     if graph is not None:
         idx.ingest_graph(graph)
+    idx.ingest_corrections()   # 目录缺失 → 0，静默跳过
     idx.set_version(idx.compute_version())
     return idx

@@ -161,6 +161,18 @@ class ServeTest(unittest.TestCase):
         self.assertEqual(r.status, 400)
         self.assertIn("error", body)
 
+    def test_verify_malformed_key_points_400(self):
+        # 边界校验：key_points 畸形（str 列表而非 dict 列表）→ 400，不得透传炸 500
+        c = self._conn()
+        c.request("POST", "/api/verify",
+                  json.dumps({"key_points": ["把字句"], "restatement": "把门关了"}).encode(),
+                  {"Content-Type": "application/json"})
+        r = c.getresponse()
+        body = json.loads(r.read().decode())
+        c.close()
+        self.assertEqual(r.status, 400)
+        self.assertIn("error", body)
+
     def test_graph_endpoint(self):
         c = self._conn()
         c.request("GET", "/api/graph")

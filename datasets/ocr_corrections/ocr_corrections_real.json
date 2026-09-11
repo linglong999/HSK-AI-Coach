@@ -1,0 +1,410 @@
+[
+  {
+    "corrected": "常",
+    "original": "崇",
+    "level": "一级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "回",
+    "original": "口",
+    "level": "一级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "今",
+    "original": "公",
+    "level": "一级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "千",
+    "original": "干",
+    "level": "一级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "认",
+    "original": "讠",
+    "level": "一级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "习",
+    "original": "区",
+    "level": "一级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "离",
+    "original": "罩",
+    "level": "二级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "合",
+    "original": "口",
+    "level": "三级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "河",
+    "original": "回",
+    "level": "三级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "旧",
+    "original": "日",
+    "level": "三级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "队",
+    "original": "阝",
+    "level": "四级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "警",
+    "original": "苞",
+    "level": "四级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "引",
+    "original": "弓",
+    "level": "四级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "冲",
+    "original": "虫",
+    "level": "五级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "辞",
+    "original": "鞋",
+    "level": "五级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "浇",
+    "original": "粥",
+    "level": "五级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "军",
+    "original": "喜",
+    "level": "五级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "未",
+    "original": "米",
+    "level": "五级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "益",
+    "original": "期",
+    "level": "五级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "圆",
+    "original": "员",
+    "level": "五级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "恶",
+    "original": "鼎",
+    "level": "六级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "恰",
+    "original": "合",
+    "level": "六级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "亡",
+    "original": "入",
+    "level": "六级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "叭",
+    "original": "叫",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "雹",
+    "original": "電",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "迸",
+    "original": "进",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "飙",
+    "original": "风",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "憋",
+    "original": "恐",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "睬",
+    "original": "踩",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "斥",
+    "original": "厅",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "踹",
+    "original": "端",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "丹",
+    "original": "中",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "抖",
+    "original": "本",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "哽",
+    "original": "硬",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "寡",
+    "original": "章",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "骇",
+    "original": "孩",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "函",
+    "original": "圆",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "俭",
+    "original": "金",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "津",
+    "original": "邮",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "坷",
+    "original": "珂",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "吭",
+    "original": "皖",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "唠",
+    "original": "崂",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "抡",
+    "original": "抢",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "谜",
+    "original": "熟",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "溺",
+    "original": "熙",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "撵",
+    "original": "攀",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "抨",
+    "original": "秤",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "萍",
+    "original": "拟",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "沏",
+    "original": "湖",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "漆",
+    "original": "燃",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "谴",
+    "original": "遣",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "圣",
+    "original": "州",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "尸",
+    "original": "户",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "耍",
+    "original": "要",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "淌",
+    "original": "熙",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "滔",
+    "original": "思",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "帷",
+    "original": "惟",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "紊",
+    "original": "素",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "幄",
+    "original": "喔",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "晤",
+    "original": "唔",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "膝",
+    "original": "塑",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "嚣",
+    "original": "器",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "泄",
+    "original": "热",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "削",
+    "original": "原",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "驯",
+    "original": "川",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "揠",
+    "original": "堰",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "曰",
+    "original": "日",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  },
+  {
+    "corrected": "盏",
+    "original": "湘",
+    "level": "七—九级",
+    "依据": "HSK30认读字真实OCR实测（RapidOCR逐字识别）校正"
+  }
+]

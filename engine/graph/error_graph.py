@@ -393,13 +393,16 @@ class ErrorGraph:
             r = rating if rating is not None else (3 if correct else 1)
 
             now = self._now()
+            # 旧持久化数据可能落 None → 归一化（FSRS 读取需数字）
+            node.fsrs_stability = node.fsrs_stability or 0.0
+            node.fsrs_difficulty = node.fsrs_difficulty or 5.0
             # elapsed_days：FSRS 遗忘曲线需要"距上次复习的时间"
             base_ts = node.last_review_at or node.created_at or now
             elapsed_days = self._days_since(base_ts)
 
             # 冷启动（无复习史）：首次用 init_state；否则推进 next_state
             prev = fsrs.MemoryState(stability=node.fsrs_stability,
-                                    difficulty=node.fsrs_difficulty or 5.0)
+                                    difficulty=node.fsrs_difficulty)
             if node.last_review_at is None and node.fsrs_stability <= 0:
                 st = fsrs.init_state(r)
             else:

@@ -60,14 +60,39 @@ _HELP_PATTERNS = [
     re.compile(r"translate", re.I),
 ]
 
-# 中英标点与空白（内容长度统计时剥离）
 _STRIP_RE = re.compile(
-    r"[\s，。！？；：、""''（）《》【】…—·~,\.!\?;:'\"()\[\]<>#*_`~@\$%\^&\+\-=\|\\/]+")
+    r"[\s，。！？；：、""''（）《》【】…—·~,\.!\?;:'\"()\[\]<>#*_`~@\$%\^&\+\-=\|\\/]+"
+)   # 中英标点与空白（内容长度统计时剥离）
 
 
 def _content_len(text: str) -> int:
     """去标点/空白后的内容字符数（判断犹豫空句）。"""
     return len(_STRIP_RE.sub("", text or ""))
+
+
+# ---------------- 情绪感知 · 挫败（P0.16，确定性词表） ----------------
+# 学习者对"学习本身"表达挫败 → encourage 鼓励档。与求助判定互斥：求助优先
+# （decide_intervention 先判 help，命中即 block/讲解，不会落到鼓励——学习者明确要答案
+# 时别用共情绕开问题）。词表宁漏勿错：不把场景产出句里的"难/累"误判成情绪。
+_FRUSTRATED_PATTERNS = [
+    re.compile(r"(太难|好难|很难|有点难|太难了)"),
+    re.compile(r"(学不会|学不好|学不懂|学不进|听不懂|看不太懂|理解不了)"),
+    re.compile(r"(记不住|背不下来|老是忘|总是忘|又忘了|忘光)"),
+    re.compile(r"(没信心|没希望|好烦|太烦|烦死了|好累|累死了|撑不住)"),
+    re.compile(r"(不想学|学不下去|学不进去|坚持不下去|想放弃|要放弃了)"),
+    re.compile(r"(太笨|好笨|怎么这么难|自己做不好|老是说不好|说不出来)"),
+    re.compile(r"(我做不到|就是不会|就是学不会|搞不定|搞不懂)"),
+    re.compile(r"(费劲|吃力|跟不上|跟不)"),
+]
+
+
+def detect_frustration(text: str) -> bool:
+    """学习者是否对学习表达挫败（太难 / 学不会 / 记不住 / 没信心…）。
+    供 decide_intervention 选 encourage 档；detect_help_intent 判定优先。"""
+    t = str(text or "").strip()
+    if not t:
+        return False
+    return any(p.search(t) for p in _FRUSTRATED_PATTERNS)
 
 
 def detect_help_intent(text: str) -> bool:
@@ -86,10 +111,10 @@ def decide_intervention(text: str,
                         cap: int = DEFAULT_CAP,
                         last_level: str = "none") -> Tuple[str, str]:
     """介入分档（纯函数）。返回 (level, reason)。
-
-    level: none|light|block；reason: fluent|help|empty|unclear|streak|upgrade|cap
+    level: none|light|block|encourage；reason: fluent|help|empty|unclear|streak|upgrade|cap|frustrated
     - 打断上限优先：已用满 → 静默（none/cap）
-    - ask_help / unclear → block（语义阻断：讲解含归因）
+    - ask_help / unclear → block（语义阻断：讲解含归因）；求助优先于挫败
+    - 情绪挫败（P0.16 新增）→ encourage（鼓励模式：共情→降要求→小成功；不占 cap）
     - empty / streak → light（引导提问）；light 后再触发 struggling → 升 block
     - 其余 → none（静默记录）
     """
@@ -103,6 +128,10 @@ def decide_intervention(text: str,
 
     if ask_help:
         return ("block", "help")
+    if detect_frustration(text):
+        # P0.16 情绪感知：求助已优先返回（上面），此处 ensured 非求助句；
+        # 挫败优先于 unclear/streak——情绪信号该被鼓励接住，而非被当成内容错误处理。
+        return ("encourage", "frustrated")
     if unclear:
         return ("block", "unclear")
     if empty or streak:
@@ -171,17 +200,17 @@ RECAST_DIRECTIVE_EN = (
 # ---------------- [Intervention] 注入段（双语） ----------------
 
 _LEVEL_LABEL = {
-    "zh": {"none": "自然反馈", "light": "轻介入", "block": "阻断讲解"},
-    "en": {"none": "natural flow", "light": "light touch", "block": "step in"},
+    "zh": {"none": "自然反馈", "light": "轻介入", "block": "阻断讲解", "encourage": "鼓励模式"},
+    "en": {"none": "natural flow", "light": "light touch", "block": "step in", "encourage": "encouragement"},
 }
 _REASON_LABEL = {
     "zh": {"fluent": "流利产出", "help": "主动求助", "empty": "输出犹豫",
            "unclear": "含义不清", "streak": "连续出错", "upgrade": "持续卡壳·升级",
-           "cap": "已达打断上限", "material": "学习材料"},
+           "cap": "已达打断上限", "material": "学习材料", "frustrated": "情绪挫败"},
     "en": {"fluent": "fluent output", "help": "asked for help", "empty": "hesitating",
            "unclear": "unclear meaning", "streak": "repeated errors",
            "upgrade": "still stuck after light touch", "cap": "interrupt cap reached",
-           "material": "learning material"},
+           "material": "learning material", "frustrated": "frustrated"},
 }
 
 
@@ -214,7 +243,7 @@ def build_intervention_directive(level: str, reason: str, native_lang: str = "",
     recognition：预扫识别结果（None=未预扫，如求助句/材料——不限制 identify_errors）。
     hsk_level：学习者 HSK 等级（1–6，N7②：1–2 级需在 recast 后追加极轻显性提示）。
     返回空串 = 不注入（无判定/材料句）。"""
-    if not level or level not in ("none", "light", "block"):
+    if not level or level not in ("none", "light", "block", "encourage"):
         return ""
     is_zh = not (native_lang and str(native_lang).lower() not in
                  ("zh", "中文", "汉语", "chinese", "汉语官话"))
@@ -240,6 +269,11 @@ def build_intervention_directive(level: str, reason: str, native_lang: str = "",
             "light": "学习者本轮犹豫或连续出错：请轻介入——用一两个引导性提问带学习者"
                      "自己说对，不直接下结论、不讲解规则。"
                      + ("识别已在后台完成，本轮无需再调 identify_errors。" if scanned else ""),
+            "encourage": ("学习者对学习表达挫败（太难/学不会/记不住等）：进入鼓励模式，"
+                          "本轮不做偏误讲解、不罗列错误。按三段式：①先共情一句——承认这个"
+                          "点确实难，不否定情绪、不空泛；②再降当轮要求——明确退一步到学习者"
+                          "已会的极简单任务；③给一个马上能完成的小任务，做成了再自然回原节奏。"
+                          "禁止『多练就好了/加油』这类空话。"),
             "block": ("学习者主动求助：请直接回应其问题并讲清楚"
                       "（可按需用 lookup_knowledge_point / retrieve_corpus / explain_error）。"
                       if reason == "help" else
@@ -269,6 +303,17 @@ def build_intervention_directive(level: str, reason: str, native_lang: str = "",
                      "say it right themselves; do not state conclusions or rules. "
                      + ("Recognition already ran in the background — do not call "
                        "identify_errors again this turn." if scanned else ""),
+            "encourage": ("The learner is expressing frustration with learning "
+                          "(too hard / can't get it / can't remember…): switch to "
+                          "encouragement mode — do NOT explain errors or list them "
+                          "this turn. Follow three steps: ① one empathetic line — "
+                          "acknowledge the point is genuinely hard, without "
+                          "discounting the feeling or being vague; ② lower the bar "
+                          "for this turn — step back to something the learner "
+                          "already handles with ease; ③ give one small task they "
+                          "can complete right now, then ease back into the pace. "
+                          "Avoid hollow lines like 'just practice more …' or 'you "
+                          "can do it!'"),
             "block": ("The learner asked for help: answer their question directly "
                       "and clearly (use lookup_knowledge_point / retrieve_corpus / "
                       "explain_error as needed)."
@@ -292,6 +337,6 @@ def build_intervention_directive(level: str, reason: str, native_lang: str = "",
 
 __all__ = [
     "MAX_SCAN_CHARS", "DEFAULT_CAP", "UNCLEAR_CONF",
-    "detect_help_intent", "decide_intervention", "InterventionTracker",
-    "build_intervention_directive",
+    "detect_help_intent", "detect_frustration", "decide_intervention",
+    "InterventionTracker", "build_intervention_directive",
 ]
