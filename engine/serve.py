@@ -66,6 +66,42 @@ def _provider_llm(provider):
     return lambda messages: client.chat(messages, temperature=0.3, config=cfg)
 
 
+def _alignment_summary() -> dict:
+    """P0.19 fe5：教材对齐 + 考纲概览（textbook_map × syllabus 真实数据，只读）。
+    暴露给前端"效果度量"面板顶部信息块：教材元信息、单元数、已映射/未映射考纲点。
+    任何数据缺失 → 对应字段为空，不阻断。"""
+    from engine.textbook_map import load_map, active_book, units_of
+    from engine.syllabus import SyllabusDatabase as Syllabus
+
+    d = load_map()
+    book_key = active_book(d)
+    units = units_of(book_key, d)
+    book_meta = (d.get("books") or {}).get(book_key, {})
+    n_units = len(units)
+    # 已映射 = 教材单元里出现的 kp 考纲 id 去重数；需先统计"被哪些单元覆盖"
+    covered = set()
+    for u in units:
+        for rid in (u.get("kp_ids") or []):
+            covered.add(str(rid))
+    try:
+        syl = Syllabus.load()
+        n_points = len(syl.all())
+    except Exception:  # noqa: BLE001
+        n_points = d.get("count")
+    return {
+        "active_book": book_key or "",
+        "book_title": book_meta.get("title", ""),
+        "version": d.get("version", ""),
+        "status": d.get("status", ""),
+        "note": d.get("note", ""),
+        "units": n_units,
+        "syllabus_points": n_points,
+        "mapped_points": len(covered),
+        "unmapped_points": (n_points - len(covered)) if isinstance(n_points, int) else None,
+        "cover_ratio": round(len(covered) / n_points, 3) if n_points else None,
+    }
+
+
 def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=None,
                  memory_root: str = "data",
                  gate=None):
@@ -867,6 +903,13 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 except Exception as e:  # noqa: BLE001
                     self._send_json({"learners": {}, "generated_at": 0,
                                      "error": f"metrics failed: {e}"}, 500)
+                return
+            if path == "/api/alignment":
+                # P0.19 fe5：教材对齐 + 考纲审核概览（textbook_map × syllabus 真实数据）
+                try:
+                    self._send_json(_alignment_summary())
+                except Exception as e:  # noqa: BLE001
+                    self._send_json({"error": f"alignment failed: {e}"}, 500)
                 return
             # 静态：根 → index.html
             rel = parsed.path or "/"

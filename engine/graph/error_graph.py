@@ -26,6 +26,32 @@ MASTERY_NEW_ERROR = 0.5    # 新错误 ingest_error 的 mastery 衰减（3.x 定
 CONFIRM_REVISE_C2 = 0.5    # 复合确认门槛 c2（3.x 定案 T5：保守收录）
 ERROR_COUNT_CAP = 5        # 3.4 修复：priority 内 error_count 封顶，削弱"错误次数×(1-mastery)"双重计数致高频霸榜
 
+# P0.19 根因A修复：kp 名称查表（knowledge_point_id → 人读名称）。
+# 识别器/复述验证只回传 id，不传 knowledge_point_name，导致图谱节点 knowledge_point 退化
+# 为 kp_id，前端认知地图/复习安排/集中复习满屏裸显示 kp-liangci 之类。这里统一查表兜底：
+# 优先级 = bias 显式名 > 查表名 > kp_id（避免 id 裸显）。懒加载，加载失败静默降级 kp_id。
+_KNOWLEDGE_POINTS_NAME = None
+
+
+def _load_kp_names() -> Dict[str, str]:
+    """加载 knowledge_points_v1_4.json 的 {id: knowledge_point} 名称映射。失败返回 {}。"""
+    global _KNOWLEDGE_POINTS_NAME
+    if _KNOWLEDGE_POINTS_NAME is not None:
+        return _KNOWLEDGE_POINTS_NAME
+    try:
+        path = os.path.join(os.path.dirname(__file__), "..", "..",
+                            "datasets", "knowledge_points_v1_4.json")
+        with open(os.path.normpath(path), encoding="utf-8") as f:
+            raw = json.load(f)
+        names = {}
+        for kpid, kp in (raw.get("knowledge_points") or {}).items():
+            if kp.get("knowledge_point"):
+                names[kpid] = kp["knowledge_point"]
+        _KNOWLEDGE_POINTS_NAME = names
+    except Exception:  # noqa: BLE001 查表不可用不阻断核心流程
+        _KNOWLEDGE_POINTS_NAME = {}
+    return _KNOWLEDGE_POINTS_NAME
+
 # P0.4：priority 分类型加权 + 化石化
 NATURE_WEIGHT = {
     "错序": 1.3,   # 纠错难度高、迁移性强 → 提权
@@ -166,6 +192,13 @@ class ErrorGraph:
         except ValueError:
             return 0.0
 
+    @classmethod
+    def _kp_name(cls, kp_id: str, fallback: str = "") -> str:
+        """kp_id → 人读名称：查表兜底，避免 id 裸显。fallback 优先（caller 传的显式名）。"""
+        if fallback:
+            return fallback
+        return _load_kp_names().get(kp_id, kp_id)
+
     def _aging(self, node: Node) -> float:
         """2.4 §4.3：递增 aging。last_learnt_at 非空以它算；null（首建）以 created_at 起算。
         采用线性 1 + λ*days（3.x 标定选形态）。"""
@@ -232,7 +265,7 @@ class ErrorGraph:
 
             # ① 确认且命中 → upsert 节点
             if not uncertain and kp_hit:
-                kp_name = bias.get("knowledge_point_name") or kp_id
+                kp_name = self._kp_name(kp_id, bias.get("knowledge_point_name") or "")
                 level = bias.get("level") or "未知"
                 node = self._nodes.setdefault(
                     kp_id, Node(id=kp_id, knowledge_point=kp_name, level=level,
@@ -290,7 +323,8 @@ class ErrorGraph:
             node = self._nodes.get(kp_id)
             if node is None:
                 node = Node(id=kp_id,
-                            knowledge_point=bias_ref.get("knowledge_point_name") or kp_id,
+                            knowledge_point=self._kp_name(
+                                kp_id, bias_ref.get("knowledge_point_name") or ""),
                             level=bias_ref.get("level") or "未知", created_at=self._now())
                 self._nodes[kp_id] = node
                 self._apply_dimensions(node)
@@ -322,7 +356,7 @@ class ErrorGraph:
                 return {"status": "idempotent_skip"}
             node = self._nodes.setdefault(
                 knowledge_point_id,
-                Node(id=knowledge_point_id, knowledge_point=knowledge_point_id,
+                Node(id=knowledge_point_id, knowledge_point=self._kp_name(knowledge_point_id),
                      level="未知", created_at=self._now()))
             node.positive_count += 1
             node.positive_sources[source] = node.positive_sources.get(source, 0) + 1
@@ -353,7 +387,7 @@ class ErrorGraph:
             etype = sig.get("type", "语法")
             if kp_id:
                 node = self._nodes.setdefault(
-                    kp_id, Node(id=kp_id, knowledge_point=kp_id,
+                    kp_id, Node(id=kp_id, knowledge_point=self._kp_name(kp_id),
                                 level=bias_level_of(item), created_at=self._now()))
                 merged_count = len(item.seen_event_keys) or 1   # 去重事件数（P2-D）
                 node.error_count += merged_count

@@ -37,16 +37,24 @@ h1{font-size:22px;margin:0 0 4px}
 .tbl th{background:#faf7f1;font-weight:600}
 .err{color:#c0392b;background:#fdf0ef;border:1px solid #f2ceca;border-radius:8px;padding:10px 14px;font-size:13px}
 .pos{color:#2e7d32}.neg{color:#c0392b}
+.sec-t{font-size:11px;color:#a29b8c;letter-spacing:.4px;font-weight:600;margin:26px 0 12px}
+.align{background:#fff;border:1px solid #eee6da;border-radius:14px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.align .row{display:flex;flex-wrap:wrap;gap:16px 28px;font-size:13px;color:#6b6152}
+.align .it{display:flex;flex-direction:column;gap:2px}
+.align .it .k{font-size:11px;color:#a29b8c}
+.align .it .v{font-size:17px;font-weight:700;color:#3f3a30}
+.align .note{font-size:12px;color:#9a9384;margin-top:12px;line-height:1.6}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>HSK-AI-Coach · 效果度量面板</h1>
-  <div class="sub">P0.18 效果度量与数据闭环 · 4 指标实时计算（数据源：ledger / graph / memory / feedback，纯本地，不下发）。</div>
+  <h1>学习效果度量</h1>
+  <div class="sub">四项指标实时计算，反映练习到掌握的转化质量 · 数据源：对话记录 / 偏误图谱 / 复习反馈 / 满意度评分（纯本地，不上传）。</div>
   <div class="toolbar">
     <button class="btn" id="refresh">刷新</button>
     <span class="meta" id="meta">加载中…</span>
   </div>
+  <div id="align" class="align" style="display:none"></div>
   <div id="root"></div>
 </div>
 <script>
@@ -82,6 +90,30 @@ function learnerCard(name,m){
   return '<div class="lcard"><div class="lhead"><span class="lname">'+esc(name)+'</span>'+
     '<span class="lrank"></span></div><div class="metrics">'+cells+'</div></div>';
 }
+async function loadAlign(){
+  var a=document.getElementById('align');
+  try{
+    var r=await fetch('/api/alignment');
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    var d=await r.json();
+    if(!d||d.active_book==null){a.style.display='none';return;}
+    var ratio=d.cover_ratio==null?'—':(d.cover_ratio*100).toFixed(1)+'%';
+    a.style.display='';
+    a.innerHTML='<div class="sec-t">📚 课程 · 教材与考纲</div>'+
+      '<div class="row">'+
+      item('教材',esc(d.active_book||'—'))+
+      item('单元数',esc(d.units==null?'—':d.units))+
+      item('考纲点',esc(d.syllabus_points==null?'—':d.syllabus_points))+
+      item('已映射',esc(d.mapped_points==null?'—':d.mapped_points))+
+      item('未映射',esc(d.unmapped_points==null?'—':d.unmapped_points))+
+      item('覆盖率',ratio)+
+      '</div>'+
+      (d.note?'<div class="note">'+esc(d.note)+'</div>':'');
+  }catch(e){
+    a.style.display='none';
+  }
+}
+function item(k,v){return '<div class="it"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>';}
 async function load(){
   var root=document.getElementById('root');
   var meta=document.getElementById('meta');
@@ -92,8 +124,8 @@ async function load(){
     var d=await r.json();
     meta.textContent='生成时间：'+new Date(d.generated_at*1000).toLocaleString('zh-CN');
     var ls=Object.keys(d.learners||{});
-    if(!ls.length){root.innerHTML='<div class="empty">暂无有效学习者数据（需要存在 ledger_*.json 才会纳入统计）。先用对话/复习产生一些数据。</div>';return;}
-    root.innerHTML=ls.map(function(n){return learnerCard(n,d.learners[n]);}).join('');
+    if(!ls.length){root.innerHTML='<div class="sec-t">📈 学习效果</div><div class="empty">暂无有效学习者数据（需要存在 ledger_*.json 才会纳入统计）。先用对话/复习产生一些数据。</div>';return;}
+    root.innerHTML='<div class="sec-t">📈 学习效果</div>'+ls.map(function(n){return learnerCard(n,d.learners[n]);}).join('');
   }catch(e){
     meta.textContent='';
     root.innerHTML='<div class="err">无法连接指标接口：'+esc(e.message)+'。<br>请确认服务已启动（python -m engine.serve）并通过 HTTP 访问（如 http://localhost:8000/metrics.html），而非直接双击文件。</div>';
@@ -101,6 +133,7 @@ async function load(){
 }
 document.getElementById('refresh').addEventListener('click',load);
 load();
+loadAlign();
 </script>
 </body>
 </html>

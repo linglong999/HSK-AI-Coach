@@ -17,8 +17,34 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 EXAMPLES_PATH = os.path.join(_PROJECT_ROOT, "datasets", "grammar_examples.json")
 SYLLABUS_PATH = os.path.join(_PROJECT_ROOT, "datasets", "syllabus_hsk30_2025.json")
+KP_INFO_PATH = os.path.join(_PROJECT_ROOT, "datasets", "knowledge_points_v1_4.json")
 
 BLANK = "＿＿"
+
+# P0.19 fe2：kp_id → 教学信息（人读名/定义 note/关键词），供 recall 卡展示具体内容。
+# 懒加载查表，失败返回空 dict（不阻断造题）。note 字段来自 knowledge_points_v1_4。
+_KP_INFO = None
+
+
+def _load_kp_info() -> dict:
+    """{kp_id: {knowledge_point, note, keywords}}——recall 题补充教学信息用。"""
+    global _KP_INFO
+    if _KP_INFO is not None:
+        return _KP_INFO
+    info = {}
+    try:
+        raw = _load_json(KP_INFO_PATH)
+        for kpid, kp in (raw.get("knowledge_points") or {}).items():
+            note = (kp.get("note") or "").strip()
+            info[kpid] = {
+                "knowledge_point": (kp.get("knowledge_point") or "").strip(),
+                "note": note,
+                "keywords": list(kp.get("question_tags") or [])[:3],
+            }
+    except Exception:  # noqa: BLE001 教学信息不可用不阻断
+        info = {}
+    _KP_INFO = info
+    return _KP_INFO
 
 
 def _load_json(path):
@@ -141,10 +167,14 @@ def build_review_items(queue):
             items.append(q)
             continue
         node = entry.get("node") or {}
+        kp_info = _load_kp_info().get(kp_id, {})
         items.append({
             "type": "recall",
             "kp_id": kp_id,
-            "knowledge_point": node.get("knowledge_point") or kp_id,
+            "knowledge_point": kp_info.get("knowledge_point")
+                               or node.get("knowledge_point") or kp_id,
+            "note": kp_info.get("note") or "",
+            "keywords": kp_info.get("keywords") or [],
             "level": node.get("level") or "",
         })
     return items

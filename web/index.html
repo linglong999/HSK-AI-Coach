@@ -380,6 +380,12 @@
            box-shadow:0 2px 14px rgb(var(--shadow)/.06)}
   .rv-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
   .rv-tag{font-size:11px;padding:2px 9px;border-radius:20px;background:rgb(var(--item));color:rgb(var(--tx2))}
+  /* P0.19 fe2：recall 卡的教学信息（kp 定义 + 关键词） */
+  .rv-note{font-size:14px;line-height:1.7;color:rgb(var(--tx2));background:rgb(var(--bg));
+           border:1px dashed rgb(var(--line));border-radius:8px;padding:10px 14px;margin-bottom:12px}
+  .rv-kws{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .rv-kw{font-size:11.5px;padding:2px 9px;border-radius:16px;background:rgb(var(--kp-grammar)/.12);
+         color:rgb(var(--tx2))}
   .rv-sent{font-size:21px;line-height:1.75;color:rgb(var(--tx))}
   .rv-sent b{color:rgb(var(--brand));font-weight:600;letter-spacing:1px}
   .rv-ans{display:flex;gap:10px;margin-top:18px;align-items:center}
@@ -656,6 +662,7 @@
       <div class="sbtn" id="actMap"><span class="ic">◈</span><span data-i18n="cogMap">认知地图</span><span class="bdg" id="mapBadge"></span></div>
       <div class="sbtn" id="actReview"><span class="ic">▶</span><span data-i18n="startReview">开始复习</span><span class="bdg" id="rvCount">—</span></div>
       <div class="sbtn" id="actReport"><span class="ic">◎</span><span data-i18n="aiReport">AI 学习报告</span></div>
+      <a class="sbtn" id="actMetrics" href="metrics.html" target="_blank" rel="noopener" title="效果度量面板（P0.18 续学率/通关率/满意度等）" data-i18n-title="metricsTitle"><span class="ic">📊</span><span data-i18n="metricsEntry">效果度量</span></a>
       <div class="sbtn" id="actDoc"><span class="ic">▤</span><span data-i18n="readingMat">阅读材料</span><span class="bdg">txt/md</span></div>
     </div>
     <div class="side-bot">
@@ -904,7 +911,7 @@ en:{
   docTitle:'HSK-AI-Coach · Free dialog · Cognitive map',
   aiTutor:'AI Tutor', aiTutorSub:'Local graph-aware · error-driven', aiTutorTip:'Local graph-aware tutor · click for how-to',
   sessions:'Sessions', learnPath:'Learn', newSession:'＋ New session',
-  cogMap:'Cognitive map', startReview:'Start review', aiReport:'AI study report', readingMat:'Reading material',
+  cogMap:'Cognitive map', startReview:'Start review', aiReport:'AI study report', metricsEntry:'Metrics', metricsTitle:'Effect metrics — continuation/clearance/satisfaction', readingMat:'Reading... material',
   fbAsk:'Rate this reply? (optional)', fbSkip:'Skip', fbDone:'Saved ★{n}', fbLow:'Noted — tell the tutor what tripped you up.', fbFirm:'Was this helpful?',
   settings:'Settings', howto:'How to use', foldSide:'Collapse sidebar', expandSide:'Expand sidebar',
   connecting:'Connecting…', disconnected:'Service not connected',
@@ -1106,7 +1113,7 @@ zh:{
   docTitle:'HSK-AI-Coach · 自由对话 · 认知地图',
   aiTutor:'AI 助教', aiTutorSub:'本地图谱感知 · 偏误驱动', aiTutorTip:'本地图谱感知助教 · 点击查看怎么用',
   sessions:'会话', learnPath:'学习动线', newSession:'＋ 新建会话',
-  cogMap:'认知地图', startReview:'开始复习', aiReport:'AI 学习报告', readingMat:'阅读材料',
+  cogMap:'认知地图', startReview:'开始复习', aiReport:'AI 学习报告', metricsEntry:'效果度量', metricsTitle:'效果度量面板（续学率/通关率/答疑满意度等）', readingMat:'阅读材料',
   settings:'设置', howto:'怎么用', foldSide:'折叠侧栏', expandSide:'展开侧栏',
   connecting:'连接中…', disconnected:'服务未连接',
   startFirst:'开始你的第一句',
@@ -1706,6 +1713,16 @@ function neighborsOf(kpId){
 function inQueue(kpId){return (graph&&graph.queue||[]).some(q=>q.kp_id===kpId);}
 function nodeName(kpId){const n=graph&&graph.nodes&&graph.nodes[kpId];return (n&&n.knowledge_point)||kpId;}
 
+// 地图节点标签用短名：优先取括号外的核心词（"量词（个/本/张/件…）"→"量词"，
+// "介词（在/从/给/向…）"→"介词"），再截到 max 字，完整名靠 title tooltip 呈现。
+function shortKpName(raw,max){
+  const s=String(raw||'');
+  const cut=s.split(/（|\(/)[0].trim();
+  const base=cut||s;
+  const chars=[...base];
+  return chars.length>max?chars.slice(0,max-1).join('')+'…':base;
+}
+
 // 三个分支动作（↗→↓），cls=容器类名（card-tools 卡片右上 / why-tools 错误行右上）
 function branchTools(kpId,cls){
   cls=cls||'card-tools';
@@ -1876,8 +1893,8 @@ function renderMap(){
     grp.setAttribute('class','node');
     if(bornIds.has(id))grp.classList.add('born');
     if(nextRec&&nextRec.id===id)grp.classList.add('rec');
-    // 视觉编码三分：填充=知识类别 · 半径=错误频次 · 环=掌握度 · 虚线描边=待复习
-    const r=12+Math.min(Math.sqrt(n.error_count||0)*7,16);
+    // 视觉编码三分：填充=知识类别 · 半径=错误频次(封顶) · 环=掌握度 · 虚线描边=待复习
+    const r=8+Math.min(Math.sqrt(n.error_count||0)*3,6);   // 8..14，节点紧凑，避免过大重叠
     const rr=r+5, C=2*Math.PI*rr;
     const bg=document.createElementNS(SVGNS,'circle');
     bg.setAttribute('cx',p.x);bg.setAttribute('cy',p.y);bg.setAttribute('r',rr);
@@ -1902,7 +1919,7 @@ function renderMap(){
     const label=document.createElementNS(SVGNS,'text');
     label.setAttribute('x',p.x);label.setAttribute('y',p.y+r+13);
     label.setAttribute('text-anchor','middle');label.setAttribute('class','node-label');
-    label.textContent=(n.knowledge_point||id).slice(0,7);
+    label.textContent=shortKpName(n.knowledge_point||id,14);
     grp.appendChild(label);
     grp.dataset.id=id;
     grp.addEventListener('mouseenter',()=>hoverNode(id,true));
@@ -2363,8 +2380,14 @@ function renderRvCard(){
   const tagLevel=q.level||(qst&&(qst.node&&qst.node.level))||'';
   let card;
   if(q.type==='recall'){
+    // P0.19 fe2：recall 卡不再只丢一句"你还记得吗"——展示 kp 定义 note + 关键词，
+    // 让记忆自检有"可回忆的具体内容"，而不是空口提问。
+    const note=(q.note||'').trim();
+    const kws=(q.keywords||[]).filter(Boolean);
     card=el(`<div class="rv-card">
       <div class="rv-meta">${tagLevel?`<span class="rv-tag">${esc(tagLevel)}</span>`:''}<span class="rv-tag">${esc(kpName)}</span></div>
+      ${note?`<div class="rv-note">${esc(note)}</div>`:''}
+      ${kws.length?`<div class="rv-kws">${kws.map(k=>`<span class="rv-kw">${esc(k)}</span>`).join('')}</div>`:''}
       <div class="rv-sent">${esc(t('rvRecallQ'))}</div>
       <div class="rv-ans rv-btns"><button class="rv-btn ok" id="rvOK" type="button">${esc(t('rvRecallYes'))}</button><button class="rv-btn bad" id="rvNo" type="button">${esc(t('rvRecallNo'))}</button></div>
       <div class="rv-fb" id="rvFb"></div>
