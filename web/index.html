@@ -1390,6 +1390,11 @@ function addAiText(text){
 // 每轮对话回复尾部渲染一行 1–5 星 + 跳过；评分 POST /api/feedback → feedback_<learner>.json。
 // 动态内容一律 textContent。评分后可转收藏：低分(=1)触发仅本地提示，不阻断。
 function renderFeedbackCard(){
+  // P0.19 fix：评分卡改低频——同一会话（conversation_id）只弹出一次，避免每轮都打扰。
+  // 用 sessionStorage 记忆会话维度的"已问过"，刷新页面不重复，切会话才会再问。
+  const key='askedFeedback:'+state.conversation;
+  if(sessionStorage.getItem(key)) return;
+  sessionStorage.setItem(key,'1');
   const wrap=el('<div class="fb-card"></div>');
   const ask=document.createElement('span');
   ask.className='fb-ask'; ask.textContent=t('fbAsk')+'  '+t('fbFirm');
