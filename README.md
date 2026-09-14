@@ -144,10 +144,10 @@ HSK-AI-Coach/
 
 ## 📄 设计文档与过程记录
 每一步设计过程和取舍都留了档，可作评审证据：
-- 0.22 习得伙伴转向设计稿（L1 迁移 / 场景对话 / 介入时机+个性化）→ [`datasets/docs/0.22-习得伙伴转向-设计稿.md`](datasets/docs/0.22-习得伙伴转向-设计稿.md)
-- 对话契约总纲 / 纠错契约 v1（前后端 JSON 接缝）→ `datasets/docs/0.17-统一能力契约与架构总纲.md`、`JSON-接缝契约-v1.md`
-- M1–M9 接入清单 → `datasets/docs/0.18-M1-M9-接入清单.md`
-- 前端壳 v2 / 模型密钥 / 教学语言分层 → `datasets/docs/0.19-前端壳v2改造.md`、`0.20-模型密钥与模型选择.md`
+- 0.22 习得伙伴转向设计稿（L1 迁移 / 场景对话 / 介入时机+个性化）→ [`datasets/docs/archive/0.22-习得伙伴转向-设计稿.md`](datasets/docs/archive/0.22-习得伙伴转向-设计稿.md)
+- 对话契约总纲 / 纠错契约 v1（前后端 JSON 接缝）→ `datasets/docs/0.17-统一能力契约与架构总纲.md`、`datasets/docs/archive/JSON-接缝契约-v1.md`
+- M1–M9 接入清单 → `datasets/docs/archive/0.18-M1-M9-接入清单.md`
+- 前端壳 v2 / 模型密钥 / 教学语言分层 → `datasets/docs/archive/0.19-前端壳v2改造.md`、`datasets/docs/archive/0.20-模型密钥与模型选择.md`
 - 逐轮"假设→改动→指标→结论"评测记录 → [`datasets/eval/多轮实验记录_3.6.md`](datasets/eval/多轮实验记录_3.6.md)
 
 ---

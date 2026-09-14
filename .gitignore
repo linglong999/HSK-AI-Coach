@@ -23,6 +23,9 @@ datasets/_yaclc_valid.jsonl
 # 结构化源 7 个 JSON + 加工 syllabus JSON 正常入库（fetch_syllabus.py 可复现）
 datasets/hsk30_raw/*.pdf
 
+# 运行期评测快照（带日期，本地保留，不入库；tests/test_ocr_end_to_end 会重建）
+reports/P0.7-OCR性能成本记录.md
+
 # 系统
 .DS_Store
 Thumbs.db
