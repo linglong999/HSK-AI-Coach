@@ -82,11 +82,18 @@ def _build_synthetic(root):
 
 
 class MetricsNoFabricationTest(unittest.TestCase):
-    """现有 demo 数据：无通过/无评分 → 如实报 None，绝不编数。"""
+    """无数据 → 如实报 None，绝不编数。
+    用隔离的空临时目录做确定性断言（不依赖会随使用而变化的 data/ demo 文件——
+    demo 若被真实评分则 satisfaction 应如实返回具体分，而非 None）。"""
 
     @classmethod
     def setUpClass(cls):
-        cls.root = os.path.abspath("data")
+        cls.root = tempfile.mkdtemp(prefix="p018_no_")
+
+    @classmethod
+    def tearDownClass(cls):
+        import shutil
+        shutil.rmtree(cls.root, ignore_errors=True)
 
     def test_demo_pass_delta_is_none(self):
         m = pass_rate_delta("demo", self.root)

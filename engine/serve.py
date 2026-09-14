@@ -45,6 +45,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
+from engine import http_util
 from engine.router import Router
 
 # 前端壳静态目录：serve.py 位于 engine/，前端壳在项目根前端/ 或 web/
@@ -128,6 +129,27 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
         _writebacks = {}  # learner_id -> Writeback（M8 事件账本/两段式）
         _interventions = {}  # conversation_id -> InterventionTracker（0.22 方向3）
         _identify_skill = None  # 预扫识别技能（共享 router.recognizer+graph 实例）
+
+        # POST 路由表：path → (handler 方法名, 错误文案名)。统一异常包装用，
+        # 每端点 500 文案原样保留（"<错误文案名> failed: {e}"）。
+        _POST_API = {
+            "/api/process": ("_do_api_process", "process"),
+            "/api/quiz/answer": ("_do_api_quiz_answer", "quiz answer"),
+            "/api/onboard/assess": ("_do_api_onboard_assess", "onboard assess"),
+            "/api/ocr": ("_do_api_ocr", "ocr"),
+            "/api/feedback": ("_do_api_feedback", "feedback"),
+            "/api/verify": ("_do_api_verify", "verify"),
+            "/api/generate": ("_do_api_generate", "generate"),
+            "/api/dialog": ("_do_api_dialog", "dialog"),
+            "/api/profile": ("_do_api_profile_save", "profile save"),
+            "/api/session/update": ("_do_api_session_update", "session update"),
+            "/api/session/delete": ("_do_api_session_delete", "session delete"),
+            "/api/providers": ("_do_api_providers_add", "providers add"),
+            "/api/providers/test": ("_do_api_providers_test", "providers test"),
+            "/api/providers/default": ("_do_api_providers_default", "providers default"),
+        }
+        # 这些 POST 端点接收 JSON body（其余 404）。
+        _JSON_POST_PATHS = frozenset(_POST_API)
 
         def log_message(self, fmt, *args):
             sys.stderr.write("  [serve] " + fmt % args + "\n")
@@ -387,39 +409,12 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
             return {"cards": cards, "why": why}
 
         def _send_json(self, obj, status=200):
-            body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
-            self.send_response(status)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Access-Control-Allow-Origin", "*")
-            vid_cookie = getattr(self, "_vid_cookie", None)   # P0.10 游客 vid 下发（dialog 闸门暂存）
-            if vid_cookie:
-                self.send_header("Set-Cookie", vid_cookie)
-            self.end_headers()
-            self.wfile.write(body)
+            # 经 http_util 写 JSON（CORS/游客 vid cookie 收敛在该处）
+            http_util.send_json(self, obj, status=status)
 
         def _send_static(self, rel: str):
-            # 防路径穿越：只允许 web/ 下的静态资源
-            base = os.path.realpath(self._index_dir)
-            path = os.path.realpath(os.path.join(base, rel.lstrip("/")))
-            if not path.startswith(base) or not os.path.isfile(path):
-                self.send_error(404, "not found")
-                return
-            ctype = "text/html; charset=utf-8"
-            if path.endswith(".js"):
-                ctype = "application/javascript; charset=utf-8"
-            elif path.endswith(".css"):
-                ctype = "text/css; charset=utf-8"
-            elif path.endswith(".svg"):
-                ctype = "image/svg+xml"
-            with open(path, "rb") as f:
-                body = f.read()
-            self.send_response(200)
-            self.send_header("Content-Type", ctype)
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")  # 本地开发改前端即生效
-            self.end_headers()
-            self.wfile.write(body)
+            # 经 http_util 静态托管（含路径穿越防护 + no-store）
+            http_util.send_static(self, self._index_dir, rel)
 
         def _do_api_process(self, payload: dict):
             text = str((payload.get("text") or "")).strip()
@@ -742,113 +737,28 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
         def do_POST(self):
             parsed = urlparse(self.path)
             path = parsed.path.rstrip("/")
-            if path in ("/api/process", "/api/verify", "/api/generate", "/api/dialog",
-                        "/api/providers", "/api/providers/test",
-                        "/api/providers/default", "/api/profile",
-                        "/api/session/update", "/api/session/delete",
-                        "/api/quiz/answer", "/api/onboard/assess", "/api/ocr",
-                        "/api/feedback"):
-                try:
-                    length = int(self.headers.get("Content-Length", 0))
-                    raw = self.rfile.read(length) if length else b"{}"
-                    payload = json.loads(raw or b"{}")
-                except Exception:
-                    self._send_json({"error": "invalid json body"}, 400)
-                    return
-            if path == "/api/process":
-                try:
-                    self._do_api_process(payload)
-                except Exception as e:
-                    self._send_json({"error": f"process failed: {e}"}, 500)
+            if path not in self.__class__._JSON_POST_PATHS:
+                self.send_error(404)
                 return
-            if path == "/api/quiz/answer":
-                # P0.13 复习页答完回写：逐 kp review_feedback（多知识点回写）
-                try:
-                    self._do_api_quiz_answer(payload)
-                except Exception as e:
-                    self._send_json({"error": f"quiz answer failed: {e}"}, 500)
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                raw = self.rfile.read(length) if length else b"{}"
+                payload = json.loads(raw or b"{}")
+            except Exception:
+                self._send_json({"error": "invalid json body"}, 400)
                 return
-            if path == "/api/onboard/assess":
-                # P0.12 冷启动摸底：对引导里填的句子做识别预扫 → 定级建议（可改）
-                try:
-                    self._do_api_onboard_assess(payload)
-                except Exception as e:
-                    self._send_json({"error": f"onboard assess failed: {e}"}, 500)
-                return
-            if path == "/api/ocr":
-                # P0.7 OCR：图片/PDF → 干净文本（仅识字，识别交给 recognizer）
-                try:
-                    self._do_api_ocr(payload)
-                except Exception as e:
-                    self._send_json({"error": f"ocr failed: {e}"}, 500)
-                return
-            if path == "/api/feedback":
-                # P0.18 评分入口：对话结束 1–5 星可选提交 → 写 feedback_<learner>.json
-                try:
-                    self._do_api_feedback(payload)
-                except Exception as e:
-                    self._send_json({"error": f"feedback failed: {e}"}, 500)
-                return
-            if path == "/api/verify":
-                try:
-                    self._do_api_verify(payload)
-                except Exception as e:
-                    # 验证引擎无规则回退（2.3）：如实报错，不伪造 verdict
-                    self._send_json({"error": f"verify failed: {e}"}, 500)
-                return
-            if path == "/api/generate":
-                try:
-                    self._do_api_generate(payload)
-                except Exception as e:
+            handler_name, err_name = self.__class__._POST_API[path]
+            try:
+                getattr(self, handler_name)(payload)
+            except Exception as e:
+                if path == "/api/generate":
                     # 生成引擎内部已结构化为 degraded；此处兜底防 HTTP 500
                     self._send_json({
                         "ok": False, "status": "degraded",
                         "message": f"generate failed: {e}",
                         "unit": None, "diagnostics": [], "attempts": 0}, 500)
-                return
-            if path == "/api/dialog":
-                try:
-                    self._do_api_dialog(payload)
-                except Exception as e:
-                    self._send_json({"error": f"dialog failed: {e}"}, 500)
-                return
-            if path == "/api/profile":
-                try:
-                    self._do_api_profile_save(payload)
-                except Exception as e:
-                    self._send_json({"error": f"profile save failed: {e}"}, 500)
-                return
-            if path == "/api/session/update":
-                try:
-                    self._do_api_session_update(payload)
-                except Exception as e:
-                    self._send_json({"error": f"session update failed: {e}"}, 500)
-                return
-            if path == "/api/session/delete":
-                try:
-                    self._do_api_session_delete(payload)
-                except Exception as e:
-                    self._send_json({"error": f"session delete failed: {e}"}, 500)
-                return
-            if path == "/api/providers":
-                try:
-                    self._do_api_providers_add(payload)
-                except Exception as e:
-                    self._send_json({"error": f"providers add failed: {e}"}, 500)
-                return
-            if path == "/api/providers/test":
-                try:
-                    self._do_api_providers_test(payload)
-                except Exception as e:
-                    self._send_json({"error": f"providers test failed: {e}"}, 500)
-                return
-            if path == "/api/providers/default":
-                try:
-                    self._do_api_providers_default(payload)
-                except Exception as e:
-                    self._send_json({"error": f"providers default failed: {e}"}, 500)
-                return
-            self.send_error(404)
+                    return
+                self._send_json({"error": f"{err_name} failed: {e}"}, 500)
 
         def do_DELETE(self):
             parsed = urlparse(self.path)

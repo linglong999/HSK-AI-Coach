@@ -15,6 +15,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _PROJECT_ROOT)
 
 from engine.recognizer import Recognizer
+from engine.eval_metrics import subset_of, report as eval_report
 
 
 # Golden 偏误样本：span 命中（LLM fragment 与 golden span 或原句子串重叠）
@@ -106,6 +107,7 @@ def run():
             "id": iid, "level": level, "golden_span": golden_span,
             "golden_type": golden_type, "status": status, "det": det,
             "uncertain": len(result["uncertain"]),
+            "subset": subset_of({"id": iid, "golden_span": golden_span}),
         })
         print(f"[{status}] {iid} L{level} | golden={golden_span or '无(干净)'}/{golden_type or '-'} | 检测={det}")
 
@@ -141,6 +143,7 @@ def run():
                 "adversarial_overcorrection_rate": adv_over_rate,
                 "uncertain_count": uncertain_cnt,
             },
+            "by_subset": eval_report(rows)["subsets"],
             "rows": rows,
         }, f, ensure_ascii=False, indent=2)
     print(f"\n逐条结果已存: {out_path}")

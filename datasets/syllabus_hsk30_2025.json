@@ -1,6 +1,7 @@
 {
   "version": "krmanik/New HSK (2025) @ 2025",
-  "source": "https://github.com/krmanik/HSK-3.0/tree/main/New HSK (2025)/HSK Grammar/json",
+  "provenance": "语法点本源为官方《国际中文教育中文水平等级标准》(GF0025-2021) 附录A「语法等级大纲」（规范性语法分级大纲，共 572 个语法点，分初/中/高三等、1-9 级；原文含音节/汉字/词汇/语法四维基准）。本项目即时来源为开源仓库 krmanik/HSK-3.0 对该大纲的开源再转录（含 HSK1-6 单级 + HSK7-9 合编文件，共 593 行，行数为再转录产物，非官方原计数）。本文件的 level / level_gf / band 为项目侧按三等九级的归一等换算（见 engine/levels.py），非官方字段。",
+  "source": "https://github.com/krmanik/HSK-3.0/tree/main/New HSK (2025)/HSK Grammar/json （开源再转录，本源=GF0025-2021 语法等级大纲）",
   "license": "db0e7effde09bc3b28161836dbde78f62b46fbf5 见上游 License.md (CC BY-SA 4.0)",
   "count": 593,
   "by_level_domain": {

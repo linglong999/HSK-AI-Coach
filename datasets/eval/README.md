@@ -2,7 +2,9 @@
 
 > 配套：`golden_v1_4.json`
 > 用途：3.1 偏误识别引擎 baseline 评测
-> 状态：**MVP 小规模验证版 v0.3**，已按二语教师仲裁 + 用户终裁（2026-08-23）定案，统计已收敛一致
+> 状态：**MVP 小规模验证版 v0.3**，已按作者自审（self-review）+ 用户终裁（2026-08-23）定案，统计已收敛一致
+>
+> ⚠️ **标注诚实性声明（2026-09-14）**：本集标注来源实为作者自审（self-review），**非二语教师仲裁**。早期文档沿用「二语教师仲裁 / l2-teacher-arbitration」属表述失实，已统一改为 `self-review`（见 `golden_v1_4.json` 的 `audit_note`）。待补双人独立标注并计算标注一致性（κ）后，才有资格升级为「经教师仲裁」的表述；未转正前不作此类宣传。
 
 ## 一、构建依据
 
@@ -44,13 +46,13 @@
 
 ## 四、已知局限（诚实声明，不隐藏）
 
-1. **偏误标注部分依赖教学判断**：剩余 1 条 `disputed`（`HSK1-ADV-004` 删除型冗余对抗，口径已定：只判 span 命中、不判替换正确性）。其余 8 条初判 disputed 均经终裁定案（A 类 4 条改判 clean、B 类 3 条翻 reviewed、009 归位），已标注仲裁字段（`arbitrator`/`arbitration_date`）。
+1. **偏误标注部分依赖教学判断**：剩余 1 条 `disputed`（`HSK1-ADV-004` 删除型冗余对抗，口径已定：只判 span 命中、不判替换正确性）。其余 8 条初判 disputed 均经作者自审终裁定案（A 类 4 条改判 clean、B 类 3 条翻 reviewed、009 归位），已标注仲裁字段（`arbitrator`/`arbitration_date`）。
 2. **语法类占比极高（14/17）**：语法 14 vs 汉字/词汇/语用各 1，少数类覆盖严重不足，class-level 指标不可靠——扩充优先序：汉字 > 词汇 > 语用。
 3. **样本量为小规模**：32+4 句仅够验证评测**流程**与指标口径，不足以得出可靠能力结论；结论性评测需扩到数百句。
 4. **restate/复述验证黄金集尚缺**（属 3.3，非本文件范围）。
 5. **clean 语义**：干净对照样本 `error_type=null`、`sub_type=clean`（对照点在 `note`），用于测误报/overcorrection。
 
-## 五、审查记录（2026-08-23 二语教师仲裁 + 用户终裁）
+## 五、审查记录（2026-08-23 作者自审 + 用户终裁）
 
 - **P0 · 假阳性改判（终裁 Group1，改判 clean 负样本）**：#014（话题链承前省略）、#016（把字句副词）、#019（把+NP+V+了 合法把字句）、#032（对…很关心 合法介宾状语）→ 改判 clean、`golden_status=reviewed`、ID 前缀改为 `CLN-`（`CLN-014/016/019/032`）。作负样本测 `over-flagging`，不保留为"可判错"。
 - **B 类真偏误保留（终裁 Group3，翻 reviewed）**：#003（吧/吗→语法 question_particle）、#031（几岁→多大了，语用 age_register）、#023（是…的→是…了，加新例句）→ 正式纳入正向偏误集。
@@ -59,7 +61,7 @@
 - **P1 · 术语修正**：#008 `compliment_structure`→`complement_structure`（拼写）、#023 换典型"是…的/是…了"例。
 - **P2 · 分类/校准**：#030 词汇→语法、#006/#008 severity 校准、#012 并为 `temporal_aspect_error`、#013/20 sub_type 统一为受控英文 snake_case + clean 统一。
 - **P2 · 数据清理**：#002"很多"改数量短语、#ADV-004 标删除型对抗（口径：只判 span 命中、不判替换正确性）。
-- **流程固化**：新增 `context`（语用必填）、`arbitrator`/`arbitration_date`（disputed 必填）；arbitrator 归一为 `l2-teacher-arbitration`；启用 golden_status 三态。
+- **流程固化**：新增 `context`（语用必填）、`arbitrator`/`arbitration_date`（disputed 必填）；启用 golden_status 三态。（注：`arbitrator` 当时记作 `l2-teacher-arbitration`，经核为作者自审，2026-09-14 起统一为 `self-review`，见文首诚实声明。）
 
 ## 六、后续扩充路径
 
