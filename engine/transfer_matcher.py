@@ -1,0 +1,174 @@
+# ============================================================
+# engine/transfer_matcher.py
+# 0.35-05 · L1 迁移归因 —— 签名判定模块（与 transfer_loader.py 拆分，单一职责）
+# 只负责"确定性签名比对"：给定 fragment/correction，判断是否命中某类迁移模式。
+#   - 纯函数，无 IO、无缓存、无 ll1 路由 → 可独立单测
+#   - _SIGNATURES 以 sig 字符串为键（0.11 解耦）：JSON 规则表 sig 字段引用签名，
+#     en / ko 表可复用同一签名实现（跨语言解耦）
+#   - 签名不决策"该归因哪条规则"——锚点命中 + 规则选择在 transfer.match_one（编排门面）
+# ============================================================
+
+# 签名检查用字符集（仅匹配用，不是权威量词表）
+_CLASSIFIERS = set("个本张件部台只条块杯瓶家位匹棵朵封辆间首歌道双对")
+_NUMERALS = set("一二两三四五六七八九十百几半")
+_PRONOUN_TAILS = set("我你他她它咱们这那谁")
+_ASPECT_PARTICLES = ("了", "着", "过")
+_WH_WORDS = ("什么时候", "为什么", "什么", "哪儿", "哪里", "怎么", "谁", "多少", "几")
+_QUANTITY_WORDS = ("很多", "许多", "不少", "好多", "好几个")
+
+
+def _strip_punct(s: str) -> str:
+    return "".join(ch for ch in (s or "") if ch not in "。，！？!?,. ")
+
+
+def _sig_classifier(err: dict) -> bool:
+    """量词缺失：修正 = 在数词后插入一个量词字（三苹果→三个苹果）；
+    量词泛化：fragment 与 correction 恰差一字且 fragment 处为'个'（一个手机→一部手机）。"""
+    frag, corr = _strip_punct(err.get("fragment", "")), _strip_punct(err.get("correction", ""))
+    if not frag or not corr or frag == corr:
+        return False
+    # 插入型：corr 去掉一个量词字 == frag，且被插位置前一字是数词
+    for i, ch in enumerate(corr):
+        if ch in _CLASSIFIERS and i > 0 and corr[i - 1] in _NUMERALS and \
+                corr[:i] + corr[i + 1:] == frag:
+            return True
+    # 替换型：等长且恰差一字，frag 处是'个'、corr 处是其他量词
+    if len(frag) == len(corr):
+        diffs = [(a, b) for a, b in zip(frag, corr) if a != b]
+        if len(diffs) == 1 and diffs[0][0] == "个" and diffs[0][1] in _CLASSIFIERS:
+            return True
+    return False
+
+
+def _sig_possessive_de(err: dict) -> bool:
+    """'的'遗漏（P0.19 规则②收紧）：修正 = 恰好插入'的'，且片段以领属代词/指示代词开头
+    （我朋友书→我朋友的书）。收紧理由：形容词+名词合法（漂亮衣服可加可不加'的'），
+    单删'的'的形容词类不再误报；名词领属（朋友书）纯文本难与名词并列区分，宁漏勿错。"""
+    frag, corr = _strip_punct(err.get("fragment", "")), _strip_punct(err.get("correction", ""))
+    if not frag or not corr or "的" in frag or "的" not in corr:
+        return False
+    if not frag or frag[0] not in _PRONOUN_TAILS:  # 领属代词/指示代词开头才命中
+        return False
+    if corr.replace("的", "") != frag:
+        return False
+    i = corr.find("的")
+    return i > 0 and i + 1 < len(corr)
+
+
+def _sig_quantity_reorder(err: dict) -> bool:
+    """数量词后置：修正 = 纯换序（同字符集重排，苹果很多→很多苹果），且含数量词。"""
+    frag, corr = _strip_punct(err.get("fragment", "")), _strip_punct(err.get("correction", ""))
+    if not frag or not corr or frag == corr or sorted(frag) != sorted(corr):
+        return False
+    return any(q in frag or q in corr for q in _QUANTITY_WORDS)
+
+
+def _sig_adj_predicate(err: dict) -> bool:
+    """形容词谓语两形态：
+    A 系动词冗余：frag 含'是'、corr 不含，且去'是'后与去'很'后的 corr 重合（我是高兴→我很高兴）；
+    B 裸形容词：corr 恰多一个'很'（她高兴→她很高兴）。"""
+    frag, corr = _strip_punct(err.get("fragment", "")), _strip_punct(err.get("correction", ""))
+    if not frag or not corr:
+        return False
+    if "是" in frag and "是" not in corr:
+        a = frag.replace("是", "")
+        b = corr.replace("很", "")
+        if a and (a in b or b in a):
+            return True
+    return "很" in corr and "很" not in frag and corr.replace("很", "") == frag
+
+
+def _sig_adj_bare(err: dict) -> bool:
+    """裸形容词（adj_predicate 的 B 形态，ko 专属）：修正恰多一个'很'、无系词参与
+    （她高兴→她很高兴）。韩语形容词可独立做谓语（不加系词），学习者直译时漏加程度副词'很'。
+    与 en 的 A 形态（系词冗余'是'）刻意隔离——凡 frag/corr 含'是'一律拒绝。"""
+    frag, corr = _strip_punct(err.get("fragment", "")), _strip_punct(err.get("correction", ""))
+    if not frag or not corr or frag == corr:
+        return False
+    if "是" in frag or "是" in corr:
+        return False
+    if "很" not in corr or "很" in frag:
+        return False
+    return corr.replace("很", "") == frag
+
+
+def _sig_aspect_particle(err: dict) -> bool:
+    """体标记增删：修正与原片段恰差一个'了/着/过'（我吃→我吃了；昨天我去学校→昨天我去了学校；
+    他在看书了→他在看书）。要求"体助词是唯一差异"——修正同时动了语序的不算（防把字句假阳性）。"""
+    frag, corr = _strip_punct(err.get("fragment", "")), _strip_punct(err.get("correction", ""))
+    if not frag or not corr or frag == corr or abs(len(frag) - len(corr)) != 1:
+        return False
+    # 增：corr 去掉一个体助词 == frag
+    for i, ch in enumerate(corr):
+        if ch in _ASPECT_PARTICLES and corr[:i] + corr[i + 1:] == frag:
+            return True
+    # 删：frag 去掉一个体助词 == corr
+    for i, ch in enumerate(frag):
+        if ch in _ASPECT_PARTICLES and frag[:i] + frag[i + 1:] == corr:
+            return True
+    return False
+
+
+def _sig_wh_fronting(err: dict) -> bool:
+    """疑问词前置：frag 以疑问词开头，且修正把该疑问词移离句首（什么你要→你要什么）。"""
+    frag, corr = _strip_punct(err.get("fragment", "")), _strip_punct(err.get("correction", ""))
+    if not frag or not corr:
+        return False
+    return any(frag.startswith(wh) and wh in corr and not corr.startswith(wh)
+               for wh in _WH_WORDS)
+
+
+# 处置动词常见尾部标记（把字句语序偏误检测：frag 缺'把'、corr 引入'把'提取宾语）
+_BA_TAIL_HINTS = ("桌子", "床上", "椅子", "书包", "口袋", "地方", "手里", "车", "房间",
+                  "前面", "上面", "中间")  # 处所/位置宾语常配合处置义"把+宾语+放在+处所"
+
+
+def _sig_ba_placement(err: dict) -> bool:
+    """把字句语序偏误（P0.19 N3 改名，原 en-ba-avoidance）：处置义宾语未前置。
+    英语无把字句、以 SVO 语序表达处置义，学习者宾语留在动词后（我放书在桌子上）。
+    属**语序偏误**（句面不成立）而非回避（回避=句面合法的非优选结构）。
+    判据（宁漏勿错，需三重条件 同时满足）：
+      ① corr 引入'把'、frag 不含'把'（把+宾语 属新增处置框架）；
+      ② 同字符集换序：frag 与 corr 去掉'把'后字符可重排一致（语序调整而非增删词）；
+      ③ 含处置/放置动词 + 处所宾语（如'书在桌子上'），排除不含'把'的一般换序误报。
+    局限（触发条件标注）：transfer_match 只对 confirmed 层匹配，纯回避特征句面无错、
+    静态规则捕获不到，只命中'语序偏误+其他偏误共存'；场景驱动的真回避进 backlog。"""
+    frag, corr = _strip_punct(err.get("fragment", "")), _strip_punct(err.get("correction", ""))
+    if not frag or not corr or "把" not in corr or "把" in frag:
+        return False
+    # ② 同字符集换序（去标点后）
+    if sorted(frag) != sorted(corr.replace("把", "")):
+        return False
+    # ① ③ 引入'把'且含放置动词 + 处所宾语特征（本签名锚定的处置义语境）
+    has_bind = "放" in frag or "摆" in frag or "挂" in frag or "放" in corr.split("把")[1]
+    has_place = any(h in frag for h in _BA_TAIL_HINTS)
+    # 排除：corr 用了'把'是量词/把持（把门/把车开走）而 frag 无对应处所宾语
+    if not (has_bind and has_place):
+        return False
+    return True
+
+
+def _sig_ba_omission(err: dict) -> bool:
+    """把字句遗漏（ko 专属）：修正恰引入'把'、原片段不含'把'，补'把'后字符一致
+    （书放桌上→把书放桌上；我书放桌子上→我把书放在桌子上）。
+    与 en-ba-placement 方向相反：韩语 SOV 语序下宾语天然在动词前，问题不在语序，
+    而在处置标记'把'整体缺失——学习者直接省略。"""
+    frag, corr = _strip_punct(err.get("fragment", "")), _strip_punct(err.get("correction", ""))
+    if not frag or not corr or frag == corr:
+        return False
+    if "把" not in corr or "把" in frag:
+        return False
+    return corr.replace("把", "") == frag
+
+
+_SIGNATURES = {
+    "classifier": _sig_classifier,
+    "possessive_de": _sig_possessive_de,
+    "quantity_reorder": _sig_quantity_reorder,
+    "adj_predicate": _sig_adj_predicate,
+    "adj_bare": _sig_adj_bare,
+    "aspect_particle": _sig_aspect_particle,
+    "wh_fronting": _sig_wh_fronting,
+    "ba_placement": _sig_ba_placement,
+    "ba_omission": _sig_ba_omission,
+}

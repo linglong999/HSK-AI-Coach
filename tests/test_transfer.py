@@ -23,7 +23,8 @@ if _PROJECT_ROOT not in sys.path:
 from engine.explainer import Explainer
 from engine.recognizer import Recognizer
 from engine.transfer import (RULES_KO_PATH, load_rules, match, match_one,
-                             _rules_for_l1)
+                             validate_rules, _rules_for_l1)
+from engine.transfer_matcher import _SIGNATURES
 from skills.identify_errors import IdentifyErrorsSkill
 
 
@@ -203,7 +204,8 @@ class TransferKoTest(unittest.TestCase):
     def test_ko_corrupt_table_falls_back_to_en_with_warning(self):
         from unittest import mock as _m
         errs = [_err("三苹果", "三个苹果", kp="kp-liangci")]
-        with _m.patch("engine.transfer.load_rules",
+        # 0.35-05：load_rules 迁至 engine.transfer_loader，patch 目标相应迁移
+        with _m.patch("engine.transfer_loader.load_rules",
                       side_effect=lambda p: [] if p == RULES_KO_PATH else
                       load_rules()):
             with self.assertWarns(UserWarning):
@@ -220,6 +222,48 @@ class TransferKoTest(unittest.TestCase):
         ko_rule = next(r for r in load_rules(RULES_KO_PATH) if r["rule_id"] == ko_hyp["rule_id"])
         self.assertEqual(en_rule["sig"], ko_rule["sig"])
         self.assertIsNotNone(_rules_for_l1("ko"))
+
+
+# ---------------- 0.35-05 规则加载校验 module ----------------
+
+class ValidateRulesTest(unittest.TestCase):
+    """validate_rules 严格校验：运行时 load 宽松；校验时逐条报违规。
+    真实 en/ko 表应合规；构造坏规则应逐类报出。"""
+
+    def test_real_tables_are_compliant(self):
+        # 真实分发资产：en 7 条 + ko 4 条全部合规（含必填字段/conf/sig 引用落注册表）
+        self.assertEqual(validate_rules(load_rules()), [])
+        self.assertEqual(validate_rules(load_rules(RULES_KO_PATH)), [])
+
+    def test_all_real_sigs_resolve_to_registry(self):
+        # sig 引用存在性：en/ko 表引用的每个 sig 都必须在 _SIGNATURES 注册
+        known = set(_SIGNATURES)
+        for rules in (load_rules(), load_rules(RULES_KO_PATH)):
+            self.assertEqual(validate_rules(rules, known_sigs=known), [])
+
+    def test_duplicate_rule_id_reported(self):
+        base = load_rules()[0]
+        dup = dict(base)
+        prob = validate_rules([base, dup])
+        self.assertTrue(any(p["problem"] == "duplicate rule_id" for p in prob))
+
+    def test_missing_required_key_reported(self):
+        bad = dict(load_rules()[0])
+        del bad["ref"]
+        prob = validate_rules([bad])
+        self.assertTrue(any(p["problem"] == "missing:ref" for p in prob))
+
+    def test_conf_too_high_reported(self):
+        bad = dict(load_rules()[0])
+        bad["conf"] = 0.8
+        prob = validate_rules([bad])
+        self.assertTrue(any(p["problem"] == "conf>=0.7" for p in prob))
+
+    def test_dangling_sig_reported_when_registry_given(self):
+        bad = dict(load_rules()[0])
+        bad["sig"] = "no_such_signature"
+        prob = validate_rules([bad], known_sigs={"classifier"})
+        self.assertTrue(any(p["problem"] == "dangling sig" for p in prob))
 
 
 # ---------------- recognizer 接线 ----------------
