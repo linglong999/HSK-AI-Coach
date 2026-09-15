@@ -8,7 +8,8 @@
 import os
 import sys
 import time
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Dict, Optional
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
@@ -18,6 +19,18 @@ from engine.recognizer import Recognizer
 from engine.explainer import Explainer
 from engine.verifier import Verifier
 from engine.graph.error_graph import ErrorGraph
+
+
+@dataclass
+class RequestContext:
+    """请求级平台上下文（0.33-04 · 显式上下文传播）。
+    作为 process() 的可选覆盖：ctx 有值用之、无值回退 Router 实例字段
+    （会话级默认）。最高优先级是请求内命中 BYOK 的 provider_config——
+    引擎每次 client 调用透传 config，None → settings 全局配置。"""
+    learner_id: str = ""
+    native_lang: str = ""
+    user_level: str = ""
+    provider_config: Optional[Dict] = field(default=None)   # {base_url, api_key, model}
 
 
 def ordered_error(e: dict) -> dict:
@@ -47,29 +60,47 @@ class Router:
         self.graph = ErrorGraph(learner_id)
         self.graph.load()
 
-    def _level_int(self) -> int:
+    @staticmethod
+    def _norm_level(raw) -> int:
         """0.25 起点分层：将 user_level（'HSK3'/'3'/3）归一为 int；非法回退 3。"""
-        s = str(self.user_level or "").strip().upper()
+        s = str(raw or "").strip().upper()
         s = s[len("HSK"):] if s.startswith("HSK") else s
         try:
             return max(1, min(6, int(s)))
         except (TypeError, ValueError):
             return 3
 
+    def _level_int(self) -> int:
+        """0.25 起点分层：实例字段等级归一（识别/超纲/讲解用）；非法回退 3。"""
+        return self._norm_level(self.user_level)
+
     def set_level(self, user_level: str):
         """0.25：外部同步学习者等级（serve 从画像读取后调用），识别/超纲/讲解随之生效。"""
         self.user_level = user_level
         self._level_int()   # 触发归一（非法值也会回退默认，不抛错）
 
-    def process(self, user_text: str, event_key: str = "") -> dict:
+    def process(self, user_text: str, event_key: str = "",
+                ctx: Optional[RequestContext] = None) -> dict:
         """一次偏误纠错闭环：识别 → 讲解 → 图谱 → 复习队列。
         返回「JSON 接缝契约 v1」结构化结果（详见 datasets/docs/JSON-接缝契约-v1.md）：
         纯可序列化 dict，degraded[] 结构化（stage/reason/fatal），前端可直接渲染。
         降级分支见各步 try —— 识别主失败 fatal，其余局部降级不阻塞整体。
+        ctx: 可选请求级上下文覆盖（0.33-04 BYOK）。有值用之、无值回退实例字段
+        （会话级默认）。provider_config 命中时透传给识别/讲解引擎。
+
+        契约「请求级上下文覆盖」：ctx.learner_id/native_lang/user_level 非空则覆盖
+        实例字段（会话级）；为空则沿用实例默认。provider_config 覆盖决定 BYOK 用哪把 Key。
         """
         start = time.time()
-        result = {"contract_version": "v1", "learner_id": self.learner_id,
-                  "user_level": self.user_level, "native_lang": self.native_lang,
+        eff_learner = (ctx.learner_id or self.learner_id) if ctx else self.learner_id
+        eff_native = (ctx.native_lang or self.native_lang) if ctx else self.native_lang
+        eff_level = (ctx.user_level or self.user_level) if ctx else self.user_level
+        provider_config = ctx.provider_config if ctx else None
+        # 请求级等级归一（非法回退 3），仅本请求识别/讲解用；图谱写入仍按会话级 self.user_level
+        eff_level_int = self._norm_level(eff_level)
+
+        result = {"contract_version": "v1", "learner_id": eff_learner,
+                  "user_level": eff_level, "native_lang": eff_native,
                   "input_text": user_text, "errors": [], "uncertain": [],
                   "hypotheses": [],
                   "has_error": False, "graph_size": 0, "review_queue": [],
@@ -88,8 +119,13 @@ class Router:
             # 0.22：native_lang 传入识别（0.21 只接了 explainer/verifier，此路径漏传——
             # 迁移假设与"母语"上下文提示词都依赖它）
             # 0.25：level 传入识别（曾漏传恒用默认 3，超纲宽容判定 + 识别难度失真）
+            # 0.33-04：provider_config 存在才透传（与 identify 技能同策略；None 省略，
+            # 客户端即回退 settings，语义等价且测试替身零迁移）
+            rk = {}
+            if provider_config:
+                rk["config"] = provider_config
             recog = self.recognizer.recognize(
-                user_text, level=self._level_int(), native_lang=self.native_lang)
+                user_text, level=eff_level_int, native_lang=eff_native, **rk)
             confirmed = recog.get("errors", [])
             uncertain = recog.get("uncertain", [])
             # 0.22：L1 迁移假设透传（契约 v1 新增可选键，向后兼容；只读不写图谱）
@@ -125,9 +161,12 @@ class Router:
                     "graph_write": graph_write, "verification": None}
 
             try:
+                ek = {}
+                if provider_config:
+                    ek["config"] = provider_config
                 expl = self.explainer.explain({**err, "sentence": user_text},
-                                              user_level=self.user_level,
-                                              native_lang=self.native_lang)
+                                              user_level=eff_level,
+                                              native_lang=eff_native, **ek)
                 item["explanation"] = expl if isinstance(expl, dict) else {"_degraded": True}
             except Exception as e:
                 _notice("explain", str(e), error_index=i)
@@ -171,13 +210,19 @@ class Router:
 
     def verify_rephrase(self, explanation: str, key_points: list, restatement: str,
                         uncertain: bool = False, bias_ref: Optional[dict] = None,
-                        event_key: str = "") -> dict:
+                        event_key: str = "", ctx: Optional[RequestContext] = None) -> dict:
         """复述验证（2.3 v0.3）：逐点判定 + 规则聚合 + 写回图谱。
-        0.21：反馈语言跟随 Router.native_lang（教学层语言，中文要点/判定逻辑不变）。"""
+        0.21：反馈语言跟随 Router.native_lang（教学层语言，中文要点/判定逻辑不变）。
+        ctx: 可选请求级上下文覆盖（0.33-04 BYOK）；provider_config 命中时透传验证引擎。"""
+        eff_native = (ctx.native_lang or self.native_lang) if ctx else self.native_lang
+        provider_config = ctx.provider_config if ctx else None
+        vk = {}
+        if provider_config:
+            vk["config"] = provider_config
         return self.verifier.verify(explanation, key_points, restatement,
                                     uncertain=uncertain, bias_ref=bias_ref,
                                     event_key=event_key, commit_graph=True,
-                                    native_lang=self.native_lang)
+                                    native_lang=eff_native, **vk)
 
     def get_review_queue(self):
         """委托图谱读接口：按 priority 降序的可复习 KP 列表"""

@@ -8,6 +8,7 @@
 import json
 import os
 import sys
+from typing import Dict, Optional
 
 # 项目根 = HSK-AI-Coach/（recognizer.py 在 engine/ 下）
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -194,8 +195,10 @@ class Recognizer:
                     return True
         return False
 
-    def recognize(self, text: str, level: int = 3, native_lang: str = "") -> dict:
-        """识别偏误，返回 2.1 v0.3 结构（含 knowledge_point_id 命中校验 + beyond_level 权威判定）"""
+    def recognize(self, text: str, level: int = 3, native_lang: str = "",
+                  config: Optional[Dict] = None) -> dict:
+        """识别偏误，返回 2.1 v0.3 结构（含 knowledge_point_id 命中校验 + beyond_level 权威判定）。
+        config: 可选供应商覆盖（0.33-04 BYOK）；None → settings 全局配置。"""
         # 句子级超纲判定（确定性，规则层对照权威词表，不依赖 LLM）
         beyond = detect_beyond_level(text, level, self.lexicon)
         user_prompt = (
@@ -203,8 +206,12 @@ class Recognizer:
             f"\n请识别以下中文输出的偏误：\n\n{text}"
         )
         try:
+            # 0.33-04 BYOK：config 非 None 才透传（None → 客户端回退 settings）
+            ck = {"temperature": 0.0}
+            if config:
+                ck["config"] = config
             raw = self.client.chat_json(SYSTEM_PROMPT.format(knowledge_tree_portal=self.portal),
-                                        user_prompt, temperature=0.0)
+                                        user_prompt, **ck)
         except Exception as e:
             # 4.2 降级兜底：LLM 识别不可用 → 确定性规则回退（超纲词候选）
             return self._rule_fallback(text, beyond, reason=str(e))

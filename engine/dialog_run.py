@@ -37,7 +37,7 @@ class DialogRun:
         pre = self._pre_scan_intervene(
             ctx["user_input"], ctx["native_lang"],
             directives["level_label"], directives["level_int"],
-            directives["cap"])
+            directives["cap"], provider)
         res = self._planner.run(
             ctx["user_input"], history=history,
             learner_id=ctx["learner_id"],
@@ -122,14 +122,18 @@ class DialogRun:
         }
 
     def _pre_scan_intervene(self, user_input, native_lang, level_label,
-                            level_int, cap):
+                            level_int, cap, provider=None):
         """阶段 · PreScanIntervene：介入判定（确定性分档，D3.4 主链重构）。
         预扫：每轮产出句先走 identify（喂图谱+迁移假设，句子→图谱链不变），
         再用组合信号分档（求助/空/含义不清/连续错率 + 打断上限）。
         求助句不预扫（meta 问题，识别交给 planner 按需调技能）；
-        超长文本视为学习材料（交给 parse_document），不识别不介入。"""
+        超长文本视为学习材料（交给 parse_document），不识别不介入。
+        provider: 请求级供应商（0.33-04 BYOK）→ 预扫识别透传其 config，
+        保证 BYOK 用户预扫识别与 dialog 主链覆用同一把 Key。"""
         from engine.intervention import (
             MAX_SCAN_CHARS, build_intervention_directive, detect_help_intent)
+        from engine.dialog_service import _provider_cfg
+        scan_config = _provider_cfg(provider)   # None → 引擎回退 settings
         pre_scan = None
         scan_notices = []
         help_intent = detect_help_intent(user_input)
@@ -138,7 +142,7 @@ class DialogRun:
             try:
                 pre_scan = self._identify_skill.run(
                     {"text": user_input, "native_lang": native_lang,
-                     "level": level_label})
+                     "level": level_label, "provider_config": scan_config})
             except Exception as e:  # noqa: BLE001 预扫失败不阻断对话
                 pre_scan = None
                 scan_notices.append({"stage": "pre_scan",

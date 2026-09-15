@@ -9,7 +9,7 @@
 
 import os
 import sys
-from typing import Optional
+from typing import Dict, Optional
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
@@ -102,11 +102,13 @@ class Verifier:
     def verify(self, explanation: str, key_points: list, restatement: str,
                history: str = "", uncertain: bool = False,
                bias_ref: Optional[dict] = None, event_key: Optional[str] = None,
-               commit_graph: bool = True, native_lang: str = "") -> dict:
+               commit_graph: bool = True, native_lang: str = "",
+               config: Optional[Dict] = None) -> dict:
         """验证复述覆盖度（2.3 v0.3）。
         key_points: 2.2 输出的显式要点（[{id,text}]），唯一来源。
         bias_ref + event_key: 写回图谱所需；commit_graph=False 时不写（纯评测）。
         native_lang: 0.21 讲解反馈语言（非 zh → 英文反馈，中文要点保留）。
+        config: 可选供应商覆盖（0.33-04 BYOK）；None → settings 全局配置。
         返回：LLM 逐点判定 + 规则聚合 verdict + 降级建议 + 写回状态。
         """
         kp_str = "\n".join(f"- [{p.get('id')}] {p.get('text')}" for p in key_points) \
@@ -129,7 +131,11 @@ class Verifier:
         )
 
         try:
-            raw = self.client.chat_json_strict(filled_system, user_prompt, temperature=0.0)
+            # 0.33-04 BYOK：config 非 None 才透传（None → 客户端回退 settings）
+            ck = {"temperature": 0.0}
+            if config:
+                ck["config"] = config
+            raw = self.client.chat_json_strict(filled_system, user_prompt, **ck)
         except JSONStrictError:
             # 调用层失败 → 本轮判 partial（绝不静默 pass，P1-1）
             return self._wrap({"verdict": "partial", "covered_points": 0,

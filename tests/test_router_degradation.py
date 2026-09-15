@@ -56,8 +56,10 @@ class DegradationTestBase(unittest.TestCase):
 
     def _mock_recognize(self, confirmed=None, uncertain=None):
         # 0.25：router.process 现传 level（起点分层），替身签名需接受
-        self.router.recognizer.recognize = lambda text, level=3, native_lang="": {
-            "errors": confirmed or [], "uncertain": uncertain or []}
+        # 0.33-04：router.process 现传 config（BYOK），替身签名需接受
+        def _fake(text, level=3, native_lang="", config=None):
+            return {"errors": confirmed or [], "uncertain": uncertain or []}
+        self.router.recognizer.recognize = _fake
 
     def _mock_explain_ok(self):
         self.router.explainer.explain = lambda err, **kw: {

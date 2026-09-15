@@ -16,6 +16,8 @@
 import threading
 from typing import Optional
 
+from engine.router import RequestContext
+
 from engine.dialog_run import DialogRun
 
 
@@ -25,11 +27,18 @@ def _default_dialog_llm(messages):
     return LLMClient().chat(messages, temperature=0.3)
 
 
+def _provider_cfg(provider) -> Optional[dict]:
+    """供应商 → 引擎调用 config（0.33-04 BYOK 统一字典形状）；None 原样返回。"""
+    if not provider:
+        return None
+    return {"base_url": provider["base_url"], "api_key": provider["api_key"],
+            "model": provider["model"]}
+
+
 def _provider_llm(provider):
     """绑定供应商配置的 llm_call（0.20 BYOK）：请求级覆盖 settings 全局配置。"""
     from engine.llm.client import LLMClient
-    cfg = {"base_url": provider["base_url"], "api_key": provider["api_key"],
-           "model": provider["model"]}
+    cfg = _provider_cfg(provider)
     client = LLMClient()
     return lambda messages: client.chat(messages, temperature=0.3, config=cfg)
 
@@ -135,13 +144,29 @@ class DialogService:
 
     # ---------- 入口方法（全部返回 (status, payload)） ----------
 
+    def _request_ctx(self, payload: Optional[dict]) -> Optional[RequestContext]:
+        """0.33-04 BYOK：/api/process 与 /api/verify 命中请求级供应商 → 构造 RequestContext。
+        宽松解析（不像 dialog 那样 fail-loud）：provider_id 显式 / 用户 default / env
+        任一可用则用之，否则 None（引擎回退 settings 全局配置，保持无 Key→规则降级现状）。
+        注入（mock）路径跳过解析，恒 None。"""
+        if self._resolver.injected:
+            return None
+        provider_id = str((payload or {}).get("provider_id") or "").strip()
+        try:
+            from engine import providers as prov
+            provider = prov.resolve_provider(self._memory_root, provider_id or None)
+        except Exception:  # noqa: BLE001 解析失败 → 回退全局配置
+            return None
+        return (RequestContext(provider_config=_provider_cfg(provider))
+                if provider and provider.get("api_key") else None)
+
     def process(self, payload: dict):
         text = str((payload.get("text") or "")).strip()
         if not text:
             return 400, {"error": "empty text"}
         with self._lock:
-            # 同一 Router 实例 → 图谱随学习者在服务内持久累积
-            result = self._router.process(text)
+            # 同一 Router 实例 → 图谱随学习者在服务内持久累积；请求级 BYOK 经 ctx 透传
+            result = self._router.process(text, ctx=self._request_ctx(payload))
             # 补充图谱快照，供前端一次性渲染（无需二次 GET）
             result["graph"] = self._router.graph.graph_snapshot()
         return 200, result
@@ -162,7 +187,8 @@ class DialogService:
         with self._lock:
             out = self._router.verify_rephrase(
                 explanation, key_points, restatement,
-                event_key=f"web#{restatement}")  # 稳定 key：实体本身（原则4）
+                event_key=f"web#{restatement}",   # 稳定 key：实体本身（原则4）
+                ctx=self._request_ctx(payload))
         return 200, out
 
     def generate(self, payload: dict):

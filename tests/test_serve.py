@@ -29,7 +29,7 @@ import socket
 class FakeRouter:
     learner_id = "tester"
 
-    def process(self, text):
+    def process(self, text, event_key="", ctx=None):
         return {
             "contract_version": "v1", "learner_id": self.learner_id,
             "user_level": "HSK3", "native_lang": "英语", "input_text": text,
@@ -52,7 +52,8 @@ class FakeRouter:
         return FakeGraph()
 
     def verify_rephrase(self, explanation, key_points, restatement,
-                        uncertain=False, bias_ref=None, event_key=""):
+                        uncertain=False, bias_ref=None, event_key="",
+                        ctx=None):
         return {
             "verdict": "pass",
             "covered_points": 2, "total_points": 2, "coverage_ratio": 1.0,

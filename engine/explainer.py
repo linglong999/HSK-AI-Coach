@@ -8,7 +8,7 @@
 
 import os
 import sys
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
@@ -139,10 +139,12 @@ class Explainer:
         return "；".join(parts)
 
     def explain(self, error: dict, user_level: str = "HSK3", native_lang: str = "",
-                graph=None, candidate_points: Optional[List[dict]] = None) -> dict:
+                graph=None, candidate_points: Optional[List[dict]] = None,
+                config: Optional[Dict] = None) -> dict:
         """生成费曼讲解（2.2 v0.3 schema）。
         error 须含 2.1 字段：sentence/fragment/correction/type/knowledge_point_id。
         candidate_points: 编排层注入的候选要点 [{id, text}]；None/空 → 候选为空（free_generated 降级）。
+        config: 可选供应商覆盖（0.33-04 BYOK）；None → settings 全局配置。
         """
         graph = graph or self.graph
         sentence = error.get("sentence", "")
@@ -211,7 +213,11 @@ class Explainer:
         )
 
         try:
-            raw = self.client.chat_json_strict(filled_system, user_prompt, temperature=0.4)
+            # 0.33-04 BYOK：config 非 None 才透传（None → 客户端回退 settings）
+            ck = {"temperature": 0.4}
+            if config:
+                ck["config"] = config
+            raw = self.client.chat_json_strict(filled_system, user_prompt, **ck)
         except JSONStrictError:
             # 降级：模板文案，不静默透传坏结果（2.2 §三）
             return _fallback_explanation(error, native_lang)

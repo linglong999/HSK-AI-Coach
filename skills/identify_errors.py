@@ -101,8 +101,11 @@ class IdentifyErrorsSkill(Skill):
         level = normalize_level_int(context.get("level", 3))
 
         rec = self._get_recognizer()
-        result = rec.recognize(text, level=level,
-                               native_lang=str(context.get("native_lang", "")))
+        # 0.33-04 BYOK：provider_config 存在才透传（测试/无供应商的注入路径零开销）
+        rk = {"native_lang": str(context.get("native_lang", ""))}
+        if context.get("provider_config"):
+            rk["config"] = context["provider_config"]
+        result = rec.recognize(text, level=level, **rk)
         errors = result.get("errors", [])
         uncertain = result.get("uncertain", [])
         rd = result.get("degraded")
