@@ -41,6 +41,10 @@ class _StubClient:
 
 
 def _sample_paths():
+    # 目录缺失（如 CI 未携带固定样例集）时返回空，避免模块级 parametrize 求值崩溃；
+    # 配合模块级 skipif，空参数 → 这些用例由 pytest 正常跳过。
+    if not os.path.isdir(OCR_SAMPLES):
+        return []
     return sorted(os.path.join(OCR_SAMPLES, f)
                   for f in os.listdir(OCR_SAMPLES) if f.endswith('.png'))
 
