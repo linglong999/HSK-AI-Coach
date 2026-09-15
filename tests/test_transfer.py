@@ -6,7 +6,7 @@
 #   - recognizer 接线：确认层偏误产 hypotheses、zh 不产、降级路径空
 #   - identify_errors 透传：契约输出含 hypotheses[]、图谱零写入（只 ingest errors/uncertain）
 #   - explainer D1.4：EN/KO 讲解注入 l1_anchor（确定性、零 LLM）；无命中注入 (none)；ZH 不注入
-#   - serve 消费方安全：ledger 编排只读 errors，hypotheses 不产任何账本事件
+#   - 服务层消费方安全：ledger 编排只读 errors，hypotheses 不产任何账本事件
 # 运行: python -m unittest tests.test_transfer -v
 # ============================================================
 
@@ -351,20 +351,18 @@ class ExplainerTransferTest(unittest.TestCase):
         self.assertNotIn("transfer hypothesis", cap["system"])
 
 
-# ---------------- serve 消费方安全：ledger 只读 errors ----------------
+# ---------------- 服务层消费方安全：ledger 只读 errors ----------------
 
 class LedgerHypothesesSafetyTest(unittest.TestCase):
-    """契约消费方（M8 编排）：identify 结果携带 hypotheses[] 时，
-    账本只按 errors 的 kp 记 observation_error，假设不产任何事件。"""
+    """契约消费方（M8 编排，0.30 拆分后归 DialogService）：identify 结果携带
+    hypotheses[] 时，账本只按 errors 的 kp 记 observation_error，假设不产任何事件。"""
 
     def test_ledger_ignores_hypotheses(self):
+        from engine.dialog_service import DialogService
         from engine.graph.error_graph import ErrorGraph
         from engine.memory.writeback import Writeback
-        from engine.serve import make_handler
 
         tmp = tempfile.mkdtemp()
-        H = make_handler(
-            type("R", (), {"learner_id": "x", "graph": ErrorGraph("t")})(), tmp)
         wb = Writeback(graph=ErrorGraph("t2"), root=tmp)
         trace = [{
             "name": "identify_errors", "ok": True,
@@ -376,7 +374,7 @@ class LedgerHypothesesSafetyTest(unittest.TestCase):
                                 "l1": "en", "conf": 0.5}],
             },
         }]
-        H._writeback_ledger_events(H, wb, trace, "我买了三苹果。")
+        DialogService._writeback_ledger_events(wb, trace, "我买了三苹果。")
         events = wb.ledger.recent()
         obs = [e for e in events if e.get("kind") == "observation_error"]
         self.assertEqual(len(obs), 1)

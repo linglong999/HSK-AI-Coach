@@ -5,6 +5,7 @@
 import unittest
 from unittest import mock
 
+from engine.dialog_service import DialogService
 from engine.generation.authoring import (
     WHY_CONSTRAINTS, WHY_FIELDS, build_why_prompt)
 from engine.generation.why import generate_why, parse_why_items
@@ -122,14 +123,9 @@ class GenerateWhyTest(unittest.TestCase):
         self.assertEqual(len(out), 1)
 
 
-class ServeBuildWhyTest(unittest.TestCase):
-    """serve 入口 _build_why：gate + provider 配置注入 + 异常兜底。"""
-
-    @staticmethod
-    def _handler():
-        from engine.serve import make_handler
-        H = make_handler(_DUMMY_ROUTER, _FAKE_INDEX)
-        return H
+class ServiceBuildWhyTest(unittest.TestCase):
+    """服务层入口 _build_why：gate + provider 配置注入 + 异常兜底。
+    0.30 拆分：由 serve.H 迁入 DialogService（静态方法，直接测类）。"""
 
     def setUp(self):
         # 打桩 lazy import 路径，让 _build_why 不触发真实网络
@@ -139,20 +135,19 @@ class ServeBuildWhyTest(unittest.TestCase):
         self.p2 = patcher2.start()
         self.addCleanup(self.p1.stop)
         self.addCleanup(self.p2.stop)
-        self.H = ServeBuildWhyTest._handler()
 
     def test_none_pre_scan_returns_empty(self):
-        self.assertEqual(self.H._build_why(None, {"id": "x"}, "zh"), [])
-        self.assertEqual(self.H._build_why({"errors": []}, {"id": "x"}, "zh"),
+        self.assertEqual(DialogService._build_why(None, {"id": "x"}, "zh"), [])
+        self.assertEqual(DialogService._build_why({"errors": []}, {"id": "x"}, "zh"),
                          [])
         self.p1.assert_not_called()
 
     def test_errors_forwarded_with_provider_config(self):
         self.p1.return_value = [{"fragment": "a", "reason": "r"}]
         prov = {"id": "d", "base_url": "http://u", "api_key": "k", "model": "m"}
-        out = self.H._build_why({"errors": [{"fragment": "a"}],
-                                 "hypotheses": [{"l1_anchor": "h"}],
-                                 }, prov, "en")
+        out = DialogService._build_why({"errors": [{"fragment": "a"}],
+                                        "hypotheses": [{"l1_anchor": "h"}],
+                                        }, prov, "en")
         self.assertEqual(out[0]["reason"], "r")
         args, kwargs = self.p1.call_args
         self.assertEqual(kwargs["config"]["api_key"], "k")
@@ -160,23 +155,18 @@ class ServeBuildWhyTest(unittest.TestCase):
 
     def test_zh_language_directive(self):
         self.p1.return_value = []
-        self.H._build_why({"errors": [{"fragment": "a"}]}, None, "zh")
+        DialogService._build_why({"errors": [{"fragment": "a"}]}, None, "zh")
         self.assertIn("中文", self.p1.call_args.kwargs["language_directive"])
         self.assertIsNone(self.p1.call_args.kwargs["config"])
 
     def test_generate_failure_degrades_to_empty(self):
         self.p1.side_effect = RuntimeError("boom")
-        self.assertEqual(self.H._build_why({"errors": [{"fragment": "a"}]},
-                                           {"id": "x"}, "zh"), [])
+        self.assertEqual(DialogService._build_why({"errors": [{"fragment": "a"}]},
+                                                  {"id": "x"}, "zh"), [])
 
 
 class CardPersistenceTest(unittest.TestCase):
     """0.27 成果卡随会话持久：_compact_cards 过滤 + _assistant_payload gate/门槛。"""
-
-    @classmethod
-    def setUpClass(cls):
-        from engine.serve import make_handler
-        cls.H = make_handler(_DUMMY_ROUTER, __file__)
 
     def test_compact_cards_filters_and_keeps_result(self):
         trace = [
@@ -190,7 +180,7 @@ class CardPersistenceTest(unittest.TestCase):
             # 非 dict：忽略
             "junk",
         ]
-        out = self.H._compact_cards(trace)
+        out = DialogService._compact_cards(trace)
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0]["name"], "identify_errors")
         self.assertIn("result", out[0])
@@ -198,14 +188,14 @@ class CardPersistenceTest(unittest.TestCase):
         self.assertNotIn("ok", out[0])
 
     def test_compact_cards_empty_and_none(self):
-        self.assertEqual(self.H._compact_cards(None), [])
-        self.assertEqual(self.H._compact_cards([]), [])
+        self.assertEqual(DialogService._compact_cards(None), [])
+        self.assertEqual(DialogService._compact_cards([]), [])
 
     def test_assistant_payload_no_provider_skips_why(self):
         res = {"trace": [{"name": "identify_errors", "ok": True,
                           "result": {"errors": [{"fragment": "a"}]}}]}
-        with mock.patch.object(self.H, "_build_why") as bw:
-            payload = self.H._assistant_payload(
+        with mock.patch.object(DialogService, "_build_why") as bw:
+            payload = DialogService._assistant_payload(
                 res, {"errors": [{"fragment": "a"}]}, None, "zh", "fluent")
         bw.assert_not_called()                # 无 provider → 不触网
         self.assertEqual(payload["why"], [])
@@ -214,9 +204,9 @@ class CardPersistenceTest(unittest.TestCase):
     def test_assistant_payload_provider_generates_why(self):
         res = {"trace": [{"name": "identify_errors", "ok": True,
                           "result": {"errors": [{"fragment": "a"}]}}]}
-        with mock.patch.object(self.H, "_build_why",
+        with mock.patch.object(DialogService, "_build_why",
                                return_value=[{"fragment": "a", "reason": "r"}]) as bw:
-            payload = self.H._assistant_payload(
+            payload = DialogService._assistant_payload(
                 res, {"errors": [{"fragment": "a"}]},
                 {"id": "d"}, "zh", "fluent")
         bw.assert_called_once()
@@ -224,8 +214,8 @@ class CardPersistenceTest(unittest.TestCase):
 
     def test_assistant_payload_material_suppresses_why(self):
         res = {"trace": [], "text": ""}
-        with mock.patch.object(self.H, "_build_why") as bw:
-            payload = self.H._assistant_payload(
+        with mock.patch.object(DialogService, "_build_why") as bw:
+            payload = DialogService._assistant_payload(
                 res, {"errors": [{"fragment": "a"}]},
                 {"id": "d"}, "zh", "material")
         bw.assert_not_called()
@@ -233,8 +223,8 @@ class CardPersistenceTest(unittest.TestCase):
 
     def test_assistant_payload_no_errors_suppresses_why(self):
         res = {"trace": [], "text": ""}
-        with mock.patch.object(self.H, "_build_why") as bw:
-            payload = self.H._assistant_payload(
+        with mock.patch.object(DialogService, "_build_why") as bw:
+            payload = DialogService._assistant_payload(
                 res, {"errors": []}, {"id": "d"}, "zh", "fluent")
         bw.assert_not_called()
         self.assertEqual(payload["why"], [])
@@ -242,18 +232,12 @@ class CardPersistenceTest(unittest.TestCase):
 
 class AttachKpToWhyTest(unittest.TestCase):
     """0.29 为什么错误行分支动作：_attach_kp_to_why 确定性回配 kp_id。"""
-    _H = None
-
-    @classmethod
-    def setUpClass(cls):
-        from engine.serve import make_handler
-        cls._H = make_handler(_DUMMY_ROUTER, __file__)
 
     def test_exact_fragment_match_adds_kp(self):
         items = [{"fragment": "吃奶茶", "correction": "喝奶茶", "reason": "r"}]
         errors = [{"fragment": "吃奶茶", "correction": "喝奶茶", "type": "词汇",
                    "confidence": 0.9, "knowledge_point_id": "kp-drink"}]
-        out = self._H._attach_kp_to_why(items, errors)
+        out = DialogService._attach_kp_to_why(items, errors)
         self.assertEqual(out[0]["kp_id"], "kp-drink")
         self.assertEqual(out[0]["type"], "词汇")
         self.assertEqual(out[0]["confidence"], 0.9)
@@ -264,52 +248,44 @@ class AttachKpToWhyTest(unittest.TestCase):
         items = [{"fragment": "吃那杯奶茶", "correction": "喝奶茶", "reason": "r"}]
         errors = [{"fragment": "吃奶茶", "correction": "喝奶茶",
                    "knowledge_point_id": "kp-drink"}]
-        out = self._H._attach_kp_to_why(items, errors)
+        out = DialogService._attach_kp_to_why(items, errors)
         self.assertEqual(out[0]["kp_id"], "kp-drink")
 
     def test_index_fallback_when_no_text_match(self):
         items = [{"fragment": "改写的片段", "correction": "改了", "reason": "r"}]
         errors = [{"fragment": "吃奶茶", "correction": "喝奶茶",
                    "knowledge_point_id": "kp-drink"}]
-        out = self._H._attach_kp_to_why(items, errors)
+        out = DialogService._attach_kp_to_why(items, errors)
         self.assertEqual(out[0]["kp_id"], "kp-drink")  # 索引位兜底
 
     def test_no_match_out_of_range_no_fabrication(self):
         items = [{"fragment": "孤行无著", "correction": "x", "reason": "r"}]
-        out = self._H._attach_kp_to_why(items, [])     # errors 为空且无索引位
+        out = DialogService._attach_kp_to_why(items, [])     # errors 为空且无索引位
         self.assertNotIn("kp_id", out[0])              # 不臆造节点
         self.assertEqual(out[0]["fragment"], "孤行无著")
 
     def test_kp_from_graph_write_when_top_level_missing(self):
         items = [{"fragment": "二杯", "correction": "两杯", "reason": "r"}]
         errors = [{"fragment": "二杯", "graph_write": {"kp_id": "kp-two"}}]
-        out = self._H._attach_kp_to_why(items, errors)
+        out = DialogService._attach_kp_to_why(items, errors)
         self.assertEqual(out[0]["kp_id"], "kp-two")
 
     def test_empty_items_passthrough(self):
-        self.assertEqual(self._H._attach_kp_to_why([], [{"fragment": "a"}]), [])
-        self.assertEqual(self._H._attach_kp_to_why(None, [{"fragment": "a"}]), None)
+        self.assertEqual(DialogService._attach_kp_to_why([], [{"fragment": "a"}]), [])
+        self.assertEqual(DialogService._attach_kp_to_why(None, [{"fragment": "a"}]), None)
 
-    def test_parse_why_items_strips_kp_but_serve_reattaches(self):
+    def test_parse_why_items_strips_kp_but_service_reattaches(self):
         # 0.29 边界：generate_why 的判白名单会剔除 kp_id，
-        # 但 serve 的 _attach_kp_to_why 是事后回配，二者叠加才有完整 kp_id
+        # 但服务层的 _attach_kp_to_why 是事后回配，二者叠加才有完整 kp_id
         parsed = {"items": [{"fragment": "二杯", "correction": "两杯",
                              "reason": "r", "kp_id": "kp-two"}]}
         items = parse_why_items(parsed)
         self.assertNotIn("kp_id", items[0])           # 白名单剔除
-        out = self._H._attach_kp_to_why(
+        out = DialogService._attach_kp_to_why(
             items, [{"fragment": "二杯", "correction": "两杯",
                      "knowledge_point_id": "kp-two"}])
         self.assertEqual(out[0]["kp_id"], "kp-two")   # 事后回配补上
 
-
-# 供 _handler 构造的占位对象（_build_why 不触碰 router 字段）
-class _DUMMY:  # noqa: N801
-    pass
-
-
-_DUMMY_ROUTER = _DUMMY()
-_FAKE_INDEX = __file__  # make_handler 只存不校验
 
 if __name__ == "__main__":
     unittest.main()

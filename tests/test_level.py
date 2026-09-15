@@ -2,7 +2,7 @@
 # tests/test_level.py
 # 0.25 起点分层回归测试
 # 覆盖（对照"identify 漏传 level=恒3"教训，必须 planner 级+引擎实收双锁定）：
-#   - Router._level_int / serve._normalize_user_level：归一（'HSK3'/'3'/3/非法/边界）
+#   - Router._level_int / DialogService._normalize_user_level：归一（'HSK3'/'3'/3/非法/边界）
 #   - serve：POST /api/profile 保存 user_level → GET 带回；非法 400
 #   - dialog 主链：画像等级 → 预扫识别引擎实收 level + planner trace.params 注入 level/user_level；
 #     未保存等级 → 回落 HSK3（默认不注入额外约束）
@@ -43,21 +43,17 @@ class LevelNormalizeTest(unittest.TestCase):
         self.assertEqual(Router(user_level="xxx")._level_int(), 3)    # 非法回退
 
     def test_serve_normalize_user_level(self):
-        # 0.25 起点分层：serve 自身静态归一（'HSK1'-'HSK6'/数字/非法）语义锁定。
-        # 直接测 handler 静态方法，避免"只测 Router 却以 serve 命名"的假绿。
-        import tempfile
-        from engine.serve import make_handler as _m
-        tmp = tempfile.mkdtemp()
-        router = make_fake_router("lvl_unit")
-        H = _m(router, tmp, dialog_llm=None)
-        self.assertEqual(H._normalize_user_level("HSK1"), "HSK1")
-        self.assertEqual(H._normalize_user_level("hsk6"), "HSK6")
-        self.assertEqual(H._normalize_user_level(4), "HSK4")
-        self.assertEqual(H._normalize_user_level("HSK0"), None)   # 越界非法
-        self.assertEqual(H._normalize_user_level("HSK9"), None)
-        self.assertEqual(H._normalize_user_level(0), None)
-        self.assertEqual(H._normalize_user_level("xxx"), None)
-        self.assertEqual(H._normalize_user_level(None), None)
+        # 0.25 起点分层：等级归一（'HSK1'-'HSK6'/数字/非法）语义锁定。
+        # 0.30 拆分后归 DialogService 静态方法（原 serve.H），直接测服务层。
+        from engine.dialog_service import DialogService
+        self.assertEqual(DialogService._normalize_user_level("HSK1"), "HSK1")
+        self.assertEqual(DialogService._normalize_user_level("hsk6"), "HSK6")
+        self.assertEqual(DialogService._normalize_user_level(4), "HSK4")
+        self.assertEqual(DialogService._normalize_user_level("HSK0"), None)   # 越界非法
+        self.assertEqual(DialogService._normalize_user_level("HSK9"), None)
+        self.assertEqual(DialogService._normalize_user_level(0), None)
+        self.assertEqual(DialogService._normalize_user_level("xxx"), None)
+        self.assertEqual(DialogService._normalize_user_level(None), None)
 
 
 # ---------------- serve 集成：保存 / 校验 / dialog 注入 ----------------
