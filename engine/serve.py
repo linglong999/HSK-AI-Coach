@@ -137,6 +137,19 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
         # 这些 POST 端点接收 JSON body（其余 404）。
         _JSON_POST_PATHS = frozenset(_POST_API)
 
+        # GET 路由表：path → handler 方法名（统一签名 (parsed)，异常由各 handler
+        # 自行结构化降级——本表内端点的失败响应形态互不相同，不做统一 500 包装）。
+        _GET_API = {
+            "/api/graph": "_do_api_graph",
+            "/api/profile": "_do_api_profile",
+            "/api/conversation": "_do_api_conversation",
+            "/api/providers": "_do_api_providers_list",
+            "/api/scenarios": "_do_api_scenarios",
+            "/api/quiz": "_do_api_quiz",
+            "/api/metrics": "_do_api_metrics",
+            "/api/alignment": "_do_api_alignment",
+        }
+
         def log_message(self, fmt, *args):
             sys.stderr.write("  [serve] " + fmt % args + "\n")
 
@@ -234,52 +247,9 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
         def do_GET(self):
             parsed = urlparse(self.path)
             path = parsed.path.rstrip("/")
-            if path == "/api/graph":
-                with self._lock:
-                    snap = self._router.graph.graph_snapshot()
-                self._send_json(snap)
-                return
-            if path == "/api/profile":
-                self._do_api_profile(parsed)
-                return
-            if path == "/api/conversation":
-                self._do_api_conversation(parsed)
-                return
-            if path == "/api/providers":
-                self._do_api_providers_list()
-                return
-            if path == "/api/scenarios":
-                # 0.22 方向2 · 预置场景库（前端场景卡列表，D2.3）
-                try:
-                    from engine.scenarios import list_scene_cards
-                    self._send_json({"scenes": list_scene_cards(),
-                                     "count": len(list_scene_cards())})
-                except Exception as e:  # noqa: BLE001 场景库不可用 → 空列表不报错
-                    self._send_json({"scenes": [], "count": 0, "error": str(e)})
-                return
-            if path == "/api/quiz":
-                # P0.13 独立复习页：拉复习队列 + 确定性挖空造题
-                try:
-                    self._do_api_quiz(parsed)
-                except Exception as e:  # noqa: BLE001
-                    self._send_json({"errors": [], "queue": [],
-                                     "error": f"quiz failed: {e}"}, 500)
-                return
-            if path == "/api/metrics":
-                # P0.18 效果度量：聚合全部 learner 的 4 指标（实时算，不靠手工跑）
-                try:
-                    from engine.metrics import all_metrics
-                    self._send_json(all_metrics(self._memory_root))
-                except Exception as e:  # noqa: BLE001
-                    self._send_json({"learners": {}, "generated_at": 0,
-                                     "error": f"metrics failed: {e}"}, 500)
-                return
-            if path == "/api/alignment":
-                # P0.19 fe5：教材对齐 + 考纲审核概览（textbook_map × syllabus 真实数据）
-                try:
-                    self._send_json(_alignment_summary())
-                except Exception as e:  # noqa: BLE001
-                    self._send_json({"error": f"alignment failed: {e}"}, 500)
+            handler_name = self.__class__._GET_API.get(path)
+            if handler_name:
+                getattr(self, handler_name)(parsed)
                 return
             # 静态：根 → index.html
             rel = parsed.path or "/"
@@ -287,22 +257,56 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 rel = "/index.html"
             self._send_static(rel)
 
+        def _do_api_graph(self, parsed):
+            with self._lock:
+                snap = self._router.graph.graph_snapshot()
+            self._send_json(snap)
+
+        def _do_api_scenarios(self, parsed):
+            # 0.22 方向2 · 预置场景库（前端场景卡列表，D2.3）
+            try:
+                from engine.scenarios import list_scene_cards
+                self._send_json({"scenes": list_scene_cards(),
+                                 "count": len(list_scene_cards())})
+            except Exception as e:  # noqa: BLE001 场景库不可用 → 空列表不报错
+                self._send_json({"scenes": [], "count": 0, "error": str(e)})
+
+        def _do_api_metrics(self, parsed):
+            # P0.18 效果度量：聚合全部 learner 的 4 指标（实时算，不靠手工跑）
+            try:
+                from engine.metrics import all_metrics
+                self._send_json(all_metrics(self._memory_root))
+            except Exception as e:  # noqa: BLE001
+                self._send_json({"learners": {}, "generated_at": 0,
+                                 "error": f"metrics failed: {e}"}, 500)
+
+        def _do_api_alignment(self, parsed):
+            # P0.19 fe5：教材对齐 + 考纲审核概览（textbook_map × syllabus 真实数据）
+            try:
+                self._send_json(_alignment_summary())
+            except Exception as e:  # noqa: BLE001
+                self._send_json({"error": f"alignment failed: {e}"}, 500)
+
         def _do_api_quiz(self, parsed):
             """P0.13 独立复习页 GET：拉复习队列 → 用确定性挖空引擎造题。
             队列里的 kp：有例句能挖到空 → cloze；否则降级为 recall 记忆自检。
             （对齐：无例句点造题时降级处理）返回 {queue, questions}。"""
-            qs = parse_qs(parsed.query)
-            limit = int((qs.get("limit") or ["10"])[0])
-            with self._lock:
-                queue = self._router.graph.get_review_queue()
-                sub = queue[:limit]
-                from engine.quiz import build_review_items
-                questions = build_review_items(sub)
-            self._send_json({
-                "queue": sub,
-                "count": len(questions),
-                "questions": questions,
-            })
+            try:
+                qs = parse_qs(parsed.query)
+                limit = int((qs.get("limit") or ["10"])[0])
+                with self._lock:
+                    queue = self._router.graph.get_review_queue()
+                    sub = queue[:limit]
+                    from engine.quiz import build_review_items
+                    questions = build_review_items(sub)
+                self._send_json({
+                    "queue": sub,
+                    "count": len(questions),
+                    "questions": questions,
+                })
+            except Exception as e:  # noqa: BLE001 造题失败 → 空队列 500，前端自降级
+                self._send_json({"errors": [], "queue": [],
+                                 "error": f"quiz failed: {e}"}, 500)
 
         def _do_api_quiz_answer(self, payload):
             """P0.13 复习页答完回写：接收 [{kp_id, correct}]，逐 kp review_feedback。
@@ -637,7 +641,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
 
         # ---------- BYOK 供应商管理（0.20：OpenAI 兼容多供应商，UI 内配置免重启） ----------
 
-        def _do_api_providers_list(self):
+        def _do_api_providers_list(self, parsed):
             """供应商列表（api_key 掩码，响应绝不含完整 Key）。
             default_id = 实际生效默认（store 显式默认 → env → 首个）。"""
             from engine import providers as prov
