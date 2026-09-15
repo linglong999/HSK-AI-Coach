@@ -129,15 +129,10 @@ class DialogMemoryIntegrationTest(unittest.TestCase):
         if os.path.exists(p):
             os.remove(p)
 
-    def _mem_path(self, learner=None):
-        from engine.memory.learner_memory import LearnerMemory
-        lid = learner or self.learner
-        inst = LearnerMemory(lid, root=self.mem_root)
-        return inst._path
-
     def _load_mem(self, learner=None):
-        with open(self._mem_path(learner), encoding="utf-8") as f:
-            return json.load(f)
+        # 0.31 起 SQLite（coach.db）落盘：经公开 API 读，不再摸 JSON 文件
+        from engine.memory.learner_memory import LearnerMemory
+        return LearnerMemory(learner or self.learner, root=self.mem_root)
 
     def test_first_round_persists_and_echoes_conversation_id(self):
         self.llm.reset([TEXT_REPLY % "第一轮回复。"])
@@ -146,9 +141,8 @@ class DialogMemoryIntegrationTest(unittest.TestCase):
             "conversation_id": "conv-A"})
         self.assertEqual(st, 200)
         self.assertEqual(out.get("conversation_id"), "conv-A")
-        data = self._load_mem()
-        self.assertEqual(data.get("learner_id"), self.learner)
-        msgs = data["sessions"]["conv-A"]["messages"]
+        mem = self._load_mem()
+        msgs = mem.get_history("conv-A", window=200)
         self.assertEqual([m["role"] for m in msgs], ["user", "assistant"])
         self.assertEqual(msgs[0]["content"], "我想买苹果很多。")
         self.assertEqual(msgs[1]["content"], "第一轮回复。")
@@ -204,8 +198,8 @@ class DialogMemoryIntegrationTest(unittest.TestCase):
             "text": "不传会话 id", "learner_id": self.learner})
         self.assertEqual(st, 200)
         self.assertEqual(out.get("conversation_id"), "default")
-        data = self._load_mem()
-        self.assertIn("default", data["sessions"])
+        mem = self._load_mem()
+        self.assertIn("default", [s["id"] for s in mem.list_sessions()])
 
     def test_fallback_reply_persisted_and_continues(self):
         # 第一轮：LLM 输出非 JSON（重试一次仍坏，"这不是JSON" 过短不入裸文本
@@ -216,8 +210,8 @@ class DialogMemoryIntegrationTest(unittest.TestCase):
             "conversation_id": "conv-D"})
         self.assertEqual(st, 200)
         self.assertTrue(out.get("fallback"))
-        data = self._load_mem()
-        msgs = data["sessions"]["conv-D"]["messages"]
+        mem = self._load_mem()
+        msgs = mem.get_history("conv-D", window=200)
         self.assertEqual(msgs[-1]["role"], "assistant")
         self.assertTrue(msgs[-1]["metadata"].get("fallback"))
         self.assertEqual(msgs[-1]["content"], out.get("text"))
@@ -253,8 +247,12 @@ class NoKeyNoMemoryWriteTest(unittest.TestCase):
                 "conversation_id": "conv-X"})
         self.assertEqual(st, 400)
         self.assertEqual(out.get("code"), "llm_not_configured")
-        files = [f for f in os.listdir(self.mem_root) if f.startswith("memory_")]
-        self.assertEqual(files, [])
+        # 0.31 起 SQLite：断言"没为该学习者写任何消息"（数据语义，
+        # 不再绑定 JSON 文件存在性这一实现细节）
+        from engine.memory.learner_memory import LearnerMemory
+        mem = LearnerMemory("nokey_user", root=self.mem_root)
+        self.assertEqual(mem.get_history("conv-X"), [])
+        self.assertEqual(mem.list_sessions(), [])
 
 
 if __name__ == "__main__":

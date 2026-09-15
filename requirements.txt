@@ -1,5 +1,9 @@
-# 运行时零第三方依赖：仅 Python 标准库（urllib/json/threading 等）。
-# .env 文件由 config/settings.py 内置解析器加载，无需 python-dotenv。
-#
+# 运行时依赖（0.31 主流化：解除零依赖约束，按需引入成熟库）
+requests>=2.28          # LLM 客户端 HTTP 层（含流式）
+python-dotenv>=1.0      # .env 加载（真实环境变量优先）
+
+# dev/test 依赖（不进运行时）：
+# pip install pytest
+
 # 可选依赖（仅数据准备工具需要）：
 # pip install openpyxl        # datasets/convert_lexicon.py（从 HSK 官方 xlsx 生成词表）

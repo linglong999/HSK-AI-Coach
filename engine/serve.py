@@ -7,9 +7,10 @@
 # 暴露入口给前端壳（原生 JS+SVG）：
 #   POST /api/dialog   → Planner 自由 ReAct（0.17 唯一对话入口，共享 skill 注册表）
 #                        + M5 多轮记忆（0.18 接入项①）：服务端 LearnerMemory 权威，
-#                        按 conversation_id 注入历史并写回落盘（data/memory_<learner>.json）
+#                        按 conversation_id 注入历史并写回落盘（0.31 起 SQLite：
+#                        data/coach.db 的 sessions/messages/profiles 表）
 #                        + M8 画像/惯犯（0.18 接入项③）：常错点摘要注入 system；
-#                        trace 编排 ledger 两段式事件（data/ledger_<learner>.json）；
+#                        trace 编排 ledger 两段式事件（coach.db · ledger_events 表）；
 #                        常错点 facts 汇合 M5 profile.common_errors
 #   POST /api/process  → Router.process(text) → 契约 v1 result（兼容遗留 runner）
 #   POST /api/verify   → Router.verify_rephrase() → 复述验证（契约 verify_rephrase 节）
@@ -356,18 +357,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                         self._router.graph, wb.ledger)
                 except Exception:  # noqa: BLE001
                     summary_text = ""
-                sessions = []
-                # serve 单进程：缓存实例即权威（与 dialog 写回同源），无需重读盘
-                raw_sessions = mem._load().get("sessions", {})
-                for sid, sess in raw_sessions.items():
-                    sessions.append({
-                        "id": sid,
-                        "title": str(sess.get("title") or ""),
-                        "status": str(sess.get("status") or "active"),
-                        "updated_at": int(sess.get("updated_at") or 0),
-                        "message_count": len(sess.get("messages", [])),
-                        "pinned": bool(sess.get("pinned")),
-                    })
+                sessions = mem.list_sessions()
                 # 0.24：置顶优先，组内仍按 updated_at 降序
                 sessions.sort(key=lambda s: (not s["pinned"], -s["updated_at"]))
                 snap = self._router.graph.graph_snapshot()
@@ -380,7 +370,7 @@ def make_handler(router: "Router", index_dir: str, generation=None, dialog_llm=N
                 # ---- P0.12 冷启动引导判定 ----
                 # 全新用户（未完成引导 且 无任何学习数据）→ 弹引导；老用户不受影响
                 onboarding_done = bool(profile.get("onboarding_done"))
-                has_learning_data = bool(raw_sessions) or bool(snap.get("nodes", {}))
+                has_learning_data = bool(sessions) or bool(snap.get("nodes", {}))
                 self._send_json({
                     "learner_id": learner_id,
                     "profile": profile,

@@ -1,8 +1,9 @@
 # ============================================================
 # engine/metrics.py
 # P0.18 · 效果度量与数据闭环（蓝本 V1 P0.18）
-# 纯标准库，零第三方。输入 data/ 下 ledger_/graph_/memory_/feedback_<learner>.json，
-# 按 learner_id 关联（以 ledger_*.json 存在为 learner 锚点，避免误匹配无 ledger 的图变体）。
+# 输入：ledger/memory（data/coach.db，0.31 起 SQLite）+ graph/feedback_*.json，
+# 按 learner_id 关联（以 ledger_events 有记录为 learner 锚点，避免误匹配
+# 无 ledger 的图变体）。
 # 4 指标，每个返回 {value, n, window, caveats}：
 #   value   指标值；无数据/数据不足时返回 None（如实报缺，不编数）
 #   n       样本量（据以判断可信度）
@@ -10,12 +11,13 @@
 #   caveats 口径与局限（与 reports/metrics_caliber.md 一致）
 # ============================================================
 
-import glob
 import json
 import os
 import re
 import time
 from typing import Any, Dict, List, Optional
+
+from engine.memory import store
 
 # 通过判定：graph 节点 positive 痕迹
 _POSITIVE_KINDS = ("concept_confirmed",)
@@ -34,16 +36,17 @@ def _read_json(path: str) -> Dict[str, Any]:
         return {}
 
 
-# ---------------- 学习者发现与文件装配 ----------------
+# ---------------- 学习者发现与数据装配 ----------------
 def iter_learners(root: str = "data") -> List[str]:
-    """从 ledger_*.json 发现 learner（组件锚点）。返回按名的 learner_id 列表。"""
-    seen: List[str] = []
-    for fp in sorted(glob.glob(os.path.join(root, "ledger_*.json"))):
-        lid = fp[len(root) + 1: -len("ledger_") - 1] if False else ""
-        name = os.path.basename(fp)[len("ledger_"):-len(".json")]
-        if name and name not in seen:
-            seen.append(name)
-    return sorted(seen)
+    """从 ledger_events（coach.db）发现 learner（组件锚点）。返回按名的列表。"""
+    conn = store.ensure_store(root)
+    try:
+        rows = conn.execute(
+            "SELECT DISTINCT learner_id FROM ledger_events"
+            " ORDER BY learner_id").fetchall()
+        return [r["learner_id"] for r in rows]
+    finally:
+        conn.close()
 
 
 def _file(root: str, kind: str, learner: str) -> str:
@@ -51,11 +54,24 @@ def _file(root: str, kind: str, learner: str) -> str:
 
 
 def _load_all(root: str, learner: str) -> Dict[str, Any]:
-    led = _read_json(_file(root, "ledger", learner))
+    conn = store.ensure_store(root)
+    try:
+        events = [dict(r) for r in conn.execute(
+            "SELECT id, kind, learner_id, kp_id, signature, evidence, ts"
+            " FROM ledger_events WHERE learner_id=? ORDER BY id",
+            (learner,)).fetchall()]
+        sessions = {}
+        for r in conn.execute(
+                "SELECT session_id, created_at, updated_at FROM sessions"
+                " WHERE learner_id=?", (learner,)):
+            sessions[r["session_id"]] = {
+                "created_at": r["created_at"], "updated_at": r["updated_at"]}
+    finally:
+        conn.close()
     graph = _read_json(_file(root, "graph", learner))
-    mem = _read_json(_file(root, "memory", learner))
     fb = _read_json(_file(root, "feedback", learner))
-    return {"ledger": led, "graph": graph, "memory": mem, "feedback": fb}
+    return {"ledger": {"events": events}, "graph": graph,
+            "memory": {"sessions": sessions}, "feedback": fb}
 
 
 # ---------------- 内部口径小工具 ----------------

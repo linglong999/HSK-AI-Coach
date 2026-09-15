@@ -9,7 +9,6 @@
 #   - LLMClient json_mode 400 兜底：拒绝 response_format 的供应商自动降级重试
 # 运行: python -m unittest tests.test_serve_providers -v
 # ============================================================
-
 import http.client
 import json
 import os
@@ -20,6 +19,9 @@ import threading
 import unittest
 from http.server import ThreadingHTTPServer
 from unittest import mock
+
+import requests
+
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
@@ -335,53 +337,54 @@ class EnvCompatTest(unittest.TestCase):
 # ---------------- 单元：LLMClient json_mode 400 兜底 ----------------
 
 class _FakeResponse:
-    def __init__(self, body):
-        self._body = body.encode()
+    """requests.Response 替身：status_code/json()/text（供传输层消费）。"""
 
-    def read(self):
+    def __init__(self, body: dict, status_code: int = 200):
+        self._body = body
+        self.status_code = status_code
+
+    def json(self):
         return self._body
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *a):
-        return False
+    @property
+    def text(self):
+        return json.dumps(self._body)
 
 
 class _FakeHttp:
-    """urllib.request 替身：捕获 payload；脚本化返回/抛错。"""
+    """requests.Session 替身：捕获 payload；脚本化返回/抛错。
+    {"raise": Exception} → 抛异常（模拟网络级错误）；{"status": int} →
+    返该状态码响应（4xx 按 requests 惯例走正常返回）；{"content": str} → 200 响应。
+    """
 
     def __init__(self):
         self.payloads = []
-        self.script = []   # 每项：{"raise": HTTPError} 或 {"body": str}
+        self.script = []   # 每项：{"raise": 异常} / {"status": int} / {"content": str}
 
-    def Request(self, url, data=None, headers=None, method=None):
-        return {"url": url, "data": data, "headers": headers}
-
-    def urlopen(self, req, timeout=60):
-        payload = json.loads(req["data"].decode())
-        self.payloads.append(payload)
-        step = self.script.pop(0) if self.script else {"body": "{}"}
+    def post(self, url, json=None, headers=None, timeout=60):
+        self.payloads.append(json)
+        step = self.script.pop(0) if self.script else {"content": "ok"}
         if "raise" in step:
             raise step["raise"]
+        status = step.get("status")
+        if status is not None:
+            return _FakeResponse({"error": f"HTTP {status}"}, status_code=status)
         content = step.get("content", "ok")
-        return _FakeResponse(json.dumps(
-            {"choices": [{"message": {"content": content}}]}))
+        return _FakeResponse(
+            {"choices": [{"message": {"content": content}}]})
 
 
 class JsonModeFallbackTest(unittest.TestCase):
 
     def _client(self, fake):
         c = LLMClient()
-        c._request = fake
+        c._session = fake
         return c
 
     def test_400_falls_back_without_response_format(self):
-        import urllib.error
         fake = _FakeHttp()
         fake.script = [
-            {"raise": urllib.error.HTTPError(
-                "u", 400, "response_format not supported", None, None)},
+            {"status": 400},
             {"content": '{"a":1}'},
         ]
         c = self._client(fake)
@@ -393,10 +396,9 @@ class JsonModeFallbackTest(unittest.TestCase):
         self.assertNotIn("response_format", fake.payloads[1])   # 降级重试去掉参数
 
     def test_400_without_json_mode_no_retry(self):
-        import urllib.error
         fake = _FakeHttp()
         fake.script = [
-            {"raise": urllib.error.HTTPError("u", 400, "bad", None, None)},
+            {"status": 400},
         ]
         c = self._client(fake)
         with self.assertRaises(RuntimeError) as ctx:
@@ -407,11 +409,10 @@ class JsonModeFallbackTest(unittest.TestCase):
         self.assertEqual(len(fake.payloads), 1)
 
     def test_fallback_also_fails_raises_descriptive(self):
-        import urllib.error
         fake = _FakeHttp()
         fake.script = [
-            {"raise": urllib.error.HTTPError("u", 400, "bad", None, None)},
-            {"raise": urllib.error.HTTPError("u", 401, "unauthorized", None, None)},
+            {"status": 400},
+            {"status": 401},
         ]
         c = self._client(fake)
         with self.assertRaises(RuntimeError) as ctx:

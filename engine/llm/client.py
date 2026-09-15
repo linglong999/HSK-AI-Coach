@@ -1,14 +1,16 @@
 # ============================================================
 # LLM 客户端
 # 统一封装 LLM 调用，支持 DeepSeek / Qwen 切换（OpenAI 兼容格式）
-# 所有 Agent 通过本模块调用模型，便于后续替换或加日志/成本统计
+# 所有 Agent 通过本模块调用模型，便于后续替换或加日志/成本统计。
+# 传输层：requests.Session（主流 HTTP 客户端，原生支持流式）。测试经
+#   self._session 注入 duck-typed fake（post() 须按 requests.Response 语义返回）。
 # ============================================================
 
-import sys
 import time
 from typing import List, Dict, Optional
 
-sys.path.insert(0, ".")
+import requests
+
 from config import settings
 
 
@@ -21,16 +23,12 @@ class LLMHTTPError(RuntimeError):
 
 
 class LLMClient:
-    """轻量 LLM 客户端，纯标准库实现，避免额外依赖"""
+    """轻量 LLM 客户端，OpenAI 兼容协议（/chat/completions）。
+    支持供应商配置覆盖（config 字典，0.20 BYOK）与真实流式（chat_stream）。"""
 
-    def __init__(self, provider: Optional[str] = None):
+    def __init__(self, provider: Optional[str] = None, session: Optional["requests.Session"] = None):
         self.provider = provider or settings.LLM_PROVIDER
-        self._import_http()
-
-    def _import_http(self):
-        """延迟导入 urllib，保证无网络环境也能 import 本模块"""
-        import urllib.request
-        self._request = urllib.request
+        self._session = session if session is not None else requests.Session()
 
     # ---------- 公共接口 ----------
     def chat(self, messages: List[Dict], temperature: float = 0.3,
@@ -88,31 +86,39 @@ class LLMClient:
                         f"LLM 调用失败（json_mode 降级重试仍失败）: {e2}") from e2
             raise RuntimeError(f"LLM 调用失败(HTTP {e.code}): {e}") from e
 
-    def _post_chat(self, url: str, headers: Dict, payload: Dict) -> str:
-        """单次 HTTP POST（含瞬时故障退避重试，4xx 不重试直接抛）。"""
-        data = json_dumps(payload).encode("utf-8")
-        req = self._request.Request(url, data=data, headers=headers, method="POST")
-
-        # 网络级瞬时故障退避重试（4.2 降级兜底第一道闸）：
-        # 4xx（Key 无效/请求非法）重试无意义直接抛；超时/连接错误/5xx/429 重试最多 2 次
-        last_err = None
-        for attempt in range(3):
-            try:
-                with self._request.urlopen(req, timeout=60) as resp:
-                    body = json_loads(resp.read().decode("utf-8"))
-                content = body["choices"][0]["message"]["content"]
-                return strip_code_fence(content)
-            except Exception as e:
-                code = getattr(e, "code", None)
-                if code is not None and 400 <= code < 500 and code != 429:
-                    raise LLMHTTPError(
-                        f"LLM 调用失败(HTTP {code}): {e}", code=code) from e
-                last_err = e
-                if attempt < 2:
-                    time.sleep(0.5 * (attempt + 1))
-        raise RuntimeError(f"LLM 调用失败(已重试): {last_err}")
-
     # ---------- 便捷方法 ----------
+    def chat_stream(self, messages: List[Dict], temperature: float = 0.3,
+                    max_tokens: int = 2000, config: Optional[Dict] = None):
+        """流式对话：逐段产出增量文本（生成器），支持打字机节奏。
+        请求 stream=True；每次 yield 一个文本增量（SSE `\data:` 已剥外层）。
+        错误语义与 chat 一致：4xx 抛 LLMHTTPError，网络/5xx/429 走退避重试。
+        config: 可选供应商覆盖（同 chat）。"""
+        if config:
+            base_url = config.get("base_url") or ""
+            api_key = config.get("api_key") or ""
+            model = config.get("model") or ""
+        else:
+            base_url, api_key, model = settings.get_llm_config()
+        if not api_key:
+            raise RuntimeError(
+                "未配置 API Key。请设置环境变量 DEEPSEEK_API_KEY （或 QWEN_API_KEY），"
+                "或在 .env 文件中填写。本项目为开源项目，API Key 由用户自行提供。"
+            )
+        url = base_url.rstrip("/") + "/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        }
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        for chunk in self._post_chat_stream(url, headers, payload):
+            yield chunk
+
     def chat_json(self, system: str, user: str, temperature: float = 0.2,
                   config: Optional[Dict] = None) -> dict:
         """请求模型返回 JSON，并自动解析（非强制，供宽松场景用）。
@@ -152,6 +158,67 @@ class LLMClient:
                         f"结构化输出解析失败，已重试 {retries} 次仍失败: {e}"
                     )
         raise JSONStrictError("unreachable")  # 不可达占位
+
+    # ---------- 传输层 ----------
+    def _post_chat(self, url: str, headers: Dict, payload: Dict) -> str:
+        """单次 HTTP POST（含瞬时故障退避重试，4xx 不重试直接抛）。
+        经 self._session.post() 发送；网络/超时/5xx/429 重试最多 2 次，4xx 立即抛。"""
+        last_err = None
+        for attempt in range(3):
+            try:
+                resp = self._session.post(
+                    url, json=payload, headers=headers, timeout=60)
+                if resp.status_code >= 400:
+                    if 400 <= resp.status_code < 500 and resp.status_code != 429:
+                        raise LLMHTTPError(
+                            f"LLM 调用失败(HTTP {resp.status_code})", code=resp.status_code)
+                    raise requests.HTTPError(f"HTTP {resp.status_code}: {resp.text!r}")
+                content = resp.json()["choices"][0]["message"]["content"]
+                return strip_code_fence(content)
+            except LLMHTTPError:
+                raise   # 4xx 不重试
+            except requests.RequestException as e:
+                last_err = e
+                if attempt < 2:
+                    time.sleep(0.5 * (attempt + 1))
+        raise RuntimeError(f"LLM 调用失败(已重试): {last_err}")
+
+    def _post_chat_stream(self, url: str, headers: Dict, payload: Dict):
+        """流式传输：解析 OpenAI 兼容 SSE（`data: {...}`，末尾 `data: [DONE]`）。
+        逐 chunk 产出 content 增量；4xx → LLMHTTPError，网络/5xx/429 退避重试。"""
+        for attempt in range(3):
+            try:
+                resp = self._session.post(
+                    url, json=payload, headers=headers, timeout=60, stream=True)
+                if resp.status_code >= 400:
+                    if 400 <= resp.status_code < 500 and resp.status_code != 429:
+                        raise LLMHTTPError(
+                            f"LLM 调用失败(HTTP {resp.status_code})", code=resp.status_code)
+                    raise requests.HTTPError(f"HTTP {resp.status_code}: {resp.text!r}")
+                for line in resp.iter_lines(decode_unicode=True):
+                    if not line or not line.startswith("data:"):
+                        continue
+                    data = line[len("data:"):].strip()
+                    if data == "[DONE]":
+                        return
+                    try:
+                        chunk_obj = json_loads(data)
+                    except Exception:  # noqa: BLE001 非 JSON 行（心跳等）跳过
+                        continue
+                    choices = chunk_obj.get("choices") or []
+                    if choices and choices[0].get("delta", {}).get("content"):
+                        yield choices[0]["delta"]["content"]
+                return
+            except LLMHTTPError:
+                raise
+            except requests.RequestException as e:
+                last_err = e
+                if attempt < 2:
+                    time.sleep(0.5 * (attempt + 1))
+            except (ValueError, KeyError, TypeError) as e:
+                # 响应格式异常：非网络错误，重试无益，直接抛
+                raise RuntimeError(f"LLM 流式响应解析失败: {e}") from e
+        raise RuntimeError(f"LLM 调用失败(已重试): {last_err}")
 
 
 # ---------- 工具函数 ----------

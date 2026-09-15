@@ -7,7 +7,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License: MIT"/></a>
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"/>
-  <img src="https://img.shields.io/badge/deps-0%20runtime%20deps-4C9A2F?style=flat-square" alt="零运行时依赖"/>
+  <img src="https://img.shields.io/badge/deps-2%20runtime%20deps-4C9A2F?style=flat-square" alt="运行时依赖：requests + python-dotenv"/>
   <img src="https://img.shields.io/badge/tests-640%20passed-brightgreen?style=flat-square" alt="640 tests"/>
   <img src="https://img.shields.io/badge/LLM-DeepSeek%20%E7%AD%89%20OpenAI%20%E5%85%BC%E5%AE%B9-FF6B35?style=flat-square" alt="LLM providers"/>
   <img src="https://img.shields.io/badge/OCR-RapidOCR-4F8EF7?style=flat-square" alt="OCR: RapidOCR"/>
@@ -28,7 +28,7 @@
 ## 📖 项目简介
 **HSK-AI-Coach** 是一个开源的 AI 中文学习陪练：输入一句中文或一段对话，它告诉你**错在哪、为什么错、该怎么说**，并把每次纠正沉淀进一张偏误图谱，过段时间主动拉你复习。核心闭环一句话：**偏误检测 → 讲清原因 → 让学习者自己复述检验 → 沉淀进复习计划**。设计原则是"能交流就不打断，卡住才出手"。
 
-全部用 Python 标准库实现，**clone 即跑、零运行时依赖**（pytest 仅作 dev 测试工具，不参与运行时）；每个能力都配可复跑的黄金评测集与真实模型实跑，不是"感觉效果不错"。
+运行时依赖极简：仅 `requests` + `python-dotenv` 两个成熟库（LLM HTTP 含流式 / .env 加载），事件账本与会话记忆用标准库 SQLite（`data/coach.db`）；每个能力都配可复跑的黄金评测集与真实模型实跑，不是"感觉效果不错"。
 
 ### ✨ 核心亮点
 - **偏误识别做到"宁可漏判，不误报"** — 干净句误报确定性护栏压到 **0%**
@@ -37,16 +37,17 @@
 - **介入时机三档（none/light/block）** — 流利时静默记录，卡壳/求助才出手，打断上限服务端强制
 - **教学语言分层** — 英文脚手架讲规则，中文载体装例句与词汇
 - **图片/文档直接进闭环** — RapidOCR 把照片/PDF 转文本，交给同一纠错链
-- **零配置跑通 + BYOK** — clone 即跑；未配 Key 有访客额度，界面内加任意 OpenAI 兼容供应商
+- **零配置跑通 + BYOK** — 未配 Key 有访客额度，界面内加任意 OpenAI 兼容供应商
 
 ## 🚀 快速开始
 ### 环境要求
-- **Python** >= 3.11（无需任何第三方依赖，`pip install` 不是必须的）
+- **Python** >= 3.11（运行时依赖仅 `requests` + `python-dotenv`，`pip install -r requirements.txt` 一步装齐）
 - **一个 LLM API Key**（默认 DeepSeek；不配 Key 也能跑确定性纠错 / 冒烟测试）
 
 ### 1. 克隆 & 配置
 ```bash
 git clone <repo-url> && cd HSK-AI-Coach
+pip install -r requirements.txt   # 仅 requests + python-dotenv 两个运行时依赖
 cp .env.example .env          # 填入 DEEPSEEK_API_KEY（https://platform.deepseek.com）
 ```
 
@@ -70,7 +71,7 @@ python -m examples.demo_file
 ```bash
 python -m engine.serve          # 浏览器打开 http://127.0.0.1:8612
 ```
-零依赖 HTTP 服务（仅标准库，原生 JS+SVG 单页）。左侧对话流呈现「偏误卡 → 讲解卡 → 学习成果卡」，侧栏进入「◈ 认知地图」看掌握度 × HSK 分布与复习队列。自由对话（`/api/dialog`）需配置 LLM Key，未配置时前端如实报错并给配置步骤（不静默降级）；仅用确定性纠错（`/api/process`）可不配 Key。
+轻依赖 HTTP 服务（标准库 http.server + 原生 JS+SVG 单页）。左侧对话流呈现「偏误卡 → 讲解卡 → 学习成果卡」，侧栏进入「◈ 认知地图」看掌握度 × HSK 分布与复习队列。自由对话（`/api/dialog`）需配置 LLM Key，未配置时前端如实报错并给配置步骤（不静默降级）；仅用确定性纠错（`/api/process`）可不配 Key。
 
 ### 5.（可选）本地 OCR
 图片/PDF 需要装例外依赖 `rapidocr_onnxruntime + pymupdf`；未安装时自动降级为"不解析图片"，不影响其它功能。

@@ -402,7 +402,7 @@ class DialogService:
                          "code": "nothing_to_update"}
         with self._lock:
             mem = self._get_memory(learner_id)
-            if mem._get(mem._safe(cid)) is None:
+            if not mem.has_session(cid):
                 return 404, {"error": f"会话不存在: {cid}",
                              "code": "session_not_found"}
             mem.touch(cid, title=title, pinned=pinned, bump=False)

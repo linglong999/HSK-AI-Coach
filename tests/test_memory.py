@@ -19,8 +19,9 @@ class TestLearnerMemory(unittest.TestCase):
         self.mem = LearnerMemory(learner_id="test_user", root=self._tmp)
 
     def _path_exists(self):
+        # 0.31 起 SQLite 落盘（coach.db），不再有 per-learner JSON
         return os.path.exists(os.path.join(
-            self._tmp, "memory_test_user.json"))
+            self._tmp, "coach.db"))
 
     def test_append_persists(self):
         self.mem.append("s1", "user", "你好")

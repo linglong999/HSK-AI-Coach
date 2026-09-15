@@ -295,12 +295,12 @@ class LearnerMemoryPinDeleteTest(unittest.TestCase):
             mem.append("s1", "user", "你好")
         with mock.patch.object(mod.time, "time", return_value=2000):
             mem.touch("s1", pinned=True, bump=False)
-        raw = mem._load()["sessions"]["s1"]
+        raw = {s["id"]: s for s in mem.list_sessions()}["s1"]
         self.assertEqual(raw["updated_at"], 1000)   # 管理操作不动活跃度
         self.assertTrue(raw["pinned"])
         # 落盘往返：reload 后仍在
         mem.reload()
-        raw = mem._load()["sessions"]["s1"]
+        raw = {s["id"]: s for s in mem.list_sessions()}["s1"]
         self.assertTrue(raw.get("pinned"))
 
     def test_touch_bump_default_still_works(self):
@@ -310,7 +310,7 @@ class LearnerMemoryPinDeleteTest(unittest.TestCase):
             mem.append("s1", "user", "你好")
         with mock.patch.object(mod.time, "time", return_value=3000):
             mem.touch("s1", title="标题")
-        raw = mem._load()["sessions"]["s1"]
+        raw = {s["id"]: s for s in mem.list_sessions()}["s1"]
         self.assertEqual(raw["updated_at"], 3000)   # 默认 bump 语义保留
 
     def test_delete_session_roundtrip(self):
@@ -322,5 +322,6 @@ class LearnerMemoryPinDeleteTest(unittest.TestCase):
         self.assertEqual(len(mem.get_history("s2", window=10)), 1)
         self.assertFalse(mem.delete_session("s1"))   # 二次删除 → False
         mem.reload()
-        self.assertIn("s2", mem._load()["sessions"])
-        self.assertNotIn("s1", mem._load()["sessions"])
+        ids = [s["id"] for s in mem.list_sessions()]
+        self.assertIn("s2", ids)
+        self.assertNotIn("s1", ids)

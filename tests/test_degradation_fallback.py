@@ -28,22 +28,41 @@ import config.settings as settings
 
 
 class FakeResp:
-    def __init__(self, body: dict):
-        import json
-        self._body = json.dumps(body).encode("utf-8")
+    """requests.Response 替身：含 status_code/json()/text（供 LLMClient 传输层消费）。"""
 
-    def read(self):
+    def __init__(self, body: dict, status_code: int = 200):
+        self._body = body
+        self.status_code = status_code
+
+    def json(self):
         return self._body
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *a):
-        return False
+    @property
+    def text(self):
+        import json
+        return json.dumps(self._body)
 
 
 def _ok_body():
     return {"choices": [{"message": {"content": "hello"}}]}
+
+
+class FakeSession:
+    """requests.Session 替身：可脚本化，post() 抛指定异常或返回 FakeResp。
+    校验 payload 非空 / 捕获 JSON body（用于断言是否含 response_format）。"""
+
+    def __init__(self):
+        self.payloads = []
+        self._fails = 0          # 剩余连续抛错的次数
+        self._err = None
+        self._resp = None        # 成功后返回的响应；None → _ok_body()
+
+    def post(self, url, json=None, headers=None, timeout=60):
+        self.payloads.append(json)
+        if self._fails > 0:
+            self._fails -= 1
+            raise self._err
+        return self._resp if self._resp is not None else FakeResp(_ok_body())
 
 
 class ClientRetryTestBase(unittest.TestCase):
@@ -53,52 +72,43 @@ class ClientRetryTestBase(unittest.TestCase):
         self._orig_sleep = client_mod.time.sleep
         client_mod.time.sleep = lambda s: None
         self.client = LLMClient(provider="deepseek")
-        self._orig_urlopen = self.client._request.urlopen
+        self._orig_session = self.client._session
+        self.client._session = FakeSession()
 
     def tearDown(self):
         settings.get_llm_config = self._orig_cfg
         client_mod.time.sleep = self._orig_sleep
-        self.client._request.urlopen = self._orig_urlopen
+        self.client._session = self._orig_session
 
 
 class TestLLMNetworkRetry(ClientRetryTestBase):
     def test_transient_error_retries_then_succeeds(self):
-        """URLError×2 → 第3次成功：chat 正常返回，不抛"""
-        import urllib.error
-        calls = []
-
-        def flaky(req, timeout=None):
-            calls.append(1)
-            if len(calls) <= 2:
-                raise urllib.error.URLError("瞬时连接故障")
-            return FakeResp(_ok_body())
-
-        self.client._request.urlopen = flaky
+        """连接错误×2 → 第3次成功：chat 正常返回，不抛"""
+        import requests
+        self.client._session._fails = 2
+        self.client._session._err = requests.ConnectionError("瞬时连接故障")
         out = self.client.chat([{"role": "user", "content": "hi"}])
         self.assertEqual(out, "hello")
-        self.assertEqual(len(calls), 3)
+        self.assertEqual(len(self.client._session.payloads), 3)
 
     def test_persistent_error_raises_after_retries(self):
         """持续故障：重试 3 次后抛 RuntimeError（带已重试标记）"""
-        import urllib.error
-
-        def always_fail(req, timeout=None):
-            raise urllib.error.URLError("断网")
-
-        self.client._request.urlopen = always_fail
+        import requests
+        self.client._session._fails = 99
+        self.client._session._err = requests.ConnectionError("断网")
         with self.assertRaisesRegex(RuntimeError, "已重试"):
             self.client.chat([{"role": "user", "content": "hi"}])
 
     def test_http_4xx_no_retry(self):
         """HTTP 401（Key 无效）：重试无意义，立即抛（不带已重试标记）"""
-        import urllib.error
         calls = []
+        real = self.client._session
 
-        def unauthorized(req, timeout=None):
+        def unauthorized(*a, **kw):
             calls.append(1)
-            raise urllib.error.HTTPError("u", 401, "Unauthorized", None, None)
+            return FakeResp({"error": "unauthorized"}, status_code=401)
 
-        self.client._request.urlopen = unauthorized
+        self.client._session = type("F", (), {"post": unauthorized})()
         with self.assertRaisesRegex(RuntimeError, "HTTP 401"):
             self.client.chat([{"role": "user", "content": "hi"}])
         self.assertEqual(len(calls), 1)
