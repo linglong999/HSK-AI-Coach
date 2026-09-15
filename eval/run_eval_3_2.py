@@ -5,8 +5,8 @@
 #   - 自动指标：修正忠实性 / 超纲率(近似) / 结构合规率 / 字数
 #   - 人工抽评表：每条讲解 + checklist（费曼式/留白引导），导出 json 供人工判定
 # 运行：
-#   python run_eval_3_2.py                # 全量评测
-#   python run_eval_3_2.py --limit 1      # 单样本 dry-run（验证链路）
+#   python -m eval.run_eval_3_2             # 全量评测
+#   python -m eval.run_eval_3_2 --limit 1   # 单样本 dry-run（验证链路）
 # 依赖：DEEPSEEK_API_KEY
 # ============================================================
 
@@ -15,8 +15,9 @@ import sys
 import json
 import argparse
 
-_PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, _PROJECT_ROOT)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 from engine.explainer import Explainer
 from engine.llm.client import JSONStrictError

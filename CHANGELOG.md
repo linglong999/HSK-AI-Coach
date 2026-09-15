@@ -8,6 +8,21 @@
 
 ---
 
+## [0.32] - 2026-09-15 · 根目录治理与入口收口
+
+纯粹工程卫生，零业务逻辑改动（`0.32-根目录治理与入口收口-落地设计.md`）。
+
+### Changed
+- **脚本归位**：根目录 6 个脚本 `git mv` 归域——评测器 x4 → `eval/`（`python -m eval.run_eval*` 与既有 `run_eval_agent` 对齐）、数据准备/对齐 x2 → `scripts/`；全部改标准 bootstrap（`_PROJECT_ROOT` 两级上溯 + 条件 `sys.path`），头注释统一 `python -m` 用法；`fetch_syllabus.py` 收口 `main()` guard（修"import 即触发网络下载"）。
+- **config 包化**：新增 `config/__init__.py`；pyproject 包发现 `include` 由 `engine*` 扩到 `engine*, config*`——修复「`pip install -e .` 后 config 不在包内、`hsk-coach` 入口命令实际不可用」的隐患。
+- **安装标准化**：pyproject 增 `[project.optional-dependencies] dev = ["pytest"]`；CI 改 `pip install -e ".[dev]"`（editable 安装同时验证依赖装齐 + 包可导入）；README 安装段同步 `pip install -e ".[dev]"` + 补 `hsk-coach` 等价入口。
+- **`.gitignore` 增补**：`*.egg-info/`、`scripts/_*`、`reports/_*`、`_*.log`、`serve_log*.txt`、`.claude/`。
+
+### Removed
+- **根目录调试残留**：`_chk.js`（web/index.html 内嵌前端 JS 的调试副本）、`_fix_arbitration.py`（golden_v1_4 伪署名修复，已应用）、`_pip_ocr.log`、`serve_log.txt`、`serve_log_8666.txt`（PowerShell 重定向噪声）——均为任务完成的一次性产物，物理删除。
+
+---
+
 ## [0.25] - 2026-09-11 · OCR + 教材对齐 + 教学评测收口
 
 ### Added

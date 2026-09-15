@@ -9,7 +9,7 @@
 #    "status": "TP"|"FN"|"FP"|"TN", "det": "...", "uncertain": 0}
 # id 含 "ADV" 判为对抗集；否则 golden_span 有值→种子偏误集、None→干净对照集。
 #
-# 语义（与 run_eval.py 一致）：
+# 语义（与 eval/run_eval.py 一致）：
 #   种子偏误集  样本 golden 确有偏误，测「命中率 recall」与「类型识别率 type_acc」
 #   干净对照集  样本 golden 干净，测「误报率 clean_fp（报了偏误 / 样本数）」
 #   对抗集      子集再分：有偏误→命中率；应干净→overcorrection 率
@@ -76,7 +76,7 @@ def metrics_for_rows(rows: List[Dict], *, subset: str = "error") -> Dict:
         nhit = len(hits)
         nerr = len(rows)
         result["recall"] = rate_ci(nhit, nerr, seed=ord(subset[0]))
-        # 类型识别率：仅在有命中的偏误样本内比较（与 run_eval.py 同口径）
+        # 类型识别率：仅在有命中的偏误样本内比较（与 eval/run_eval.py 同口径）
         t_correct = sum(1 for r in hits if _det_type_of(r)
                         and r.get("golden_type") == _det_type_of(r))
         result["type_acc"] = rate_ci(t_correct, nhit, seed=ord(subset[0]) + 1)

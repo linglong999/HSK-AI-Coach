@@ -41,13 +41,14 @@
 
 ## 🚀 快速开始
 ### 环境要求
-- **Python** >= 3.11（运行时依赖仅 `requests` + `python-dotenv`，`pip install -r requirements.txt` 一步装齐）
+- **Python** >= 3.11（运行时依赖 `requests` + `python-dotenv`；推荐 `pip install -e ".[dev]"` 一步装齐可编辑安装 + dev 测试依赖）
 - **一个 LLM API Key**（默认 DeepSeek；不配 Key 也能跑确定性纠错 / 冒烟测试）
 
 ### 1. 克隆 & 配置
 ```bash
 git clone <repo-url> && cd HSK-AI-Coach
-pip install -r requirements.txt   # 仅 requests + python-dotenv 两个运行时依赖
+pip install -e ".[dev]"       # 可编辑安装：装 requests/dotenv + dev 的 pytest，并让 config/engine 包可导入
+# 若只想跑源码不做包安装：pip install -r requirements.txt 亦可（仅运行时依赖）
 cp .env.example .env          # 填入 DEEPSEEK_API_KEY（https://platform.deepseek.com）
 ```
 
@@ -70,6 +71,7 @@ python -m examples.demo_file
 ### 4. 启动前端壳（对话画布 + 认知地图）
 ```bash
 python -m engine.serve          # 浏览器打开 http://127.0.0.1:8612
+hsk-coach                       # 等价 CLI 入口（可编辑安装后可用）
 ```
 轻依赖 HTTP 服务（标准库 http.server + 原生 JS+SVG 单页）。左侧对话流呈现「偏误卡 → 讲解卡 → 学习成果卡」，侧栏进入「◈ 认知地图」看掌握度 × HSK 分布与复习队列。自由对话（`/api/dialog`）需配置 LLM Key，未配置时前端如实报错并给配置步骤（不静默降级）；仅用确定性纠错（`/api/process`）可不配 Key。
 

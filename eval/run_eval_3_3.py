@@ -8,8 +8,8 @@
 #   - 流利空洞拦截率(truth=hollow → verifier 判 fail 或 flag_flowery 的比例)
 #   - 方向二多 pass 处理：iso_solution>1 的等价解仍应判 pass，计入"通过准确率(等价包容)"
 # 运行：
-#   python run_eval_3_3.py                  # 全量 60 条
-#   python run_eval_3_3.py --limit 3        # dry-run
+#   python -m eval.run_eval_3_3                # 全量 60 条
+#   python -m eval.run_eval_3_3 --limit 3      # dry-run
 # 依赖：DEEPSEEK_API_KEY（.env 或环境变量）
 # ============================================================
 
@@ -18,8 +18,9 @@ import sys
 import json
 import argparse
 
-_PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, _PROJECT_ROOT)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 from engine.verifier import Verifier
 from engine.llm.client import LLMClient

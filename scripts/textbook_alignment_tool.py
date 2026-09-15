@@ -5,6 +5,7 @@
 # CSV 列：hsk_id, category, name, level, volume(建议册), lesson(课次·待填), note
 # 只回写 level<=4 且填了 lesson 的行；其余保留兜底（不入 units）。
 # ingest 语义：volume/lesson 同时为空 = 兜底（不入 units）。note 三态保留（已核·注释直接命中/已核·邻近归属/已核·教材未覆盖）。
+# 运行：python scripts/textbook_alignment_tool.py export|ingest ...（项目根下）
 # ============================================================
 
 import csv
@@ -12,7 +13,7 @@ import json
 import os
 import sys
 
-_ROOT = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SYL = os.path.join(_ROOT, "datasets", "syllabus_hsk30_2025.json")
 MAP = os.path.join(_ROOT, "datasets", "textbook_map.json")
 
@@ -97,4 +98,4 @@ if __name__ == "__main__":
     elif cmd == "ingest":
         ingest(sys.argv[2])
     else:
-        print("用法: python textbook_alignment_tool.py export [out.csv] | ingest <filled.csv>")
+        print("用法: python scripts/textbook_alignment_tool.py export [out.csv] | ingest <filled.csv>")

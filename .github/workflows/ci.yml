@@ -29,12 +29,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: Install dependencies (editable)
         shell: bash
         run: |
-          # 运行时依赖（requirements.txt）+ dev/test 依赖 pytest。
-          pip install -r requirements.txt -q
-          pip install pytest -q
+          # editable 安装（含运行时依赖 requests/dotenv + dev 的 pytest），
+          # 一次同时验证"依赖装齐 + config/engine 包可导入"，与真实用户安装视角一致。
+          pip install -e ".[dev]" -q
 
       - name: Run pipeline (pytest)
         shell: bash

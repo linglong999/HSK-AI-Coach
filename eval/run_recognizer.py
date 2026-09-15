@@ -1,15 +1,15 @@
 # ============================================================
 # kp_id 挂接验证：清单 → 2.1 候选注入 → LLM 识别 → knowledge_point_id 命中
-# 运行：python run_recognizer.py（在项目根 HSK-AI-Coach/ 下）
+# 运行：python -m eval.run_recognizer（项目根 HSK-AI-Coach/ 下）
 # 依赖：已将 DEEPSEEK_API_KEY 设为环境变量（或 .env）
 # ============================================================
 
 import os
 import sys
 
-# 脚本位于项目根（HSK-AI-Coach/），目录即根
-_PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, _PROJECT_ROOT)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 from engine.recognizer import Recognizer, load_knowledge_points
 from datasets.examples.sample_errors import SAMPLE_TEXT

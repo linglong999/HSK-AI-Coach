@@ -26,6 +26,16 @@ datasets/hsk30_raw/*.pdf
 # 运行期评测快照（带日期，本地保留，不入库；tests/test_ocr_end_to_end 会重建）
 reports/P0.7-OCR性能成本记录.md
 
+# 可安装构建产物（pip install -e . 后生成）
+*.egg-info/
+
+# 本地调试/临时产物（下划线前缀脚本与下载缓存：数据工程审计工具本地保留、不入库）
+scripts/_*
+reports/_*
+_*.log
+serve_log*.txt
+.claude/
+
 # 系统
 .DS_Store
 Thumbs.db

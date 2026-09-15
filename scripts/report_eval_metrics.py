@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # scripts/report_eval_metrics.py —— 对已持久化的识别评测结果做「三集拆分 + bootstrap CI」透明度报告
-# 输入：datasets/eval/eval_results.json（run_eval.py 的产物，含逐条 rows）
+# 输入：datasets/eval/eval_results.json（eval/run_eval.py 的产物，含逐条 rows）
 # 输出：控制台打印 + 写 datasets/eval/eval_transparency.md
 # 运行：python scripts/report_eval_metrics.py [--n-boot 2000]
 # 说明：不需要 LLM Key，纯离线重算，业务逻辑见 engine/eval_metrics.py。

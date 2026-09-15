@@ -2,7 +2,7 @@
 # 3.1 偏误识别引擎 baseline 评测
 # 输入：datasets/eval/golden_v1_4.json（v0.2，已过 check_dataset.py 校验）
 # 输出：span-level F1 / type 识别率 / 干净句误报率 / 对抗 overcorrection 率 / 待确认比例
-# 运行：python run_eval.py（项目根 HSK-AI-Coach/ 下）
+# 运行：python -m eval.run_eval（项目根 HSK-AI-Coach/ 下）
 # 依赖：DEEPSEEK_API_KEY 环境变量（或 .env）
 # ============================================================
 
@@ -11,8 +11,9 @@ import sys
 import json
 from collections import Counter
 
-_PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, _PROJECT_ROOT)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 from engine.recognizer import Recognizer
 from engine.eval_metrics import subset_of, report as eval_report
