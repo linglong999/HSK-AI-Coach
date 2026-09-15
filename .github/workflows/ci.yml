@@ -45,12 +45,21 @@ jobs:
           fi
           echo "OK: 无第三方运行时依赖"
 
-      - name: Run unittest suite
+      - name: Install pytest (dev-only test dependency)
         shell: bash
         run: |
-          # 测试失败时保留退出码上抛（CI 标红），同时把完整输出落盘供排查。
-          python -m unittest discover -s tests -p "test_*.py" -v \
-            > unittest_verbose.log 2>&1 || { ec=$?; echo "== unittest exit code: $ec =="; exit $ec; }
+          # pytest 仅作为 dev/test 依赖安装，不影响"零运行时依赖"承诺
+          # （requirements.txt 仍须为空；pytest 不进运行时）。
+          pip install pytest -q
+
+      - name: Run pipeline (pytest)
+        shell: bash
+        run: |
+          # 用 pytest 收集运行；缺例外依赖（rapidocr/pymupdf）的端到端用例
+          # 由 pytestmark.skipif 正常 skip，不再因 import pytest 在收集阶段崩溃。
+          # 失败时保留退出码上抛（CI 标红），同时把完整输出落盘供排查。
+          python -m pytest tests -q \
+            > pytest_verbose.log 2>&1 || { ec=$?; echo "== pytest exit code: $ec =="; exit $ec; }
 
       - name: Emit failure annotations
         if: failure()
@@ -58,17 +67,15 @@ jobs:
         run: |
           # 把失败/错误/断言摘要暴露到 GitHub annotations（无需下载 artifact 即可读）。
           # 逐行取出失败相关的行，每一条作为 ::error:: 输出到日志与 check-run。
-          grep -nE "FAIL:|ERROR:|FAILED|AssertionError|Traceback|In .*\.py:" \
-            unittest_verbose.log || true
-          # 再抓取失败测试名集合（第二个段：RUN 后到 ... FAIL）
-          awk '/^FAIL:/{print "::error::"$0} /^ERROR:/{print "::error::"$0}' \
-            unittest_verbose.log || true
+          grep -nE "FAILED|AssertionError|ModuleNotFoundError|ImportError|Traceback|passed|failed|error" \
+            pytest_verbose.log || true
+          awk '/^FAILED/{print "::error::"$0}' pytest_verbose.log || true
           echo "== end failure annotations =="
 
-      - name: Upload unittest log on failure
+      - name: Upload pytest log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: unittest-verbose-log
-          path: unittest_verbose.log
+          name: pytest-verbose-log
+          path: pytest_verbose.log
           if-no-files-found: error

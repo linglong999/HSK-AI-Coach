@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "HSK-AI-Coach"
 version = "0.1.0"
-description = "面向 HSK 中文学习者的 AI 偏误纠错陪练：偏误检测 → 讲清原因 → 复述检验 → 复习计划。零第三方依赖。"
+description = "面向 HSK 中文学习者的 AI 偏误纠错陪练：偏误检测 → 讲清原因 → 复述检验 → 复习计划。零运行时依赖。"
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [{ name = "linglong999" }]

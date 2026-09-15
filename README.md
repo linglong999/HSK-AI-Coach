@@ -7,8 +7,8 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License: MIT"/></a>
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"/>
-  <img src="https://img.shields.io/badge/deps-0%20third--party-4C9A2F?style=flat-square" alt="零第三方依赖"/>
-  <img src="https://img.shields.io/badge/tests-633%20passed-brightgreen?style=flat-square" alt="633 tests"/>
+  <img src="https://img.shields.io/badge/deps-0%20runtime%20deps-4C9A2F?style=flat-square" alt="零运行时依赖"/>
+  <img src="https://img.shields.io/badge/tests-640%20passed-brightgreen?style=flat-square" alt="640 tests"/>
   <img src="https://img.shields.io/badge/LLM-DeepSeek%20%E7%AD%89%20OpenAI%20%E5%85%BC%E5%AE%B9-FF6B35?style=flat-square" alt="LLM providers"/>
   <img src="https://img.shields.io/badge/OCR-RapidOCR-4F8EF7?style=flat-square" alt="OCR: RapidOCR"/>
   <img src="https://img.shields.io/badge/UI-0%20frontend%20deps-8E6BF3?style=flat-square" alt="UI: 原生单页"/>
@@ -28,7 +28,7 @@
 ## 📖 项目简介
 **HSK-AI-Coach** 是一个开源的 AI 中文学习陪练：输入一句中文或一段对话，它告诉你**错在哪、为什么错、该怎么说**，并把每次纠正沉淀进一张偏误图谱，过段时间主动拉你复习。核心闭环一句话：**偏误检测 → 讲清原因 → 让学习者自己复述检验 → 沉淀进复习计划**。设计原则是"能交流就不打断，卡住才出手"。
 
-全部用 Python 标准库实现，**clone 即跑、零第三方依赖**；每个能力都配可复跑的黄金评测集与真实模型实跑，不是"感觉效果不错"。
+全部用 Python 标准库实现，**clone 即跑、零运行时依赖**（pytest 仅作 dev 测试工具，不参与运行时）；每个能力都配可复跑的黄金评测集与真实模型实跑，不是"感觉效果不错"。
 
 ### ✨ 核心亮点
 - **偏误识别做到"宁可漏判，不误报"** — 干净句误报确定性护栏压到 **0%**
@@ -52,9 +52,10 @@ cp .env.example .env          # 填入 DEEPSEEK_API_KEY（https://platform.deeps
 
 ### 2. 冒烟测试（不需要 API Key，全 mock，不花钱）
 ```bash
-python -m pytest tests -q        # 或 python -m unittest discover tests -v
+python -m pytest tests -q       # dev 依赖 pytest；全 mock、免 Key、不花钱
 ```
-**633 项测试全部 PASS**（识别/讲解/图谱/复习调度/降级兜底/前端服务层/技能化/度量…）。
+
+**640 项测试全部 PASS**（识别/讲解/图谱/复习调度/降级兜底/前端服务层/技能化/度量…；OCR 端到端在缺本地例外依赖时自动 skip）。
 
 ### 3. 命令行跑两种用法
 ```bash
@@ -133,7 +134,7 @@ HSK-AI-Coach/
 │   ├── persona.py + scenario.py + intervention.py + graph/error_graph.py
 ├── web/index.html / metrics.html   前端壳（对话画布 + 认知地图 + 度量面板）
 ├── datasets/  knowledge_points / lexicon / 考纲 / OCR 校正 / 设计稿与评测脚本
-├── tests/                    633 个测试（免 Key 全 mock）
+├── tests/                    640 个测试（免 Key 全 mock，pytest 驱动）
 └── examples/                 命令行 demo
 ```
 
