@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # 偏误图谱（Error Graph）—— 记忆层 · 确定性数据层（非 Agent）
 # 对齐 2.4 落地设计 v0.3（已签核）
 # - 节点：KP 知识点（error_types/error_count/mastery/last_learnt_at）
@@ -12,10 +12,11 @@ import json
 import os
 import threading
 import time
-from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from engine.graph.error_kind_map import resolve
+from engine.graph.model import Edge, Node, QueueItem
+from engine.graph.store import GraphStore
 from engine.scheduler import fsrs
 
 # aging 形态：线性 1 + LAMBDA*days（3.x 定案 T1：λ=0.1/天，敏感区间[0.05,0.2]）
@@ -65,115 +66,57 @@ FOSSIL_BOOST = 1.5        # 化石化节点 priority 乘数（与 nature 权重�
 _CLASS_ORDER = {"verdict": 0, "error": 1, "graph": 2}
 
 
-@dataclass
-class Node:
-    """KP 知识点节点（2.4 §2.1）"""
-    id: str
-    knowledge_point: str
-    level: str              # P0.6：旧粗分字符串化("HSK{n}"/"未知")；level_gf=换算后 GF 级
-    level_gf: Optional[int] = None   # P0.6：GF 三等九级(1-9)；None=未定(显示旧 level)
-    error_types: Dict[str, int] = field(default_factory=dict)
-    error_count: int = 0
-    mastery: float = 0.0          # 新建=0
-    last_learnt_at: Optional[str] = None   # 首建可为 null → aging 按 created_at 起算
-    created_at: str = ""          # 创建时间戳（首建 null 时 aging 按此起算）
-    error_kind: str = ""          # P0.2：语言要素主导维度（argmax(error_types)，见 error_kind_map）
-    nature: str = ""              # P0.2：鲁健骥四分法主倾向（kp 级映射，未命中回落 type 级/未知）
-    positive_count: int = 0       # P0.3：正向证据计数（正确用法）。只增不碰偏误侧。
-    positive_sources: Dict[str, int] = field(default_factory=dict)  # P0.3：{source: count} 按来源聚合
-    last_positive_at: Optional[str] = None   # P0.3：最近一次正向证据时间戳（UTC）
-    unfixed_streak: int = 0       # P0.4：连续复习未纠正次数（pass→0 / fail→+1，落盘）
-    fossilized: bool = False      # P0.4：化石化标记（现算，不落盘；读取前须 refresh）
-    # ---- P0.17 间隔调度字段（FSRS）----
-    last_review_at: Optional[str] = None    # 最近一次复习动作时间(UTC)；FSRS elapsed_days 唯一来源
-    next_review_at: Optional[str] = None    # 下次到期时间(UTC)；到期筛选唯一判据(IS NOT NULL AND ≤ now)
-    fsrs_stability: float = 0.0             # S：记忆稳定性(天)，FSRS 回写
-    fsrs_difficulty: float = 5.0            # D：难度[1,10]，FSRS 回写；0 读作首次用 D0(4) 兜底
-
-    def to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "knowledge_point": self.knowledge_point,
-            "level": self.level,
-            "level_gf": self.level_gf,
-            "error_types": self.error_types,
-            "error_count": self.error_count,
-            "mastery": self.mastery,
-            "last_learnt_at": self.last_learnt_at,
-            "created_at": self.created_at,
-            "error_kind": self.error_kind,
-            "nature": self.nature,
-            "positive_count": self.positive_count,
-            "positive_sources": self.positive_sources,
-            "last_positive_at": self.last_positive_at,
-            "unfixed_streak": self.unfixed_streak,
-            # P0.17 调度字段（fossilized 不落盘，现算）
-            "last_review_at": self.last_review_at,
-            "next_review_at": self.next_review_at,
-            "fsrs_stability": self.fsrs_stability,
-            "fsrs_difficulty": self.fsrs_difficulty,
-            # fossilized 不落盘（现算），此处不写
-        }
-
-
-@dataclass
-class Edge:
-    """偏误关联边（2.4 §2.2）—— relation: 混淆/同源/递进；MVP 仅建混淆边"""
-    from_node_id: str
-    to_node_id: str
-    relation: str = "混淆"
-    edge_weight: int = 1            # 语义=同现次数
-    created_at: str = ""
-    event_keys: List[str] = field(default_factory=list)   # MVP 可承载判重（§6）
-
-    def to_dict(self) -> dict:
-        return {
-            "from_node_id": self.from_node_id,
-            "to_node_id": self.to_node_id,
-            "relation": self.relation,
-            "edge_weight": self.edge_weight,
-            "created_at": self.created_at,
-            "event_keys": self.event_keys,
-        }
-
-
-@dataclass
-class QueueItem:
-    """待确认队列记录（2.4 §2.3）"""
-    item_key: str             # 聚合键：fragment+type+疑似KP
-    signature: Dict           # {fragment, type, kp_candidate}
-    status: str               # pending / pending_mapping / confirmed / rejected
-    pending_payload: List = field(default_factory=list)   # 讲解 key_points / 验证 verdict
-    uncertain_src: str = ""   # 识别待确认 / 复核未过 / KP 未命中
-    confirm_req: bool = False
-    seen_event_keys: List[str] = field(default_factory=list)
-    created_at: str = ""
-    updated_at: str = ""
-
-    def to_dict(self) -> dict:
-        return {
-            "item_key": self.item_key,
-            "signature": self.signature,
-            "status": self.status,
-            "pending_payload": self.pending_payload,
-            "uncertain_src": self.uncertain_src,
-            "confirm_req": self.confirm_req,
-            "seen_event_keys": self.seen_event_keys,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
-        }
+# 数据模型 Node/Edge/QueueItem 已迁至 engine/graph/model.py（纯数据 + to_dict，
+# 不含算法/存储）。ErrorGraph 直接复用不重复定义。
 
 
 class ErrorGraph:
-    """偏误图谱（2.4 v0.3）：确定性数据层，无 LLM。全局写锁串行化（§八）。"""
+    """偏误图谱（2.4 v0.3）：确定性数据层，无 LLM。全局写锁串行化（§八）。
+
+    深化拆分后本类为**服务/facade**：组合 GraphStore（engine/graph/store.py：
+    内存容器 + save/load 持久化）与 model 数据模型（engine/graph/model.py）；
+    本类只承载算法、状态变更写回与只读查询组装。公开 20+ 方法签名冻结，
+    _nodes/_edges/_queue/_seen_events 作为兼容代理映射到 store 的对应容器。
+    """
 
     def __init__(self, learner_id: str = "default"):
         self.learner_id = learner_id
-        self._nodes: Dict[str, Node] = {}
-        self._edges: Dict[str, Edge] = {}     # key = "from|to"
-        self._queue: Dict[str, QueueItem] = {}
+        self._store = GraphStore()
         self._lock = threading.RLock()
-        self._seen_events = set()             # 全局事件幂等集（§三 event_key 判重）
+
+    # ---- 兼容代理：既有测试/调用方直访问 _nodes/_edges/_queue/_seen_events ----
+    # 容器已迁至 GraphStore（engine/graph/store.py），保留 get/set 做向后兼容。
+    @property
+    def _nodes(self):
+        return self._store.nodes
+
+    @_nodes.setter
+    def _nodes(self, v):
+        self._store.nodes = v
+
+    @property
+    def _edges(self):
+        return self._store.edges
+
+    @_edges.setter
+    def _edges(self, v):
+        self._store.edges = v
+
+    @property
+    def _queue(self):
+        return self._store.queue
+
+    @_queue.setter
+    def _queue(self, v):
+        self._store.queue = v
+
+    @property
+    def _seen_events(self):
+        return self._store.seen_events
+
+    @_seen_events.setter
+    def _seen_events(self, v):
+        self._store.seen_events = v
 
     # ---------------- 内部工具 ----------------
     @staticmethod
@@ -243,9 +186,9 @@ class ErrorGraph:
 
     # ---------------- 写接口（§三，幂等） ----------------
     def _event_seen(self, event_key: str) -> bool:
-        if event_key in self._seen_events:
+        if event_key in self._store.seen_events:
             return True
-        self._seen_events.add(event_key)
+        self._store.seen_events.add(event_key)
         return False
 
     def ingest_error(self, bias: dict, event_key: str) -> dict:
@@ -267,7 +210,7 @@ class ErrorGraph:
             if not uncertain and kp_hit:
                 kp_name = self._kp_name(kp_id, bias.get("knowledge_point_name") or "")
                 level = bias.get("level") or "未知"
-                node = self._nodes.setdefault(
+                node = self._store.nodes.setdefault(
                     kp_id, Node(id=kp_id, knowledge_point=kp_name, level=level,
                                  created_at=self._now()))
                 node.error_types[etype] = node.error_types.get(etype, 0) + 1
@@ -282,11 +225,11 @@ class ErrorGraph:
             status = "pending_mapping" if not kp_hit else "pending"
             sig = {"fragment": fragment, "type": etype, "kp_candidate": kp_id}
             item_key = f"{fragment}|{etype}|{kp_id}"
-            item = self._queue.get(item_key)
+            item = self._store.queue.get(item_key)
             if item is None:
                 item = QueueItem(item_key=item_key, signature=sig, status=status,
                                  uncertain_src=src, created_at=self._now())
-                self._queue[item_key] = item
+                self._store.queue[item_key] = item
             if event_key and event_key not in item.seen_event_keys:
                 item.seen_event_keys.append(event_key)
             item.updated_at = self._now()
@@ -306,12 +249,12 @@ class ErrorGraph:
                 sig = {"fragment": bias_ref.get("fragment", ""),
                        "type": bias_ref.get("type", ""), "kp_candidate": kp_id}
                 item_key = f"{sig['fragment']}|{sig['type']}|{kp_id}"
-                item = self._queue.get(item_key)
+                item = self._store.queue.get(item_key)
                 if item is None:
                     item = QueueItem(item_key=item_key, signature=sig,
                                      status="pending", uncertain_src="复核未过",
                                      created_at=self._now())
-                    self._queue[item_key] = item
+                    self._store.queue[item_key] = item
                 if payload is not None:
                     item.pending_payload.append({"type": "verdict", "verdict": verdict,
                                                  **payload})
@@ -320,13 +263,13 @@ class ErrorGraph:
                 item.updated_at = self._now()
                 return {"status": "verdict_to_queue", "item_key": item_key}
 
-            node = self._nodes.get(kp_id)
+            node = self._store.nodes.get(kp_id)
             if node is None:
                 node = Node(id=kp_id,
                             knowledge_point=self._kp_name(
                                 kp_id, bias_ref.get("knowledge_point_name") or ""),
                             level=bias_ref.get("level") or "未知", created_at=self._now())
-                self._nodes[kp_id] = node
+                self._store.nodes[kp_id] = node
                 self._apply_dimensions(node)
             # §4.1：pass 提升且 touch + streak 清零；fail 衰减且不 touch + streak 递增（P0.4）
             if verdict == "pass":
@@ -354,7 +297,7 @@ class ErrorGraph:
         with self._lock:
             if event_key and self._event_seen(event_key):
                 return {"status": "idempotent_skip"}
-            node = self._nodes.setdefault(
+            node = self._store.nodes.setdefault(
                 knowledge_point_id,
                 Node(id=knowledge_point_id, knowledge_point=self._kp_name(knowledge_point_id),
                      level="未知", created_at=self._now()))
@@ -371,7 +314,7 @@ class ErrorGraph:
         （本数据层只暴露接口，触发一次复核的调度由编排层承担：P2-4）
         """
         with self._lock:
-            item = self._queue.get(item_key)
+            item = self._store.queue.get(item_key)
             if item is None:
                 return {"status": "not_found"}
             # 确认条件（§七）
@@ -386,7 +329,7 @@ class ErrorGraph:
             kp_id = sig.get("kp_candidate", "")
             etype = sig.get("type", "语法")
             if kp_id:
-                node = self._nodes.setdefault(
+                node = self._store.nodes.setdefault(
                     kp_id, Node(id=kp_id, knowledge_point=self._kp_name(kp_id),
                                 level=bias_level_of(item), created_at=self._now()))
                 merged_count = len(item.seen_event_keys) or 1   # 去重事件数（P2-D）
@@ -401,7 +344,7 @@ class ErrorGraph:
     def touch_node(self, kp_id: str) -> dict:
         """2.4 §三 touch_node：复习/重学调用，更新 last_learnt_at=now"""
         with self._lock:
-            node = self._nodes.get(kp_id)
+            node = self._store.nodes.get(kp_id)
             if node is None:
                 return {"status": "not_found"}
             node.last_learnt_at = self._now()
@@ -419,7 +362,7 @@ class ErrorGraph:
         with self._lock:
             if event_key and self._event_seen(event_key):
                 return {"status": "idempotent_skip"}
-            node = self._nodes.get(kp_id)
+            node = self._store.nodes.get(kp_id)
             if node is None:
                 return {"status": "not_found"}
             if rating is None and correct is None:
@@ -460,8 +403,8 @@ class ErrorGraph:
     def reject_item(self, item_key: str) -> dict:
         """明确非偏误 → 驳回清除（§七）"""
         with self._lock:
-            if item_key in self._queue:
-                del self._queue[item_key]
+            if item_key in self._store.queue:
+                del self._store.queue[item_key]
                 return {"status": "rejected"}
             return {"status": "not_found"}
 
@@ -472,10 +415,10 @@ class ErrorGraph:
         import itertools
         for a, b in itertools.combinations(sorted(set(kp_ids)), 2):
             key = self._edge_key(a, b)
-            edge = self._edges.get(key)
+            edge = self._store.edges.get(key)
             if edge is None:
                 edge = Edge(from_node_id=a, to_node_id=b, created_at=self._now())
-                self._edges[key] = edge
+                self._store.edges[key] = edge
             if event_key and event_key not in edge.event_keys:
                 edge.event_keys.append(event_key)
                 edge.edge_weight = len(edge.event_keys)
@@ -490,11 +433,11 @@ class ErrorGraph:
     def get_kp(self, kp_id: str) -> Optional[dict]:
         """§五 get_kp：节点 + 关联边 + 历史（供讲解/验证引擎组装上下文）。空则 None"""
         with self._lock:
-            node = self._nodes.get(kp_id)
+            node = self._store.nodes.get(kp_id)
             if node is None:
                 return None
             related = []
-            for key, edge in self._edges.items():
+            for key, edge in self._store.edges.items():
                 ends = key.split("|")
                 if kp_id in ends:
                     other = ends[0] if ends[1] == kp_id else ends[1]
@@ -516,14 +459,14 @@ class ErrorGraph:
         kp_ids 为可选过滤（缺省返回全部可出队 KP）。"""
         with self._lock:
             confirmed_kp = set()
-            for item in self._queue.values():
+            for item in self._store.queue.values():
                 if item.status in ("confirmed",):
                     confirmed_kp.add(item.signature.get("kp_candidate"))
             excluded = set(item.signature.get("kp_candidate")
-                           for item in self._queue.values()
+                           for item in self._store.queue.values()
                            if item.status in ("pending", "pending_mapping"))
             result = []
-            for node in self._nodes.values():
+            for node in self._store.nodes.values():
                 if node.id in excluded:
                     continue  # 待确认/未确认完全排除
                 if kp_ids and node.id not in kp_ids:
@@ -542,7 +485,7 @@ class ErrorGraph:
             if now is None:
                 now = self._now()
             result = []
-            for node in self._nodes.values():
+            for node in self._store.nodes.values():
                 if node.next_review_at is None:
                     continue                      # 冷启动未入调度，不进到期
                 if node.next_review_at > now:
@@ -558,7 +501,7 @@ class ErrorGraph:
         """P0.17：未入调度的高优 TopN（供 P0.11 boost 段）。
         仅取 next_review_at=None 的"从未调度"节点（冷启动），按 priority 取前 n。"""
         with self._lock:
-            pool = [node for node in self._nodes.values()
+            pool = [node for node in self._store.nodes.values()
                     if node.next_review_at is None]
             pool.sort(key=lambda nd: self._priority(nd), reverse=True)
             return [{"kp_id": nd.id,
@@ -568,90 +511,28 @@ class ErrorGraph:
 
     # ---------------- 持久化 ----------------
     def save(self, path: Optional[str] = None):
-        path = path or f"data/graph_{self.learner_id}.json"
-        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with self._lock:
-            data = {
-                "learner_id": self.learner_id,
-                "nodes": {nid: n.to_dict() for nid, n in self._nodes.items()},
-                "edges": {k: e.to_dict() for k, e in self._edges.items()},
-                "queue": {k: q.to_dict() for k, q in self._queue.items()},
-                "_seen_events": sorted(self._seen_events),
-            }
-        # 原子写：先临时文件再 rename（§八）
-        tmp = path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, path)
+            self._store.save(self.learner_id, path=path)
 
     def load(self, path: Optional[str] = None):
-        path = path or f"data/graph_{self.learner_id}.json"
-        if not os.path.exists(path):
-            return
         with self._lock:
-            with open(path, encoding="utf-8") as f:
-                data = json.load(f)
-            self.learner_id = data.get("learner_id", self.learner_id)
-            self._nodes = {}
-            for nid, nd in data.get("nodes", {}).items():
-                node = Node(**{k: nd.get(k) for k in
-                               ["id", "knowledge_point", "level", "level_gf",
-                                "error_types",
-                                "error_count", "mastery", "last_learnt_at",
-                                "created_at", "error_kind", "nature",
-                                "positive_count", "positive_sources",
-                                "last_positive_at", "unfixed_streak",
-                                "last_review_at", "next_review_at",
-                                "fsrs_stability", "fsrs_difficulty"]})
-                node.id = nid
-                # P0.5(修正)：created_at 必须在白名单——旧数据含它，缺失会丢 aging 起算点
-                if not node.created_at:
-                    node.created_at = ""
-                # P0.2：旧数据缺双字段 → 按现有 error_types/kp 现算补齐（防静默丢字段）。
-                # P0.3：缺正向字段 → 用安全缺省（0/空 dict/None）兜底。
-                if not node.positive_sources:
-                    node.positive_sources = {}
-                if node.positive_count is None:
-                    node.positive_count = 0
-                if "last_positive_at" not in nd:
-                    node.last_positive_at = None
-                if node.unfixed_streak is None:
-                    node.unfixed_streak = 0   # P0.4：旧数据缺 streak → 0
-                if not node.error_kind or not node.nature:
-                    dims = resolve(node.error_types, node.id)
-                    if not node.error_kind:
-                        node.error_kind = dims["error_kind"]
-                    if not node.nature:
-                        node.nature = dims["nature"]
-                self._nodes[nid] = node
-            self._edges = {}
-            for key, ed in data.get("edges", {}).items():
-                self._edges[key] = Edge(**{k: ed.get(k) for k in
-                                           ["from_node_id", "to_node_id", "relation",
-                                            "edge_weight", "created_at", "event_keys"]})
-            self._queue = {}
-            for key, qd in data.get("queue", {}).items():
-                self._queue[key] = QueueItem(**{k: qd.get(k) for k in
-                                                ["item_key", "signature", "status",
-                                                 "pending_payload", "uncertain_src",
-                                                 "confirm_req", "seen_event_keys",
-                                                 "created_at", "updated_at"]})
-            self._seen_events = set(data.get("_seen_events", []))
+            loaded = self._store.load(self.learner_id, path=path)
+            self.learner_id = loaded  # 原实现以数据内 learner_id 覆写现有值
 
     # ---------------- M10 前端壳：图谱快照 ----------------
     def graph_snapshot(self) -> dict:
         """前端认知地图的一次性渲染数据：confirmed 节点 + 已确认边 + 复习队列。
         与 save() 数据同构，但**只含已确认**（pending/rejected 不进入画布，防自由发散）。
         """
-        nodes = {nid: n.to_dict() for nid, n in self._nodes.items()}
-        edges = [e.to_dict() for _k, e in self._edges.items() if e.relation == "混淆"]
+        nodes = {nid: n.to_dict() for nid, n in self._store.nodes.items()}
+        edges = [e.to_dict() for _k, e in self._store.edges.items() if e.relation == "混淆"]
         queue = [{"kp_id": r["kp_id"], "priority": r["priority"],
                   "node": r["node"]} for r in self.get_review_queue()]
         return {"learner_id": self.learner_id, "nodes": nodes, "edges": edges,
                 "queue": queue}
 
     def __len__(self):
-        return len(self._nodes)
+        return len(self._store.nodes)
 
 
 def bias_level_of(item):
