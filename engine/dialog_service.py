@@ -8,10 +8,15 @@
 #   - serve 的 _do_api_* → 本类入口方法：self._send_json(x, s) → return (s, x)
 #   - 游客配额：vid 由 HTTP 层提取（owner-key 判定 + Cookie），扣减判定在本层
 #   - H 类缓存（__class__._planners 等）→ 本类实例缓存（service 进程级单例）
+# 0.33 深化批次B/C/D：dialog() 主链阶段化 + ProviderResolver 注入缝 +
+# DialogRun 编排协作器（engine/dialog_run.py，阶段方法迁入；本类保留入口
+# 阶段、锁、实例缓存与纯静态助手稳定挂点，见 CONTEXT.md）。
 # ============================================================
 
 import threading
 from typing import Optional
+
+from engine.dialog_run import DialogRun
 
 
 def _default_dialog_llm(messages):
@@ -29,6 +34,60 @@ def _provider_llm(provider):
     return lambda messages: client.chat(messages, temperature=0.3, config=cfg)
 
 
+class ProviderResolver:
+    """ResolveProvider 注入缝（深化批次C · 候选03 第一块）。
+
+    职责收敛：fail-loud 供应商解析 + planner llm_call 工厂。
+    - 默认（生产）实现：engine.providers 解析 + LLMClient 绑定配置（BYOK 请求级覆盖）；
+    - 注入实现（测试）：injected_llm 给定时跳过解析，llm_call 恒为注入值。
+    对外语义与收编前逐字相同（400 unknown_provider / llm_not_configured 文案不变）。"""
+
+    def __init__(self, memory_root: str, injected_llm=None):
+        self._memory_root = memory_root
+        self._injected = injected_llm
+
+    @property
+    def injected(self) -> bool:
+        """测试注入路径标识（planner 缓存 __mock__ 键 + 解析跳过的依据）。"""
+        return self._injected is not None
+
+    def resolve(self, provider_id: str):
+        """fail-loud 解析：(provider, error)。
+        - 注入路径：恒 (None, None)（不解析、不触 providers 存储）；
+        - provider_id 给定但未命中 → (None, 400 unknown_provider)；
+        - 无可用供应商 / 缺 api_key → (None, 400 llm_not_configured)。"""
+        if self._injected is not None:
+            return None, None
+        from engine import providers as prov
+        provider = None
+        if provider_id:
+            provider = next(
+                (p for p in prov.effective_providers(self._memory_root)
+                 if p["id"] == provider_id), None)
+            if provider is None:
+                return None, (400, {
+                    "error": "未知模型供应商（可能已被删除），"
+                             "请在输入框左上角重新选择",
+                    "code": "unknown_provider"})
+        else:
+            provider = prov.resolve_provider(self._memory_root, None)
+        if provider is None or not provider.get("api_key"):
+            return None, (400, {
+                "error": "自由对话需要 LLM API Key：在「设置 → 模型密钥」添加供应商，"
+                         "或复制 .env.example 为 .env 填入 DEEPSEEK_API_KEY 后重启服务",
+                "code": "llm_not_configured"})
+        return provider, None
+
+    def bind_llm_call(self, provider):
+        """planner llm_call 工厂：注入路径恒注入值；生产路径 provider → 绑定配置
+        的 LLMClient.chat（0.20 BYOK 请求级覆盖），None → settings 默认配置。"""
+        if self._injected is not None:
+            return self._injected
+        if provider:
+            return _provider_llm(provider)
+        return _default_dialog_llm
+
+
 class DialogService:
     """对话运营编排：process / verify / generate / dialog / session 管理。
     线程模型：与 HTTP 层共享同一把 RLock（make_handler 注入）——process/verify
@@ -44,13 +103,18 @@ class DialogService:
     })
 
     def __init__(self, router, lock=None, generation=None, dialog_llm=None,
-                 memory_root: str = "data", gate=None):
+                 memory_root: str = "data", gate=None, provider_resolver=None):
         self._router = router
         self._lock = lock if lock is not None else threading.RLock()
         self._generation = generation
-        self._dialog_llm = dialog_llm   # 测试 mock 注入；None → 真实 LLMClient.chat
         self._memory_root = memory_root
         self._gate = gate               # P0.10 游客配额闸门（None = 关闭）
+        # ResolveProvider 注入缝（批次C）：显式注入优先；legacy dialog_llm
+        # （测试 mock llm_call，serve.make_handler 透传）包装为注入式 resolver，
+        # 两条注入路径统一到同一对象。
+        self._resolver = (provider_resolver if provider_resolver is not None
+                          else ProviderResolver(memory_root,
+                                                injected_llm=dialog_llm))
         self._planners = {}             # provider_id -> Planner（"__mock__"=注入路径）
         self._memories = {}             # learner_id -> LearnerMemory（M5）
         self._writebacks = {}           # learner_id -> Writeback（M8）
@@ -150,9 +214,40 @@ class DialogService:
         # conversation_id 语义（已定决策 2026-09-01）：同一次对话复用同一 id 延续上下文，
         #   切换知识点/隔天开新 id；不传 → "default"。
         # vid（P0.10 游客配额）：HTTP 层提取的访客 id；None = BYOK/闸门关闭，豁免配额。
+        # ---- 主链协作器化（2026-09-15 · 深化批次D）：入口阶段（LoadSessionContext/
+        # 游客闸门/ResolveProvider）留本类；其余阶段迁入 DialogRun。锁在本入口
+        # 统一持有（R4），实例缓存由本类解析后注入（R2 纯接收）。----
+        with self._lock:
+            ctx, err = self._load_session_context(payload)
+            if err is not None:
+                return err
+            err = self._consume_visitor_quota(vid)
+            if err is not None:
+                return err
+            provider, err = self._resolve_dialog_provider(ctx["provider_id"])
+            if err is not None:
+                return err
+            return DialogRun(
+                router=self._router,
+                planner=self._get_planner(provider),
+                identify_skill=self._get_identify_skill(),
+                mem=self._get_memory(ctx["learner_id"]),
+                wb=self._get_writeback(ctx["learner_id"]),
+                tracker=self._get_tracker(ctx["conversation_id"]),
+                # 纯静态助手注入（构造时取类属性：测试 patch DialogService._xxx
+                # 对 dialog 主链同样生效，稳定挂点不破坏）
+                normalize_user_level=DialogService._normalize_user_level,
+                writeback_ledger_events=DialogService._writeback_ledger_events,
+                assistant_payload=DialogService._assistant_payload,
+            ).run(ctx, provider)
+
+    # ---------- dialog 入口阶段（深化批次B 保留；其余阶段见 engine/dialog_run.py） ----------
+
+    def _load_session_context(self, payload: dict):
+        """阶段 · LoadSessionContext：入参归一（text/learner/conversation/lang/l1/scene_id）。"""
         user_input = str((payload.get("text") or "")).strip()
         if not user_input:
-            return 400, {"error": "empty text"}
+            return None, (400, {"error": "empty text"})
         learner_id = str((payload.get("learner_id") or "")).strip() or \
             self._router.learner_id
         conversation_id = str((payload.get("conversation_id") or "")).strip() or "default"
@@ -165,216 +260,36 @@ class DialogService:
         learner_l1 = str((payload.get("learner_l1") or "unknown")).strip().lower()
         # ui_lang 与 learner_l1 独立：选中文界面 ≠ 中文母语；
         # learner_l1 缺省 = "unknown"（不污染 L1 统计）。
-        native_lang = ui_lang  # 局部别名：函数内下游调用兼容旧字段
-
-        # 0.22 方向2 · 场景对话：scene_id → 编译 [Scene] 段注入主链（D2.2）。
-        # 场景缺失/未命中 → scene_brief 空串，planner 照常走自由对话（不阻断）。
-        scene_brief = ""
-        scene_id = str((payload.get("scene_id") or "")).strip()
-        if scene_id:
-            try:
-                from engine.scenarios import build_scene_brief, get_scene
-                _scene = get_scene(scene_id)
-                if _scene:
-                    scene_brief = build_scene_brief(_scene, native_lang)
-            except Exception:  # noqa: BLE001 场景加载失败 → 退化为自由对话
-                scene_brief = ""
-
-        # P0.10 游客模式闸门（放置在供应商解析之前：满额直接 429，不调模型、不计次、
-        # 不深校验）。owner-key 判定与 vid 提取在 HTTP 层；此处只做扣减。
-        if self._gate is not None and vid is not None:
-            with self._lock:
-                ok, remaining, reset = self._gate.check_and_consume(vid)
-            if not ok:
-                return 429, {
-                    "error": "今日游客额度已用尽，次日 UTC 00:00 重置；"
-                             "配置你自己的 API Key 可无限使用。",
-                    "code": "visitor_quota_exceeded",
-                    "message": "配置你自己的 API Key 可无限使用",
-                    "remaining": 0, "reset_at": reset}
-
-        # fail-loud：真实 LLM 路径必须先有可用供应商（mock 注入路径跳过）
-        provider = None
-        if self._dialog_llm is None:
-            from engine import providers as prov
-            if provider_id:
-                provider = next(
-                    (p for p in prov.effective_providers(self._memory_root)
-                     if p["id"] == provider_id), None)
-                if provider is None:
-                    return 400, {
-                        "error": "未知模型供应商（可能已被删除），"
-                                 "请在输入框左上角重新选择",
-                        "code": "unknown_provider"}
-            else:
-                provider = prov.resolve_provider(self._memory_root, None)
-            if provider is None or not provider.get("api_key"):
-                return 400, {
-                    "error": "自由对话需要 LLM API Key：在「设置 → 模型密钥」添加供应商，"
-                             "或复制 .env.example 为 .env 填入 DEEPSEEK_API_KEY 后重启服务",
-                    "code": "llm_not_configured"}
-
-        with self._lock:
-            from engine.memory.summarize import (
-                build_profile_summary, build_profile_facts)
-            from engine.intervention import (
-                MAX_SCAN_CHARS, DEFAULT_CAP, build_intervention_directive,
-                detect_help_intent)
-            from engine.persona import build_persona_brief, build_tutor_style_directive
-            mem = self._get_memory(learner_id)
-            wb = self._get_writeback(learner_id)
-            history = mem.to_llm_history(conversation_id)
-            # M8 画像注入：常错点/惯犯摘要进 system（含本轮前全部图谱+账本状态）
-            try:
-                profile_summary = build_profile_summary(
-                    self._router.graph, wb.ledger)
-            except Exception:  # noqa: BLE001
-                profile_summary = ""
-
-            # ---- 0.22 方向3 · persona（个性化栏：风格/称呼/人设/自定义指令/打断上限）----
-            profile_block = mem.get_profile() or {}
-            persona = profile_block.get("persona") if isinstance(
-                profile_block.get("persona"), dict) else {}
-            persona_brief = build_persona_brief(persona, native_lang, learner_l1=learner_l1)
-            # P0.16：tutor 措辞规范（[Style] 去 AI 味）——无条件全局注入（D1=A），
-            # 独立于 persona 是否配置；与 [Persona] 人设层并列、正交。
-            style_directive = build_tutor_style_directive(native_lang)
-            try:
-                cap = int((persona or {}).get("interrupt_cap", DEFAULT_CAP))
-            except (TypeError, ValueError):
-                cap = DEFAULT_CAP
-
-            # ---- 0.25 起点分层：画像等级 → 识别/超纲/讲解全链生效 ----
-            # 画像 user_level 未设 → HSK3（与技能默认一致）。归一用本类静态方法
-            # （不依赖 Router 具体实现，测试替身替出 Router 亦兼容）；同步 Router 仅当支持。
-            level_int = 3
-            raw_level = profile_block.get("user_level")
-            _level_label = self._normalize_user_level(raw_level)
-            if _level_label is not None:
-                level_int = int(_level_label[3:])
-                if hasattr(self._router, "set_level"):
-                    try:
-                        self._router.set_level(_level_label)
-                    except Exception:  # noqa: BLE001 同步失败不阻断
-                        pass
-            level_label = f"HSK{level_int}"
-
-            # ---- 0.22 方向3 · 介入判定（确定性分档，D3.4 主链重构）----
-            # 预扫：每轮产出句先走 identify（喂图谱+迁移假设，句子→图谱链不变），
-            # 再用组合信号分档（求助/空/含义不清/连续错率 + 打断上限）。
-            # 求助句不预扫（meta 问题，识别交给 planner 按需调技能）；
-            # 超长文本视为学习材料（交给 parse_document），不识别不介入。
-            tracker = self._get_tracker(conversation_id)
-            pre_scan = None
-            scan_notices = []
-            help_intent = detect_help_intent(user_input)
-            too_long = len(user_input) > MAX_SCAN_CHARS
-            if not help_intent and not too_long:
-                try:
-                    pre_scan = self._get_identify_skill().run(
-                        {"text": user_input, "native_lang": native_lang,
-                         "level": level_label})
-                except Exception as e:  # noqa: BLE001 预扫失败不阻断对话
-                    pre_scan = None
-                    scan_notices.append({"stage": "pre_scan",
-                                         "reason": str(e), "fatal": False})
-            max_conf, error_flag = 1.0, None
-            if isinstance(pre_scan, dict):
-                confs = [float(e.get("confidence") or 0.0)
-                         for e in (pre_scan.get("errors") or [])
-                         + (pre_scan.get("uncertain") or [])
-                         if isinstance(e, dict)]
-                max_conf = max(confs) if confs else 1.0
-                error_flag = bool(pre_scan.get("errors")
-                                  or pre_scan.get("uncertain"))
-                # 账本：预扫确认偏误 → observation_error（惯犯数据源不断档；
-                # planner 重复 identify 同句由 skip_text 去重）
-                for err in pre_scan.get("errors") or []:
-                    kp = err.get("knowledge_point_id") if isinstance(err, dict) else None
-                    if not kp:
-                        continue
-                    try:
-                        wb.ledger.record(
-                            "observation_error", kp,
-                            signature=err.get("fragment", ""),
-                            evidence=user_input)
-                    except Exception as e:  # noqa: BLE001
-                        scan_notices.append({"stage": "ledger_write",
-                                             "reason": str(e), "fatal": False})
-            if too_long:
-                level, reason = "none", "material"   # 材料句：不介入不分档
-            else:
-                level, reason = tracker.observe(
-                    user_input, max_conf=max_conf,
-                    error_flag=error_flag, cap=cap)
-            intervention_directive = build_intervention_directive(
-                level, reason, native_lang, recognition=pre_scan,
-                hsk_level=level_int)
-
-            res = self._get_planner(provider).run(
-                user_input, history=history, learner_id=learner_id,
-                profile_summary=profile_summary, native_lang=native_lang,
-                user_level=level_label, scene_brief=scene_brief, persona_brief=persona_brief,
-                style_directive=style_directive,
-                intervention_directive=intervention_directive)
-            # M8 两段式·账本侧：识别命中→observation_error；复述 pass→concept_confirmed
-            m8_notices = scan_notices + self._writeback_ledger_events(
-                wb, res.get("trace", []), user_input,
-                skip_text=(user_input if isinstance(pre_scan, dict) else ""))
-            # M8 汇合 M5：常错点结构化 facts 写回长期记忆 profile 块
-            try:
-                facts = build_profile_facts(self._router.graph, wb.ledger)
-                if facts:
-                    mem.update_profile(common_errors=facts)
-            except Exception as e:  # noqa: BLE001
-                m8_notices.append({"stage": "profile_writeback",
-                                   "reason": str(e), "fatal": False})
-            # 写回记忆：user 必记；assistant 回复非空才记（fallback 文案也记，多轮不断档）
-            reply = str(res.get("text") or "")
-            mem.append(conversation_id, "user", user_input)
-            # 会话标题（0.19 前端 v2）：首条消息自动设为标题（取自首句提问，便于侧栏回访识别）
-            if not history:
-                try:
-                    mem.touch(conversation_id, title=user_input[:18])
-                except Exception:  # noqa: BLE001
-                    pass
-            if reply:
-                # 0.27 · 成果卡随会话持久：cards(卡视图)+why 写进 assistant 消息 metadata，
-                # 恢复会话时前端据以原位重建。仅新会话生效（旧记录无此字段）。
-                meta = self._assistant_payload(res, pre_scan, provider,
-                                               native_lang, reason)
-                why_items = meta["why"]
-                mem.append(conversation_id, "assistant", reply,
-                           metadata={"skills": res.get("used_skills", []),
-                                     "fallback": bool(res.get("fallback", False)),
-                                     **meta})
-            graph_snapshot = self._router.graph.graph_snapshot()
-        degraded = m8_notices  # 账本/画像写入失败降级（非致命）
-        if res.get("fallback"):
-            degraded.append({"stage": "planner",
-                             "reason": f"planner fallback: {res.get('reason', 'unterminated')}",
-                             "fatal": False})
-        # why_items：assistant 已写请记忆时由其填充；否则（无回复）为空
-        if "why_items" not in locals():
-            why_items = []
-        out = {
-            "dialog_version": "v1",
+        return {
+            "user_input": user_input,
             "learner_id": learner_id,
             "conversation_id": conversation_id,
-            "provider": ({"id": provider["id"], "name": provider["name"],
-                          "model": provider["model"]} if provider else None),
-            "text": res.get("text", ""),
-            "used_skills": res.get("used_skills", []),
-            "steps": res.get("steps", 0),
-            "fallback": bool(res.get("fallback", False)),
-            "trace": res.get("trace", []),
-            "intervention": {"level": level, "reason": reason,
-                             "used": tracker.interrupt_used, "cap": cap},
-            "why": why_items,
-            "degraded": degraded,
-            "graph": graph_snapshot,
-        }
-        return 200, out
+            "provider_id": provider_id,
+            "native_lang": ui_lang,  # 局部别名：下游调用兼容旧字段
+            "learner_l1": learner_l1,
+            "scene_id": str((payload.get("scene_id") or "")).strip(),
+        }, None
+
+    def _consume_visitor_quota(self, vid):
+        """阶段 · 游客配额闸门（P0.10，放在供应商解析之前：满额直接 429，不调模型、
+        不计次、不深校验）。owner-key 判定与 vid 提取在 HTTP 层；此处只做扣减。"""
+        if self._gate is None or vid is None:
+            return None
+        with self._lock:
+            ok, remaining, reset = self._gate.check_and_consume(vid)
+        if ok:
+            return None
+        return 429, {
+            "error": "今日游客额度已用尽，次日 UTC 00:00 重置；"
+                     "配置你自己的 API Key 可无限使用。",
+            "code": "visitor_quota_exceeded",
+            "message": "配置你自己的 API Key 可无限使用",
+            "remaining": 0, "reset_at": reset}
+
+    def _resolve_dialog_provider(self, provider_id: str):
+        """阶段 · ResolveProvider：委托 ProviderResolver 注入缝（默认生产实现，
+        测试可注入替身）。fail-loud 语义与 400 文案见 ProviderResolver.resolve。"""
+        return self._resolver.resolve(provider_id)
 
     def session_update(self, payload: dict):
         """会话元信息管理：置顶/取消置顶、重命名。
@@ -458,14 +373,13 @@ class DialogService:
             return Planner(reg, llm_call=llm_call)
 
         cache = self._planners
-        if self._dialog_llm is not None:
+        if self._resolver.injected:
             if "__mock__" not in cache:
-                cache["__mock__"] = _build(self._dialog_llm)
+                cache["__mock__"] = _build(self._resolver.bind_llm_call(provider))
             return cache["__mock__"]
         pid = provider["id"] if provider else "__default__"
         if pid not in cache:
-            cache[pid] = _build(_provider_llm(provider) if provider
-                                else _default_dialog_llm)
+            cache[pid] = _build(self._resolver.bind_llm_call(provider))
         return cache[pid]
 
     def _get_memory(self, learner_id: str):
