@@ -31,7 +31,8 @@ class FileCoach:
     """文件讲解通道：选中哪讲哪。含偏误走纠正链，正确走泛讲解。"""
 
     def __init__(self, learner_id: str = "file_user", native_lang: str = "",
-                 user_level: str = "HSK3", source: str = "file_mode"):
+                 user_level: str = "HSK3", source: str = "file_mode",
+                 client: Optional[LLMClient] = None):
         self.learner_id = learner_id
         self.native_lang = native_lang
         self.user_level = user_level
@@ -40,7 +41,7 @@ class FileCoach:
         self.explainer = Explainer()
         self.graph = ErrorGraph(learner_id)
         self.graph.load()
-        self._client = LLMClient()
+        self._client = client or LLMClient()
 
     def explain_selection(self, selection: str, sentence: str = "",
                           event_key: str = "", commit_graph: bool = True) -> dict:

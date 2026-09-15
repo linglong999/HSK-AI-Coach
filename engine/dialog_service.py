@@ -501,10 +501,11 @@ class DialogService:
         return pending[:limit]
 
     @staticmethod
-    def _build_why(pre_scan, provider, native_lang):
+    def _build_why(pre_scan, provider, native_lang, client=None):
         """0.26 · 为预扫识别到的偏误生成"为什么"（隐藏弃用/错误 → 空列表不阻断）。
         pre_scan：本轮预扫识别结果（None/无 errors → 返回 []）；
         provider：请求级供应商（None → settings 全局配置，供 mock/默认路径）。
+        client：可选注入 LLM 客户端（深化 03 注入缝）；None → 默认 LLMClient()。
         仅 errors 参与生成（uncertain 不入 why）；任何异常静默降级为空。"""
         try:
             if not (isinstance(pre_scan, dict)
@@ -522,7 +523,7 @@ class DialogService:
             directive = ("用中文解释，但错误片段保持中文原文。" if dl == "zh"
                          else "Write reasons in English, but keep the Chinese "
                               "fragments in Chinese.")
-            items = generate_why(LLMClient(),
+            items = generate_why(client or LLMClient(),
                                  pre_scan.get("errors") or [],
                                  pre_scan.get("hypotheses"),
                                  language_directive=directive,
