@@ -38,6 +38,7 @@ SYSTEM_PROMPT = """【角色】你是一个 HSK 偏误识别器。任务是从�
 5. 修正建议要符合学习者当前等级，不教超纲内容。
 6. 每个偏误给出 knowledge_point_id（从清单中选最贴切者）。**清单中存在对应项时必填该 id，不得留空**；留空仅限清单确实没有贴近的对应项。给出错误 id 比留空更糟——宁可留空也不要臆造清单外的 id。**特别地：语用类与词汇搭配类偏误当前清单无对应锚点，留空不视为违约；语法类留空才构成违约。**
 7. fragment 只圈发生偏误的最小片段：不含该偏误前后"看起来相关但本身正确"的词，禁止把整个句子或整块短语当 fragment。但**最小 ≠ 残缺**——fragment 必须覆盖让该偏误成立的完整机制，不得把机制本身诱发词也切掉：例如「他常常迟到了」的偏误是"频率副词与'了'冲突"，fragment 应含「常常迟到了」而非仅「迟到了」。只有明显独立的正确成分才 cut（连词/语气词/名词尾等），如「虽然他很累，但是他去上班」缺衔接时 fragment 是「他去上班」而非「但是他去上班」；「她是个很好得人」的错处 fragment 是「很好得」而非「很好得人」。
+8. 对每个偏误给出 score（0-1）＝该判断为真实偏误的程度：1.0=确凿、0.6-0.85=边缘（母语者可两可）、<0.6=疑似误报。score 是判定的源真值，final 是否"待确认"由置信度决策序列决定，不要在此自行下结论。
 
 【隐性偏误示例（few-shot）——校准"看似合格实则偏误"的判断】
 以下示例教你识别隐性偏误（表层语法接近合格、依赖语用/搭配/语体知识的偏误，可能只达到"待确认"的低置信档），但**切勿当匹配模板**：仅当句子同时满足每条标注的"判定条件"时才识别，否则宁可不报（避免过度纠正）。示例与待评句子可能同型却不同词，请按偏误"机制"判断，不要按字面匹配。反例用于界定合法边界，同样不要漏过。
@@ -75,7 +76,27 @@ SYSTEM_PROMPT = """【角色】你是一个 HSK 偏误识别器。任务是从�
 反例（合法，不报）：这次考试我考得挺好呢。（口语闲聊，"呢"自然）
 
 【输出格式】严格输出 JSON，不要输出任何其他文字：
-{{"errors": [{{"fragment": "偏误片段", "correction": "修正建议", "type": "词汇|语法|语用|汉字", "type_confident": true, "confidence": 0.0-1.0, "knowledge_point_id": "<id 或空>"}}]}}"""
+{{"errors": [{{"fragment": "偏误片段", "correction": "修正建议", "type": "词汇|语法|语用|汉字", "type_confident": true, "confidence": 0.0-1.0, "knowledge_point_id": "<id 或空>", "score": 0.0-1.0}}]}}"""
+
+
+# --- B0 · 识别契约扩展（软评分）---
+# 三值软评：score 为源真值（0-1，高 = 确凿偏误），verdict 由 score 确定性派生、不经 LLM 独立再判。
+# 阈值 0.85/0.60 为调参起点（总纲 §2 ④）：
+#   score >= 0.85 → "error"（确凿偏误）；0.60 <= score < 0.85 → "edge"（母语者可两可）；< 0.60 → "acceptable"（疑似误报）。
+# 命名沿用拍板稿 VERDICT_ACCEPTABLE/VERDICT_EDGE（§2 ④阈值名），但语义以逗号后注释为准：高置信 → 判为 error。
+VERDICT_ACCEPTABLE = 0.85   # >= 0.85 → error（确凿偏误）
+VERDICT_EDGE = 0.60         # >= 0.60 且 < 0.85 → edge；< 0.60 → acceptable
+
+
+def derive_verdict(score) -> Optional[str]:
+    """score → verdict 确定性派生；None/非数值（含 bool/str）→ None（不破坏缺省）。"""
+    if not isinstance(score, (int, float)) or isinstance(score, bool):
+        return None
+    if score >= VERDICT_ACCEPTABLE:
+        return "error"
+    if score >= VERDICT_EDGE:
+        return "edge"
+    return "acceptable"
 
 
 def load_knowledge_points(path: str = KNOWLEDGE_POINTS_PATH) -> dict:
@@ -221,6 +242,8 @@ class Recognizer:
         confirmed, uncertain = [], []
         for e in errors:
             e = self._normalize(e)
+            # B0：软评分 verdict 由 score 确定性派生（纯透传，不影响 confirmed/uncertain 分层）
+            e["verdict"] = derive_verdict(e.get("score"))
             c1 = float(e.get("confidence", 0.0))
             t_conf = bool(e.get("type_confident", False))
 
@@ -262,12 +285,19 @@ class Recognizer:
         except Exception:
             hypotheses = []
 
+        # B0：识别层顶层聚合（确定性）——取已确认偏误的最差值；无偏误 → acceptable/1.0。
+        # 仅用 confirmed：uncertain（低置信）不进"句子级 verdict"，宁漏勿错。
+        _s = [e["score"] for e in confirmed if e.get("score") is not None]
+        top_verdict = derive_verdict(min(_s)) if _s else "acceptable"
+        top_score = min(_s) if _s else 1.0
+
         return {"errors": confirmed, "uncertain": uncertain, "raw": raw,
                 "kp_total": len(self.kps),
                 "hypotheses": hypotheses,          # L1 迁移候选假设（0.22，只读不写图谱）
                 "beyond_level": beyond,            # 权威词表判定结果 [{word,level}]
                 "beyond_level_flag": bool(beyond),
-                "dropped_fp": dropped}
+                "dropped_fp": dropped,
+                "verdict": top_verdict, "score": top_score}
 
     def _rule_fallback(self, text: str, beyond: list, reason: str = "") -> dict:
         """4.2 降级兜底：识别引擎不可用时的确定性规则回退。
@@ -291,7 +321,7 @@ class Recognizer:
 
     @staticmethod
     def _normalize(error: dict) -> dict:
-        """兼容模型输入，补齐缺省键"""
+        """兼容模型输入，补齐缺省键（B0：追加 score，无值 → None 向后兼容）"""
         return {
             "fragment": error.get("fragment", ""),
             "correction": error.get("correction", ""),
@@ -299,4 +329,5 @@ class Recognizer:
             "type_confident": error.get("type_confident", True),
             "confidence": error.get("confidence", 0.0),
             "knowledge_point_id": error.get("knowledge_point_id", ""),
+            "score": error.get("score", None),
         }

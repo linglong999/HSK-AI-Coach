@@ -33,9 +33,12 @@ class RequestContext:
     provider_config: Optional[Dict] = field(default=None)   # {base_url, api_key, model}
 
 
-def ordered_error(e: dict) -> dict:
-    """契约 §1 error 字段白名单 + 稳定顺序（前端不依赖内部实现字段）。"""
-    return {
+def ordered_error(e: dict, version: int = 2) -> dict:
+    """契约 error 条目字段白名单 + 稳定顺序（前端不依赖内部实现字段）。
+    B0（契约 v2）：v1 的 7 旧键恒序（version<2 时不带新键），v2 追加
+    score/verdict/construction_diagnostics——总在但值可 None（软评分缺省不破坏旧调用方）。
+    construction_diagnostics 由 B1 产出，B0 恒 None。"""
+    base = {
         "fragment": e.get("fragment", ""),
         "correction": e.get("correction", ""),
         "type": e.get("type", ""),
@@ -44,6 +47,12 @@ def ordered_error(e: dict) -> dict:
         "knowledge_point_id": e.get("knowledge_point_id", ""),
         "uncertain": bool(e.get("uncertain", False)),
     }
+    if version < 2:
+        return base
+    base["score"] = e.get("score") if e.get("score") is not None else None
+    base["verdict"] = e.get("verdict") if e.get("verdict") is not None else None
+    base["construction_diagnostics"] = e.get("construction_diagnostics")  # B1 产出；B0 恒 None
+    return base
 
 
 class Router:
@@ -82,7 +91,7 @@ class Router:
     def process(self, user_text: str, event_key: str = "",
                 ctx: Optional[RequestContext] = None) -> dict:
         """一次偏误纠错闭环：识别 → 讲解 → 图谱 → 复习队列。
-        返回「JSON 接缝契约 v1」结构化结果（详见 datasets/docs/JSON-接缝契约-v1.md）：
+        返回「JSON 接缝契约 v2」结构化结果（详见 datasets/docs/JSON-接缝契约-v2.md）：
         纯可序列化 dict，degraded[] 结构化（stage/reason/fatal），前端可直接渲染。
         降级分支见各步 try —— 识别主失败 fatal，其余局部降级不阻塞整体。
         ctx: 可选请求级上下文覆盖（0.33-04 BYOK）。有值用之、无值回退实例字段
@@ -99,11 +108,12 @@ class Router:
         # 请求级等级归一（非法回退 3），仅本请求识别/讲解用；图谱写入仍按会话级 self.user_level
         eff_level_int = self._norm_level(eff_level)
 
-        result = {"contract_version": "v1", "learner_id": eff_learner,
+        result = {"contract_version": "v2", "learner_id": eff_learner,
                   "user_level": eff_level, "native_lang": eff_native,
                   "input_text": user_text, "errors": [], "uncertain": [],
                   "hypotheses": [],
                   "has_error": False, "graph_size": 0, "review_queue": [],
+                  "verdict": None, "score": None,
                   "degraded": [], "meta": {"start_ts": time.strftime("%Y-%m-%dT%H:%M:%SZ",
                                                                      time.gmtime()),
                                            "end_ts": "", "elapsed_ms": 0}}
@@ -130,6 +140,9 @@ class Router:
             uncertain = recog.get("uncertain", [])
             # 0.22：L1 迁移假设透传（契约 v1 新增可选键，向后兼容；只读不写图谱）
             result["hypotheses"] = recog.get("hypotheses", [])
+            # B0：识别层顶层软评分透传（识别主失败早退分支即前述 None 初值；mock 不给 → 保持 None）
+            result["verdict"] = recog.get("verdict")
+            result["score"] = recog.get("score")
             # 识别层降级透传：_rule_fallback 返回字符串（非列表），两者都要记（契约 §5）
             rd_raw = recog.get("degraded")
             if isinstance(rd_raw, list):

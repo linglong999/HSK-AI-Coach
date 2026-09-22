@@ -35,17 +35,26 @@ FAKE_UNCERTAIN = {
     "knowledge_point_id": "",
 }
 
-TRUE_KEYS = {"contract_version", "learner_id", "user_level", "native_lang",
-             "input_text", "errors", "uncertain", "hypotheses", "has_error",
-             "graph_size", "review_queue", "degraded", "meta"}
+TRUE_KEYS_V1 = {"contract_version", "learner_id", "user_level", "native_lang",
+                "input_text", "errors", "uncertain", "hypotheses", "has_error",
+                "graph_size", "review_queue", "degraded", "meta"}
 META_KEYS = {"start_ts", "end_ts", "elapsed_ms"}
+
+# 契约 v2 = v1 13 键 + verdict/score（软评分，识别层顶层聚合透传）
+TRUE_KEYS_V2 = TRUE_KEYS_V1 | {"verdict", "score"}
+
+# error 条目核心 7 旧键 + v2 追加 3 键（总在但值可 None）
+ERR_BASE_KEYS = ["fragment", "correction", "type", "type_confident",
+                 "confidence", "knowledge_point_id", "uncertain"]
+ERR_V2_KEYS = ERR_BASE_KEYS + ["score", "verdict", "construction_diagnostics"]
 
 
 def _mock_ok(router):
     # 0.25：router.process 现传 level（起点分层），替身签名需接受
-    router.recognizer.recognize = lambda text, level=3, native_lang="": {
-        "errors": [dict(FAKE_CONFIRMED)], "uncertain": [dict(FAKE_UNCERTAIN)],
-        "hypotheses": [], "degraded": []}
+    def _recognize(text, level=3, native_lang=""):
+        return {"errors": [dict(FAKE_CONFIRMED)], "uncertain": [dict(FAKE_UNCERTAIN)],
+                "hypotheses": [], "degraded": []}
+    router.recognizer.recognize = _recognize
     router.explainer.explain = lambda err, **kw: {
         "explanation": "应把数量短语放名词前。例：很多水。",
         "key_points": [{"id": "kp-1", "text": "很多+名词语序"}],
@@ -68,13 +77,36 @@ class ContractBase(unittest.TestCase):
 
 class TestContractShape(ContractBase):
 
-    def test_top_level_keys_exact(self):
-        """顶层字段严格等于契约 v1（不多不少）"""
+    def test_v1_contract_locked_by_fixture(self):
+        """v1 是历史契约，不跑主路径（主路径只产 v2）——用静态 fixture 锁形 13 键。
+        保证未来若旧客户端对接，仍有一张 v1 形状的权威快照可对照。"""
+        v1_fixture = {
+            "contract_version": "v1", "learner_id": "x", "user_level": "HSK3",
+            "native_lang": "", "input_text": "句", "errors": [], "uncertain": [],
+            "hypotheses": [], "has_error": False, "graph_size": 0,
+            "review_queue": [], "degraded": [], "meta": {},
+        }
+        self.assertEqual(set(v1_fixture.keys()), TRUE_KEYS_V1)
+
+    def test_top_level_keys_exact_v2(self):
+        """顶层字段严格等于契约 v2（v1 13 键 + verdict/score，不多不少）"""
         res = self.router.process("我想买苹果很多。", event_key="c1")
-        self.assertEqual(set(res.keys()), TRUE_KEYS)
+        self.assertEqual(set(res.keys()), TRUE_KEYS_V2)
+        self.assertEqual("v2", res["contract_version"])
         # 为空时 errors 仍为 list
         self.assertIsInstance(res["errors"], list)
         self.assertIsInstance(res["uncertain"], list)
+
+    def test_soft_score_defaults_when_absent(self):
+        """mock 替身不产 score → 顶层 verdict/score 为 None（软评分缺省不炸，向后兼容）"""
+        res = self.router.process("我想买苹果很多。", event_key="c0")
+        self.assertIsNone(res["verdict"])
+        self.assertIsNone(res["score"])
+        # 条目侧：score/verdict/construction_diagnostics 键恒在、值可 None
+        err = res["errors"][0]["error"]
+        self.assertIsNone(err["score"])
+        self.assertIsNone(err["verdict"])
+        self.assertIsNone(err["construction_diagnostics"])
 
     def test_meta_shape(self):
         res = self.router.process("我想买苹果很多。", event_key="c2")
@@ -87,25 +119,22 @@ class TestContractShape(ContractBase):
         res = self.router.process("我想买苹果很多。", event_key="c3")
         json.dumps(res, ensure_ascii=False)  # 应静默成功
 
-    def test_error_field_whitelist_order(self):
-        """error 字段严格白名单 + 稳定顺序（前端不依赖内部实现字段）"""
+    def test_error_field_whitelist_order_v2(self):
+        """v2 error 条目：7 旧键恒序 + score/verdict/construction_diagnostics（10 键总在）"""
         res = self.router.process("我想买苹果很多。", event_key="c4")
         err = res["errors"][0]["error"]
-        self.assertEqual(list(err.keys()),
-                         ["fragment", "correction", "type", "type_confident",
-                          "confidence", "knowledge_point_id", "uncertain"])
+        self.assertEqual(list(err.keys()), ERR_V2_KEYS)
         self.assertIsInstance(err["confidence"], float)
         self.assertIsInstance(err["type_confident"], bool)
+        self.assertIsInstance(err["uncertain"], bool)
 
     def test_uncertain_same_schema(self):
-        """uncertain 条目与 error 同构（契约 §1）"""
+        """v2 uncertain 条目与 error 同构（契约 §1，同样 10 键）"""
         res = self.router.process("我想买苹果很多。", event_key="c5")
         u = res["uncertain"][0]
-        self.assertEqual(list(u.keys()),
-                         ["fragment", "correction", "type", "type_confident",
-                          "confidence", "knowledge_point_id", "uncertain"])
+        self.assertEqual(list(u.keys()), ERR_V2_KEYS)
         self.assertIsInstance(u["uncertain"], bool)
-        # uncertain 走契约 §1 白名单（键顺序稳定）即可，值随识别通道决定
+        # uncertain 走契约白名单（键顺序稳定）即可，值随识别通道决定
 
     def test_explanation_degraded_flag_absent_on_ok(self):
         """正常讲解：无 _degraded 标志，含契约字段"""
@@ -127,7 +156,7 @@ class TestContractShape(ContractBase):
         res = self.router.process("我想买苹果很多。", event_key="c8")
         self.assertEqual(res["degraded"], [])
         # 检查内部 Graph 无 LLM 调用（契约不加 side 字段）
-        self.assertEqual("v1", res["contract_version"])
+        self.assertEqual("v2", res["contract_version"])
 
     def test_rule_fallback_degraded_passthrough(self):
         """识别层降级（规则回退，degraded 为字符串）必须透传进契约 degraded[]（§5）。

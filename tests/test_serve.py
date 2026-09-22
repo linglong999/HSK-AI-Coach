@@ -30,12 +30,14 @@ class FakeRouter:
 
     def process(self, text, event_key="", ctx=None):
         return {
-            "contract_version": "v1", "learner_id": self.learner_id,
+            "contract_version": "v2", "learner_id": self.learner_id,
             "user_level": "HSK3", "native_lang": "英语", "input_text": text,
             "errors": [{
                 "error": {"fragment": "苹果很多", "correction": "很多苹果", "type": "语法",
                           "type_confident": True, "confidence": 0.9,
-                          "knowledge_point_id": "kp-x", "uncertain": False},
+                          "knowledge_point_id": "kp-x", "uncertain": False,
+                          "score": 0.9, "verdict": "error",
+                          "construction_diagnostics": None},
                 "explanation": {"explanation": "应把数量放名词前。",
                                 "key_points": [{"id": "kp-1", "text": "量词语序"}],
                                 "keywords": [], "uncertain_note": "",
@@ -43,6 +45,7 @@ class FakeRouter:
                 "graph_write": {"status": "node_upsert", "kp_id": "kp-x"},
                 "verification": None}],
             "uncertain": [], "has_error": True, "review_queue": [],
+            "verdict": "error", "score": 0.9,
             "degraded": [], "meta": {"start_ts": ""},
         }
 
@@ -105,7 +108,7 @@ class ServeTest(unittest.TestCase):
         body = json.loads(r.read().decode())
         c.close()
         self.assertEqual(r.status, 200)
-        self.assertEqual(body["contract_version"], "v1")
+        self.assertEqual(body["contract_version"], "v2")
         self.assertEqual(body["has_error"], True)
         self.assertEqual(body["input_text"], "我想买苹果很多。")
         self.assertIn("graph", body)

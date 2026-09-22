@@ -79,7 +79,7 @@ class TestSingleEngineFailure(DegradationTestBase):
         # 契约 v1：degraded 结构化 dict，stage=recognize 且 fatal=True
         self.assertTrue(any(d.get("stage") == "recognize" and d.get("fatal")
                             for d in res["degraded"]))
-        self.assertEqual("v1", res["contract_version"])
+        self.assertEqual("v2", res["contract_version"])
 
 
 class TestExplainerFailure(DegradationTestBase):
