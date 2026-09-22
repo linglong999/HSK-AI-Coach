@@ -1,0 +1,114 @@
+﻿
+=================================== ERRORS ====================================
+__________________ ERROR collecting tests/test_bilingual.py ___________________
+ImportError while importing test module 'D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\tests\test_bilingual.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Users\曹玲珑\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_bilingual.py:29: in <module>
+    from engine.serve import make_handler
+E   ImportError: cannot import name 'make_handler' from 'engine.serve' (D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\src\engine\serve.py)
+________________ ERROR collecting tests/test_dialog_memory.py _________________
+ImportError while importing test module 'D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\tests\test_dialog_memory.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Users\曹玲珑\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_dialog_memory.py:30: in <module>
+    from engine.serve import make_handler
+E   ImportError: cannot import name 'make_handler' from 'engine.serve' (D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\src\engine\serve.py)
+________________ ERROR collecting tests/test_dialog_profile.py ________________
+ImportError while importing test module 'D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\tests\test_dialog_profile.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Users\曹玲珑\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_dialog_profile.py:30: in <module>
+    from engine.serve import make_handler
+E   ImportError: cannot import name 'make_handler' from 'engine.serve' (D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\src\engine\serve.py)
+_________________ ERROR collecting tests/test_intervention.py _________________
+ImportError while importing test module 'D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\tests\test_intervention.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Users\曹玲珑\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_intervention.py:34: in <module>
+    from engine.serve import make_handler
+E   ImportError: cannot import name 'make_handler' from 'engine.serve' (D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\src\engine\serve.py)
+____________________ ERROR collecting tests/test_level.py _____________________
+ImportError while importing test module 'D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\tests\test_level.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Users\曹玲珑\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_level.py:29: in <module>
+    from engine.serve import make_handler
+E   ImportError: cannot import name 'make_handler' from 'engine.serve' (D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\src\engine\serve.py)
+___________________ ERROR collecting tests/test_persona.py ____________________
+ImportError while importing test module 'D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\tests\test_persona.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Users\曹玲珑\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_persona.py:32: in <module>
+    from engine.serve import make_handler
+E   ImportError: cannot import name 'make_handler' from 'engine.serve' (D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\src\engine\serve.py)
+__________________ ERROR collecting tests/test_scenarios.py ___________________
+ImportError while importing test module 'D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\tests\test_scenarios.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Users\曹玲珑\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_scenarios.py:31: in <module>
+    from engine.serve import make_handler
+E   ImportError: cannot import name 'make_handler' from 'engine.serve' (D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\src\engine\serve.py)
+_________________ ERROR collecting tests/test_tutor_style.py __________________
+ImportError while importing test module 'D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\tests\test_tutor_style.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Users\曹玲珑\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_tutor_style.py:34: in <module>
+    from engine.serve import make_handler
+E   ImportError: cannot import name 'make_handler' from 'engine.serve' (D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\src\engine\serve.py)
+_________________ ERROR collecting tests/test_visitor_gate.py _________________
+ImportError while importing test module 'D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\tests\test_visitor_gate.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Users\曹玲珑\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_visitor_gate.py:29: in <module>
+    from engine.serve import make_handler
+E   ImportError: cannot import name 'make_handler' from 'engine.serve' (D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\src\engine\serve.py)
+============================== warnings summary ===============================
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+.venv\Lib\site-packages\starlette\testclient.py:53
+  D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\HSK-AI-Coach\.venv\Lib\site-packages\starlette\testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+ERROR tests/test_bilingual.py
+ERROR tests/test_dialog_memory.py
+ERROR tests/test_dialog_profile.py
+ERROR tests/test_intervention.py
+ERROR tests/test_level.py
+ERROR tests/test_persona.py
+ERROR tests/test_scenarios.py
+ERROR tests/test_tutor_style.py
+ERROR tests/test_visitor_gate.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 9 errors during collection !!!!!!!!!!!!!!!!!!!
+2 warnings, 9 errors in 1.72s

@@ -14,12 +14,9 @@
 import http.client
 import json
 import os
-import socket
 import sys
 import tempfile
-import threading
 import unittest
-from http.server import ThreadingHTTPServer
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
@@ -28,8 +25,9 @@ if _PROJECT_ROOT not in sys.path:
 from engine.graph.error_graph import ErrorGraph
 from engine.generation.generator import GenerationEngine
 from engine.generation.authoring import build_dialogue_prompt
-from engine.serve import make_handler
+from engine.serve import create_app
 from planner.loop import Planner
+from ._serve_common import make_server, stop_server
 from skills import build_registry
 from skills.identify_errors import IdentifyErrorsSkill
 
@@ -98,15 +96,8 @@ def _start_server(router, dialog_llm=None):
     tmp = tempfile.mkdtemp()
     with open(os.path.join(tmp, "index.html"), "w", encoding="utf-8") as f:
         f.write("<html>scene</html>")
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-    s.close()
-    httpd = ThreadingHTTPServer(
-        ("127.0.0.1", port),
-        make_handler(router, tmp, dialog_llm=dialog_llm, memory_root=tmp))
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, port
+    app = create_app(router, tmp, dialog_llm=dialog_llm, memory_root=tmp)
+    return make_server(app)
 
 
 def _get(port, path):
@@ -254,12 +245,11 @@ class ScenariosHttpTest(unittest.TestCase):
     def setUpClass(cls):
         cls.router = FakeRouter()
         cls.llm = RecordingLLM()
-        cls.httpd, cls.port = _start_server(cls.router, dialog_llm=cls.llm)
+        cls.server, cls.thr, cls.port = _start_server(cls.router, dialog_llm=cls.llm)
 
     @classmethod
     def tearDownClass(cls):
-        cls.httpd.shutdown()
-        cls.httpd.server_close()
+        stop_server(cls.server, cls.thr)
         p = os.path.join(_PROJECT_ROOT, "data", "graph_scene_test.json")
         if os.path.exists(p):
             os.remove(p)

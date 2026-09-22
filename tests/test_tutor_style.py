@@ -16,12 +16,9 @@ import copy
 import http.client
 import json
 import os
-import socket
 import sys
 import tempfile
-import threading
 import unittest
-from http.server import ThreadingHTTPServer
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
@@ -31,7 +28,8 @@ from engine.graph.error_graph import ErrorGraph
 from engine.intervention import (
     detect_frustration, decide_intervention, build_intervention_directive)
 from engine.persona import build_tutor_style_directive
-from engine.serve import make_handler
+from engine.serve import create_app
+from ._serve_common import make_server, stop_server
 
 
 # ---------------- persona 措辞源（D1=A） ----------------
@@ -158,15 +156,9 @@ def _start_server(router, dialog_llm):
     tmp = tempfile.mkdtemp()
     with open(os.path.join(tmp, "index.html"), "w", encoding="utf-8") as f:
         f.write("<html>s16</html>")
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-    s.close()
-    httpd = ThreadingHTTPServer(
-        ("127.0.0.1", port),
-        make_handler(router, tmp, dialog_llm=dialog_llm, memory_root=tmp))
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, port, tmp
+    app = create_app(router, tmp, dialog_llm=dialog_llm, memory_root=tmp)
+    server, thr, port = make_server(app)
+    return server, thr, port, tmp
 
 
 def _post(port, path, body):
@@ -190,12 +182,11 @@ class ServeTutorStyleTest(unittest.TestCase):
     def setUpClass(cls):
         cls.router = make_fake_router(cls.LEARNER)
         cls.llm = CaptureLLM()
-        cls.httpd, cls.port, cls.root = _start_server(cls.router, cls.llm)
+        cls.server, cls.thr, cls.port, cls.root = _start_server(cls.router, cls.llm)
 
     @classmethod
     def tearDownClass(cls):
-        cls.httpd.shutdown()
-        cls.httpd.server_close()
+        stop_server(cls.server, cls.thr)
         p = os.path.join(_PROJECT_ROOT, "data", f"graph_s16_{cls.LEARNER}.json")
         if os.path.exists(p):
             os.remove(p)

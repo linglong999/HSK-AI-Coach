@@ -10,7 +10,7 @@
 import json
 import os
 
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from config.paths import PROJECT_ROOT as _PROJECT_ROOT
 MAP_PATH = os.path.join(_PROJECT_ROOT, "datasets", "textbook_map.json")
 
 _map_cache = None

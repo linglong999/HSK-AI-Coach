@@ -18,14 +18,23 @@ classifiers = [
 dependencies = [
     "requests>=2.28",
     "python-dotenv>=1.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sse-starlette>=2.1",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
 ]
 
-[project.optional-dependencies]
-dev = ["pytest"]
+[dependency-groups]
+# uv sync 默认安装 dev 组（含 pytest/httpx）——TestClient(SSE 冒烟) 依赖 httpx
+dev = ["pytest>=7", "httpx"]
 
 [project.scripts]
 hsk-coach = "engine.serve:main"
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["engine*", "config*"]
+where = ["src"]
+include = ["engine*", "config*", "planner*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

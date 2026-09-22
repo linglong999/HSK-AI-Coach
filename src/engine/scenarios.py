@@ -15,7 +15,7 @@ import os
 # 场景教学层与介入层的隐性反馈口径永远一致（消除双份维护的同步成本）。
 from engine.intervention import RECAST_DIRECTIVE_ZH, RECAST_DIRECTIVE_EN
 
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from config.paths import PROJECT_ROOT as _PROJECT_ROOT
 SCENARIOS_PATH = os.path.join(_PROJECT_ROOT, "datasets", "scenarios_en.json")
 KNOWLEDGE_POINTS_PATH = os.path.join(_PROJECT_ROOT, "datasets", "knowledge_points_v1_4.json")
 

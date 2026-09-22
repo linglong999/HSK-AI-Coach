@@ -16,7 +16,6 @@ import sys
 import tempfile
 import threading
 import unittest
-from http.server import ThreadingHTTPServer
 from unittest import mock
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -24,10 +23,11 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from engine.graph.error_graph import ErrorGraph
-from engine.serve import make_handler
+from engine.serve import create_app
 from planner.loop import Planner
 from skills import build_registry
 from skills.identify_errors import IdentifyErrorsSkill
+from ._serve_common import make_server, stop_server
 
 
 # ---------------- 测试替身 ----------------
@@ -74,17 +74,9 @@ def _start_server(router, dialog_llm=None):
     tmp = tempfile.mkdtemp()
     with open(os.path.join(tmp, "index.html"), "w", encoding="utf-8") as f:
         f.write("<html>dialog</html>")
-    import socket
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-    s.close()
     # memory_root 指向临时目录：dialog 测试的记忆落盘不污染 data/
-    httpd = ThreadingHTTPServer(
-        ("127.0.0.1", port),
-        make_handler(router, tmp, dialog_llm=dialog_llm, memory_root=tmp))
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, port
+    app = create_app(router, tmp, dialog_llm=dialog_llm, memory_root=tmp)
+    return make_server(app)
 
 
 def _post(port, path, body_bytes):
@@ -107,12 +99,11 @@ class DialogFailLoudTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.router = FakeRouter()
-        cls.httpd, cls.port = _start_server(cls.router)  # 不注入 mock → 走真实 Key 检查
+        cls.server, cls.thr, cls.port = _start_server(cls.router)  # 不注入 mock → 走真实 Key 检查
 
     @classmethod
     def tearDownClass(cls):
-        cls.httpd.shutdown()
-        cls.httpd.server_close()
+        stop_server(cls.server, cls.thr)
 
     def test_no_key_400_fail_loud(self):
         with mock.patch("config.settings.DEEPSEEK_API_KEY", ""), \
@@ -150,12 +141,11 @@ class DialogTraceTest(unittest.TestCase):
             '  "params":{"text":"我想买苹果很多。"}}]',
             '[{"type":"text","content":"已检查这句话。"}]',
         ])
-        cls.httpd, cls.port = _start_server(cls.router, dialog_llm=cls.llm)
+        cls.server, cls.thr, cls.port = _start_server(cls.router, dialog_llm=cls.llm)
 
     @classmethod
     def tearDownClass(cls):
-        cls.httpd.shutdown()
-        cls.httpd.server_close()
+        stop_server(cls.server, cls.thr)
         # identify 写图谱默认落 data/graph_dialog_test.json → 清理测试产物
         p = os.path.join(_PROJECT_ROOT, "data", "graph_dialog_test.json")
         if os.path.exists(p):

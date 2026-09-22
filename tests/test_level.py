@@ -13,12 +13,9 @@ import copy
 import http.client
 import json
 import os
-import socket
 import sys
 import tempfile
-import threading
 import unittest
-from http.server import ThreadingHTTPServer
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
@@ -26,7 +23,8 @@ if _PROJECT_ROOT not in sys.path:
 
 from engine.graph.error_graph import ErrorGraph
 from engine.router import Router
-from engine.serve import make_handler
+from engine.serve import create_app
+from ._serve_common import make_server, stop_server
 
 
 # ---------------- 单元：Router._level_int + serve._normalize_user_level ----------------
@@ -102,15 +100,9 @@ def _start_server(router, dialog_llm):
     tmp = tempfile.mkdtemp()
     with open(os.path.join(tmp, "index.html"), "w", encoding="utf-8") as f:
         f.write("<html>lvl</html>")
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-    s.close()
-    httpd = ThreadingHTTPServer(
-        ("127.0.0.1", port),
-        make_handler(router, tmp, dialog_llm=dialog_llm, memory_root=tmp))
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, port, tmp
+    app = create_app(router, tmp, dialog_llm=dialog_llm, memory_root=tmp)
+    server, thr, port = make_server(app)
+    return server, thr, port, tmp
 
 
 def _post(port, path, body):
@@ -152,12 +144,11 @@ class ServeLevelTest(unittest.TestCase):
     def setUpClass(cls):
         cls.router = make_fake_router(cls.LEARNER)
         cls.llm = CaptureLLM()
-        cls.httpd, cls.port, cls.root = _start_server(cls.router, cls.llm)
+        cls.server, cls.thr, cls.port, cls.root = _start_server(cls.router, cls.llm)
 
     @classmethod
     def tearDownClass(cls):
-        cls.httpd.shutdown()
-        cls.httpd.server_close()
+        stop_server(cls.server, cls.thr)
         _cleanup_graph(cls.LEARNER)
 
     def _save_level(self, raw, learner=None):
@@ -214,15 +205,14 @@ class ServeLevelTest(unittest.TestCase):
         # 未保存等级 → 回落默认 HSK3（预扫识别实收 level=3）
         fresh = self.LEARNER + "_fresh"
         fresh_router = make_fake_router(fresh)
-        httpd, port, _ = _start_server(fresh_router, CaptureLLM([TEXT_REPLY % "噢。"]))
+        server, thr, port, _ = _start_server(fresh_router, CaptureLLM([TEXT_REPLY % "噢。"]))
         try:
             st, out = _post(port, "/api/dialog", {
                 "text": "你好", "learner_id": fresh, "conversation_id": "conv-d"})
             self.assertEqual(st, 200)
             self.assertEqual(fresh_router.recognizer.last_level, 3)
         finally:
-            httpd.shutdown()
-            httpd.server_close()
+            stop_server(server, thr)
             _cleanup_graph(fresh)
 
 

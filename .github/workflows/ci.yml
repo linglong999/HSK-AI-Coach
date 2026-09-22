@@ -24,17 +24,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Set up uv with python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies (editable)
+      - name: Install dependencies (uv sync)
         shell: bash
         run: |
-          # editable 安装（含运行时依赖 requests/dotenv + dev 的 pytest），
+          # uv sync 一键装齐运行时 + dev（fastapi/httpx/pytest）+ editable install 包，
           # 一次同时验证"依赖装齐 + config/engine 包可导入"，与真实用户安装视角一致。
-          pip install -e ".[dev]" -q
+          # --frozen 要求 uv.lock 与 pyproject 严格一致（锁文件已提交）。
+          uv sync --frozen -q
 
       - name: Run pipeline (pytest)
         shell: bash
@@ -42,7 +43,7 @@ jobs:
           # 用 pytest 收集运行；缺例外依赖（rapidocr/pymupdf）的端到端用例
           # 由 pytestmark.skipif 正常 skip，不再因 import pytest 在收集阶段崩溃。
           # 失败时保留退出码上抛（CI 标红），同时把完整输出落盘供排查。
-          python -m pytest tests -q \
+          uv run pytest tests -q \
             > pytest_verbose.log 2>&1 || { ec=$?; echo "== pytest exit code: $ec =="; exit $ec; }
 
       - name: Emit failure annotations

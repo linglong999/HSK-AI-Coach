@@ -11,7 +11,7 @@ import json
 import os
 import warnings
 
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from config.paths import PROJECT_ROOT as _PROJECT_ROOT
 RULES_PATH = os.path.join(_PROJECT_ROOT, "datasets", "transfer_rules_en.json")
 RULES_KO_PATH = os.path.join(_PROJECT_ROOT, "datasets", "transfer_rules_ko.json")
 

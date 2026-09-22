@@ -26,7 +26,8 @@ from engine.generation.generator import GenerationEngine
 from engine.memory.writeback import Writeback
 from engine.graph.error_graph import ErrorGraph
 from engine.llm.client import JSONStrictError
-from engine.serve import make_handler
+from engine.serve import create_app
+from ._serve_common import make_server, stop_server
 
 
 def valid_explain():
@@ -90,16 +91,12 @@ class GenerateApiTest(unittest.TestCase):
         cls.wb = Writeback(graph=cls.graph, learner_id="tester", root=cls.tmp)
         cls.generation = GenerationEngine(graph=cls.graph, writeback=cls.wb,
                                           client=MockClient([]))
-        cls.httpd = ThreadingHTTPServer(
-            ("127.0.0.1", cls.port),
-            make_handler(cls.router, cls.tmp, generation=cls.generation))
-        cls.thr = threading.Thread(target=cls.httpd.serve_forever, daemon=True)
-        cls.thr.start()
+        app = create_app(cls.router, cls.tmp, generation=cls.generation)
+        cls.server, cls.thr, cls.port = make_server(app)
 
     @classmethod
     def tearDownClass(cls):
-        cls.httpd.shutdown()
-        cls.httpd.server_close()
+        stop_server(cls.server, cls.thr)
 
     def _set_responses(self, responses):
         # 替换 mock 的响应序列（同实例，跨测试隔离）

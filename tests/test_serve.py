@@ -21,9 +21,8 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from engine.serve import make_handler
-from http.server import ThreadingHTTPServer
-import socket
+from engine.serve import create_app
+from ._serve_common import make_server, stop_server
 
 
 class FakeRouter:
@@ -85,21 +84,14 @@ class ServeTest(unittest.TestCase):
         cls.tmp = tempfile.mkdtemp()
         with open(os.path.join(cls.tmp, "index.html"), "w", encoding="utf-8") as f:
             f.write("<html>fake-index</html>")
-        # 用固定端口避免竞争
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(("127.0.0.1", 0))
-        cls.port = s.getsockname()[1]
-        s.close()
+        # 固定端口由 make_server 自绑（随机空闲端口）
         router = FakeRouter()
-        cls.httpd = ThreadingHTTPServer(("127.0.0.1", cls.port),
-                                        make_handler(router, cls.tmp))
-        cls.thr = threading.Thread(target=cls.httpd.serve_forever, daemon=True)
-        cls.thr.start()
+        app = create_app(router, cls.tmp)
+        cls.server, cls.thr, cls.port = make_server(app)
 
     @classmethod
     def tearDownClass(cls):
-        cls.httpd.shutdown()
-        cls.httpd.server_close()
+        stop_server(cls.server, cls.thr)
 
     def _conn(self):
         return http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)

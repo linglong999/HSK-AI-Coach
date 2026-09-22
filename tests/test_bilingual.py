@@ -14,9 +14,7 @@ import json
 import os
 import sys
 import tempfile
-import threading
 import unittest
-from http.server import ThreadingHTTPServer
 from unittest import mock
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -26,11 +24,12 @@ if _PROJECT_ROOT not in sys.path:
 from engine.explainer import Explainer, _fallback_explanation
 from engine.graph.error_graph import ErrorGraph
 from engine.router import Router
-from engine.serve import make_handler
+from engine.serve import create_app
 from engine.verifier import Verifier
 from planner.fallback import fallback_reply
 from planner.loop import Planner
 from skills import build_registry
+from ._serve_common import make_server, stop_server
 
 
 # ---------------- fallback_reply 双语 ----------------
@@ -349,16 +348,8 @@ def _start_server(router, dialog_llm):
     tmp = tempfile.mkdtemp()
     with open(os.path.join(tmp, "index.html"), "w", encoding="utf-8") as f:
         f.write("<html>x</html>")
-    import socket
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-    s.close()
-    httpd = ThreadingHTTPServer(
-        ("127.0.0.1", port),
-        make_handler(router, tmp, dialog_llm=dialog_llm, memory_root=tmp))
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, port
+    app = create_app(router, tmp, dialog_llm=dialog_llm, memory_root=tmp)
+    return make_server(app)
 
 
 def _post(port, body):
@@ -377,12 +368,11 @@ class ServeLangTest(unittest.TestCase):
     def setUpClass(cls):
         # 一直坏输出的 LLM：native_lang=en → 英文 fallback 文案可观测
         cls.llm = lambda messages: '[{"type": "text", "content": "trunc'
-        cls.httpd, cls.port = _start_server(_FakeRouter(), dialog_llm=cls.llm)
+        cls.server, cls.thr, cls.port = _start_server(_FakeRouter(), dialog_llm=cls.llm)
 
     @classmethod
     def tearDownClass(cls):
-        cls.httpd.shutdown()
-        cls.httpd.server_close()
+        stop_server(cls.server, cls.thr)
 
     def test_payload_native_lang_en_gives_en_fallback(self):
         st, out = _post(self.port, {"text": "我想买苹果很多。",
@@ -399,15 +389,14 @@ class ServeLangTest(unittest.TestCase):
     def test_falls_back_to_router_native_lang(self):
         # 注意 type(self).llm：实例访问 self.llm 会把函数类属性绑定为 bound method
         # （多出隐式 self 实参 → planner 调用 TypeError），必须类访问取原函数
-        httpd, port = _start_server(_FakeRouter(native_lang="en"),
-                                    dialog_llm=type(self).llm)
+        server, thr, port = _start_server(_FakeRouter(native_lang="en"),
+                                          dialog_llm=type(self).llm)
         try:
             st, out = _post(port, {"text": "我想买苹果很多。"})
             self.assertEqual(st, 200, msg=str(out))
             self.assertIn("rephrase", out.get("text", ""))
         finally:
-            httpd.shutdown()
-            httpd.server_close()
+            stop_server(server, thr)
 
 
 if __name__ == "__main__":

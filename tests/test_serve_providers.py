@@ -12,12 +12,9 @@
 import http.client
 import json
 import os
-import socket
 import sys
 import tempfile
-import threading
 import unittest
-from http.server import ThreadingHTTPServer
 from unittest import mock
 
 import requests
@@ -30,7 +27,8 @@ if _PROJECT_ROOT not in sys.path:
 from config import settings
 from engine.graph.error_graph import ErrorGraph
 from engine.llm.client import LLMClient
-from engine.serve import make_handler
+from engine.serve import create_app
+from ._serve_common import make_server, stop_server
 
 
 # ---------------- 测试替身 ----------------
@@ -49,15 +47,9 @@ def _start_server(router, dialog_llm=None):
     tmp = tempfile.mkdtemp()
     with open(os.path.join(tmp, "index.html"), "w", encoding="utf-8") as f:
         f.write("<html>providers</html>")
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-    s.close()
-    httpd = ThreadingHTTPServer(
-        ("127.0.0.1", port),
-        make_handler(router, tmp, dialog_llm=dialog_llm, memory_root=tmp))
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, port, tmp
+    app = create_app(router, tmp, dialog_llm=dialog_llm, memory_root=tmp)
+    server, thr, port = make_server(app)
+    return server, thr, port, tmp
 
 
 def _req(port, method, path, body=None):
@@ -156,7 +148,7 @@ class ProvidersEndpointTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.router = FakeRouter()
-        cls.httpd, cls.port, cls.tmp = _start_server(cls.router)
+        cls.server, cls.thr, cls.port, cls.tmp = _start_server(cls.router)
         cls.captured = []
         cls.p_env = mock.patch.object(
             settings, "DEEPSEEK_API_KEY", ""), mock.patch.object(
@@ -172,8 +164,7 @@ class ProvidersEndpointTest(unittest.TestCase):
         cls.p_chat.stop()
         for p in cls.p_env:
             p.stop()
-        cls.httpd.shutdown()
-        cls.httpd.server_close()
+        stop_server(cls.server, cls.thr)
         g = os.path.join(_PROJECT_ROOT, "data", "graph_prov_test.json")
         if os.path.exists(g):
             os.remove(g)
@@ -278,21 +269,14 @@ class ProvidersEndpointTest(unittest.TestCase):
         st, d = _req(self.port, "GET", "/api/providers")
         before = len(d["providers"])
         self.assertGreaterEqual(before, 1)
-        # 同 memory_root 新 handler 模拟重启 → 存储仍在
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(("127.0.0.1", 0))
-        port2 = s.getsockname()[1]
-        s.close()
-        httpd2 = ThreadingHTTPServer(
-            ("127.0.0.1", port2),
-            make_handler(FakeRouter(), self.tmp, memory_root=self.tmp))
-        threading.Thread(target=httpd2.serve_forever, daemon=True).start()
+        # 同 memory_root 新 app 模拟重启 → 存储仍在
+        server2, thr2, port2 = make_server(
+            create_app(FakeRouter(), self.tmp, memory_root=self.tmp))
         try:
             st, d = _req(port2, "GET", "/api/providers")
             self.assertEqual(len(d["providers"]), before)
         finally:
-            httpd2.shutdown()
-            httpd2.server_close()
+            stop_server(server2, thr2)
 
 
 class EnvCompatTest(unittest.TestCase):
@@ -301,7 +285,7 @@ class EnvCompatTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.router = FakeRouter()
-        cls.httpd, cls.port, cls.tmp = _start_server(cls.router)
+        cls.server, cls.thr, cls.port, cls.tmp = _start_server(cls.router)
         cls.patches = [
             mock.patch.object(settings, "DEEPSEEK_API_KEY", "sk-envsecret9999"),
             mock.patch.object(settings, "QWEN_API_KEY", ""),
@@ -314,8 +298,7 @@ class EnvCompatTest(unittest.TestCase):
     def tearDownClass(cls):
         for p in cls.patches:
             p.stop()
-        cls.httpd.shutdown()
-        cls.httpd.server_close()
+        stop_server(cls.server, cls.thr)
 
     def test_env_provider_top_default_undeletable(self):
         st, d = _req(self.port, "GET", "/api/providers")

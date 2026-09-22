@@ -12,9 +12,9 @@
 import os
 import sys
 
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from config.paths import PROJECT_ROOT as _PROJECT_ROOT
 if _PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, _PROJECT_ROOT)
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 from engine.router import Router
 

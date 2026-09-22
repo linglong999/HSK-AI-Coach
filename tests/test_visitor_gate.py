@@ -13,12 +13,9 @@
 import http.client
 import json
 import os
-import socket
 import sys
 import tempfile
-import threading
 import unittest
-from http.server import ThreadingHTTPServer
 from unittest import mock
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -26,8 +23,9 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from engine.graph.error_graph import ErrorGraph
-from engine.serve import make_handler
+from engine.serve import create_app
 from engine.visitor_gate import COOKIE_NAME, VisitorGate, _utc_today
+from ._serve_common import make_server, stop_server
 
 
 # ---------------- 替身 ----------------
@@ -63,15 +61,9 @@ def _start_server(router, dialog_llm=None, gate=None, tmp=None):
     if not os.path.isfile(os.path.join(tmp, "index.html")):
         with open(os.path.join(tmp, "index.html"), "w", encoding="utf-8") as f:
             f.write("<html>visitor</html>")
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-    s.close()
-    httpd = ThreadingHTTPServer(
-        ("127.0.0.1", port),
-        make_handler(router, tmp, dialog_llm=dialog_llm, memory_root=tmp, gate=gate))
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, port
+    app = create_app(router, tmp, dialog_llm=dialog_llm,
+                     memory_root=tmp, gate=gate)
+    return make_server(app)
 
 
 def _post(port, path, body, cookie=None):
@@ -160,12 +152,11 @@ class VisitorGateHTTPTest(unittest.TestCase):
         self.router = FakeRouter()
         self.llm = CountingLLM()
         self.gate = VisitorGate(self.tmp, daily_quota=2)
-        self.httpd, self.port = _start_server(
+        self.server, self.thr, self.port = _start_server(
             self.router, dialog_llm=self.llm, gate=self.gate, tmp=self.tmp)
 
     def tearDown(self):
-        self.httpd.shutdown()
-        self.httpd.server_close()
+        stop_server(self.server, self.thr)
 
     def _dialog(self, provider="", cookie=None):
         body = {"text": "你好", "learner_id": "u1"}

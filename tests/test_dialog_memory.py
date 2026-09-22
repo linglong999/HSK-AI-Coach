@@ -14,12 +14,9 @@ import copy
 import http.client
 import json
 import os
-import socket
 import sys
 import tempfile
-import threading
 import unittest
-from http.server import ThreadingHTTPServer
 from unittest import mock
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,7 +24,8 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from engine.graph.error_graph import ErrorGraph
-from engine.serve import make_handler
+from engine.serve import create_app
+from ._serve_common import make_server, stop_server
 
 
 # ---------------- 测试替身 ----------------
@@ -82,15 +80,9 @@ def _start_server(router, dialog_llm=None, memory_root=None):
         memory_root = tmp
     with open(os.path.join(tmp, "index.html"), "w", encoding="utf-8") as f:
         f.write("<html>mem</html>")
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-    s.close()
-    httpd = ThreadingHTTPServer(
-        ("127.0.0.1", port),
-        make_handler(router, tmp, dialog_llm=dialog_llm, memory_root=memory_root))
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, port, memory_root
+    app = create_app(router, tmp, dialog_llm=dialog_llm, memory_root=memory_root)
+    server, thr, port = make_server(app)
+    return server, thr, port, memory_root
 
 
 def _post(port, path, body):
@@ -117,14 +109,13 @@ class DialogMemoryIntegrationTest(unittest.TestCase):
     def setUpClass(cls):
         cls.router = FakeRouter()
         cls.llm = CaptureLLM()
-        cls.httpd, cls.port, cls.mem_root = _start_server(
+        cls.server, cls.thr, cls.port, cls.mem_root = _start_server(
             cls.router, dialog_llm=cls.llm)
         cls.learner = "mem_user"
 
     @classmethod
     def tearDownClass(cls):
-        cls.httpd.shutdown()
-        cls.httpd.server_close()
+        stop_server(cls.server, cls.thr)
         p = os.path.join(_PROJECT_ROOT, "data", "graph_dialog_mem_test.json")
         if os.path.exists(p):
             os.remove(p)
@@ -232,12 +223,11 @@ class NoKeyNoMemoryWriteTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.router = FakeRouter()
-        cls.httpd, cls.port, cls.mem_root = _start_server(cls.router)
+        cls.server, cls.thr, cls.port, cls.mem_root = _start_server(cls.router)
 
     @classmethod
     def tearDownClass(cls):
-        cls.httpd.shutdown()
-        cls.httpd.server_close()
+        stop_server(cls.server, cls.thr)
 
     def test_400_and_no_memory_file(self):
         with mock.patch("config.settings.DEEPSEEK_API_KEY", ""), \

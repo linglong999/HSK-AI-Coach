@@ -32,12 +32,12 @@ import os
 import re
 
 from .levels import hsk3_to_gf, band_name
+from config.paths import PROJECT_ROOT
 
 # 检索归一化用：去 引号/书名号/括号/空白/破折号，避免 "“把”字句1" 阻断子串
 _PUNCT = re.compile(r"[\s“”‘’\"'《》()（）…—]")
 
-DATA_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                         "datasets", "syllabus_hsk30_2025.json")
+DATA_PATH = PROJECT_ROOT / "datasets" / "syllabus_hsk30_2025.json"
 
 # 7-9 合编对外做"三等九级"检索时归一带命中的级
 G79_LOW, G79_HIGH = 7, 9

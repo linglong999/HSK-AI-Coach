@@ -24,7 +24,8 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from engine.graph.error_graph import ErrorGraph
-from engine.serve import make_handler
+from engine.serve import create_app
+from ._serve_common import make_server, stop_server
 
 
 # ---------------- 测试替身（对齐 test_serve_dialog） ----------------
@@ -69,16 +70,9 @@ def _start_server(router, dialog_llm=None):
     tmp = tempfile.mkdtemp()
     with open(os.path.join(tmp, "index.html"), "w", encoding="utf-8") as f:
         f.write("<html>profile</html>")
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-    s.close()
     # memory_root=tmp：memory/ledger 落盘不污染 data/
-    httpd = ThreadingHTTPServer(
-        ("127.0.0.1", port),
-        make_handler(router, tmp, dialog_llm=dialog_llm, memory_root=tmp))
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, port
+    app = create_app(router, tmp, dialog_llm=dialog_llm, memory_root=tmp)
+    return make_server(app)
 
 
 def _post(port, path, body):
@@ -120,12 +114,11 @@ class ProfileConversationTest(unittest.TestCase):
     def setUpClass(cls):
         cls.router = FakeRouter()
         cls.llm = ScriptLLM()
-        cls.httpd, cls.port = _start_server(cls.router, dialog_llm=cls.llm)
+        cls.server, cls.thr, cls.port = _start_server(cls.router, dialog_llm=cls.llm)
 
     @classmethod
     def tearDownClass(cls):
-        cls.httpd.shutdown()
-        cls.httpd.server_close()
+        stop_server(cls.server, cls.thr)
         # identify 写图谱默认落 data/graph_profile_test.json → 清理测试产物
         p = os.path.join(_PROJECT_ROOT, "data", "graph_profile_test.json")
         if os.path.exists(p):
@@ -255,12 +248,11 @@ class RepeatOffenderTest(unittest.TestCase):
     def setUpClass(cls):
         cls.router = FakeRouter()
         cls.llm = ScriptLLM()
-        cls.httpd, cls.port = _start_server(cls.router, dialog_llm=cls.llm)
+        cls.server, cls.thr, cls.port = _start_server(cls.router, dialog_llm=cls.llm)
 
     @classmethod
     def tearDownClass(cls):
-        cls.httpd.shutdown()
-        cls.httpd.server_close()
+        stop_server(cls.server, cls.thr)
         p = os.path.join(_PROJECT_ROOT, "data", "graph_profile_test.json")
         if os.path.exists(p):
             os.remove(p)

@@ -41,20 +41,19 @@
 
 ## 🚀 快速开始
 ### 环境要求
-- **Python** >= 3.11（运行时依赖 `requests` + `python-dotenv`；推荐 `pip install -e ".[dev]"` 一步装齐可编辑安装 + dev 测试依赖）
+- **Python** >= 3.11（运行时依赖 `requests` + `python-dotenv`；用 `uv` 一键装齐：`uv sync`）
 - **一个 LLM API Key**（默认 DeepSeek；不配 Key 也能跑确定性纠错 / 冒烟测试）
 
 ### 1. 克隆 & 配置
 ```bash
 git clone <repo-url> && cd HSK-AI-Coach
-pip install -e ".[dev]"       # 可编辑安装：装 requests/dotenv + dev 的 pytest，并让 config/engine 包可导入
-# 若只想跑源码不做包安装：pip install -r requirements.txt 亦可（仅运行时依赖）
+uv sync                   # 一键装齐运行时 + dev（fastapi/httpx/pytest）+ 可编辑包
 cp .env.example .env          # 填入 DEEPSEEK_API_KEY（https://platform.deepseek.com）
 ```
 
 ### 2. 冒烟测试（不需要 API Key，全 mock，不花钱）
 ```bash
-python -m pytest tests -q       # dev 依赖 pytest；全 mock、免 Key、不花钱
+uv run pytest tests -q       # dev 依赖 pytest；全 mock、免 Key、不花钱
 ```
 
 **640 项测试全部 PASS**（识别/讲解/图谱/复习调度/降级兜底/前端服务层/技能化/度量…；OCR 端到端在缺本地例外依赖时自动 skip）。

@@ -11,8 +11,8 @@ import sys
 from typing import Dict, Optional
 
 # 项目根 = HSK-AI-Coach/（recognizer.py 在 engine/ 下）
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, _PROJECT_ROOT)
+from config.paths import PROJECT_ROOT as _PROJECT_ROOT
+sys.path.insert(0, str(_PROJECT_ROOT))
 from engine.llm.client import LLMClient
 from engine.transfer import match as transfer_match
 

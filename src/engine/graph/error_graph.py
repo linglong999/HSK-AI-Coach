@@ -14,6 +14,7 @@ import threading
 import time
 from typing import Dict, List, Optional
 
+from config.paths import PROJECT_ROOT
 from engine.graph.error_kind_map import resolve
 from engine.graph.model import Edge, Node, QueueItem
 from engine.graph.store import GraphStore
@@ -40,9 +41,8 @@ def _load_kp_names() -> Dict[str, str]:
     if _KNOWLEDGE_POINTS_NAME is not None:
         return _KNOWLEDGE_POINTS_NAME
     try:
-        path = os.path.join(os.path.dirname(__file__), "..", "..",
-                            "datasets", "knowledge_points_v1_4.json")
-        with open(os.path.normpath(path), encoding="utf-8") as f:
+        path = PROJECT_ROOT / "datasets" / "knowledge_points_v1_4.json"
+        with open(path, encoding="utf-8") as f:
             raw = json.load(f)
         names = {}
         for kpid, kp in (raw.get("knowledge_points") or {}).items():

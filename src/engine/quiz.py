@@ -13,7 +13,7 @@ import json
 import os
 import re
 
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from config.paths import PROJECT_ROOT as _PROJECT_ROOT
 
 EXAMPLES_PATH = os.path.join(_PROJECT_ROOT, "datasets", "grammar_examples.json")
 SYLLABUS_PATH = os.path.join(_PROJECT_ROOT, "datasets", "syllabus_hsk30_2025.json")
