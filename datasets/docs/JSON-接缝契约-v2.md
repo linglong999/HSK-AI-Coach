@@ -49,7 +49,7 @@
 | `uncertain` | bool | 不变 | 待确认标记 |
 | `score` | number³ | **新增** | 该偏误的连续分（0-1）；无 → `None` |
 | `verdict` | string³ | **新增** | 由 `score` 确定性派生；无 → `None` |
-| `construction_diagnostics` | object⁴ | **新增** | 1 层扁平可选嵌套 `{matched_rule,expected,actual,severity}`；B1 产出，B0 恒 `None` |
+| `construction_diagnostics` | object⁴ | **新增** | 规则诊断器 1 层扁平嵌套，**6 键实值** `{construction,instance,verdict,score,checks[],explanation}`（B1 产出；B0 恒 `None`） |
 
 `ordered_error(e, version=2)` 负责白名单与恒序；`version=1` 时只返回 7 旧键。
 
@@ -67,7 +67,7 @@
 | `score < 0.60` | `acceptable`（疑似误报） |
 | 非数值 / `None` / bool / str | `None`（不破坏缺省） |
 
-- **优先级（§2 ⑨）**：确定性规则诊断器 `construction_diagnostics` > 连续分 `score` > 离散 `verdict`。B1 接入诊断器后，命中规则条目可 override verdict；B0 无诊断器，verdict 纯由 score 派生。
+- **优先级（§2 ⑨）**：确定性规则诊断器 `construction_diagnostics` > 连续分 `score` > 离散 `verdict`。**B1 已接入**：命中规则条目 `verdict` 由诊断器 override（规则>连续）；条目 `score` 保留 LLM 连续分不覆盖（连续分=贯穿底分）；诊断器自身分留 `construction_diagnostics.trace` 内。
 - **句子级聚合**：识别层顶层取已确认（confirmed）偏误 `score` 的 **min**（最差值）；无 confirmed → `acceptable`/`1.0`。uncertain（低置信）不进句子级聚合（宁漏勿错）。识别主失败/降级路径（`_rule_fallback`）**不产软评分**：顶层与条目均缺省 `None`。
 
 ---
@@ -87,7 +87,7 @@
 | # | 字段 | 挂载方式 | 消费批 | 状态 |
 |---|---|---|---|---|
 | 1 | `verdict` / `score` | 识别输出：顶层 + error 条目 | **B0**（已实现） | ✔ 本批落地 |
-| 2 | `construction_diagnostics` | error 条目内 1 层嵌套 `{matched_rule,expected,actual,severity}` | B1 | 挂载位已钉，恒 `None` |
+| 2 | `construction_diagnostics` | error 条目内 1 层嵌套，**B1 实值 6 键** `{construction,instance,verdict,score,checks[],explanation}`（早期草案 `{matched_rule,expected,actual,severity}` 已废弃） | B1 | ✔ 本批落地 |
 | 3 | `meta_confidence` | 图谱 Node 最近快照 + message 完整事件；**不进识别契约本体** | B3 | 仅钉挂载位 |
 | 4 | 回避（avoidance）独立类型 | 图谱层独立类型，**不入识别契约** | B3 | 仅钉挂载位 |
 | 5 | `senses[]` 词义项 | Node 属性/子键（`sense_id/gloss/example/s_*` 四字段），主键仍 `kp_id` | B4 | ✔ 本批落地 |
@@ -117,3 +117,11 @@
 - **讲解事前约束**（explainer.explain 注入段追加，主链零改动）：`SYSTEM_PROMPT/SYSTEM_PROMPT_EN` 各追加 `{b5_scaffold}` 占位符，内容=目标词（等级）+ 已掌握词集硬约束 + 脚手架档位指令。已掌握词集来自新接口 `error_graph.mastered_words()`（mastery≥threshold、等级过滤、priority 降序、limit 截断防 prompt 膨胀；排除 `char: `字子层节点，防污染 allowed_vocab）。graph 缺省/等级未知 → `{b5_scaffold}="（无）"`，不误约束（旧调用方零破坏）。
 - **超纲事事拦截环**（`engine/unpack_guard.py`，复用 `recognizer.detect_beyond_level` 零改动）：`check_unpack` 纯判定（tokenize→查当前生效词表→违规清单）；`guard_unpack` 编排——违规 → 带违规清单重试 1 次（违规词经 `_b5_guard_violations` 注入 error 回灌 prompt）→ 再漏 → `degraded_overscope=True + overscope_violations` 降级标注（非无限重试）。挂载点 = `router.process` 讲解出口（`item.explanation` 内新增 `degraded_overscope/overscope_violations` 可选键，纯降级标注、不改变正常 explanation 形状）；B2 explain_error 深攻讲解落地时同接守门。查表源现行 `lexicon_hsk1_4.json`，B8 完成后随 recognizer 换源 `lexicon_hsk3_2025.json`。（当前 HSK1_4 词表命中上限 4 级，对 HSK4 学习者因宽容相邻仅对 >5 判超纲——数据真源口径由 B8 词表补充高等级后缓解。）
 - **排序层**（`engine/sort/rank.py` 函数库，未落盘）：`rank_syllabus(lexicon, scene_weights)` → `[{item, level, comm_score, rank}]`。主序 level 升序（硬主序，禁越级抬/压级）；同级 comm_score 降序，`scene_weights` 未回填 → `comm≡0.5` → 退化 lexicon 原序（稳定不随机）。排序单元跟随 §4a：白名单词（B4 `sense_whitelist_v1.json`）→ 义项粒度 `item=sense_id`；其余词 → 词形；白名单文件缺席 → 自动退化全词形（软依赖）。语法/构式不进静态序（靠 §4 螺旋）；第二弹性序（复现/掌握度）不进——归 §4 动态调度。`comm_score` 打分管线（方案 A 相关性+对数衰减+封顶）实值待教材线回填，本批只留接口位。
+
+## 7. B1 实现回填（双轨硬校诊断器）
+
+以下由 B1 落地，为 **`construction_diagnostics` 挂载位（§2 表 #2）的实值实现**（§5 挂载位置为早期草案字段，本批以 6 键实值取代）：
+
+- **确定性守门员**（`engine/construction_diagnostics.py`，纯确定性、零 LLM、零第三方分词；轻量关键成分定位）：把字句 6 查（C2 宾语有定 / C3 动词不光杆 / C4 否定能愿位次 / C5 结构判定链、C6 补语搭配位次；C1 构式义=汇总门）+ 补语 5 查。与旧护栏（`_is_legal_ba_disposal`/`_is_false_de_adverb`）**并存不混用**（方向相反：旧护栏撤 LLM 误报，诊断器复核/补漏）。
+- **接入时序**（`recognizer.recognize` 主路径，旧护栏撤误报后、transfer_match 前）：补漏（LLM 漏报 error）→ **进 confirmed（方案 A）**；edge → 进 uncertain（触发复核）；复核已报 → 挂 `construction_diagnostics` + verdict override（规则>连续>离散）。`score` 字段保留 LLM 连续分不覆盖；诊断器分留 trace 内。降级路径 `_rule_fallback` 亦跑诊断器、error 照补 confirmed（构式守门员独立于 LLM 存活）。
+- **6 键实值与判分**：`{construction, instance, verdict, score, checks[], explanation}`（+ 内部 `_main` 供主路径取主错 kp）。评分确定性直判三值——任一硬违 fail → `error/0.40`；仅次违 edge → `edge/0.70`；全 pass → `acceptable/0.90`（与 B0 VERDICT 阈值区间对齐，不走 `derive_verdict`）。单一主错：error 时 `kp_candidate` 取优先级链最高硬违（C4>C5>C3>C6），`checks[]` 全录 trace。可正常 `ordered_error(version=2)` 持久化（第 10 键自此有实值，B0 期恒 None）。

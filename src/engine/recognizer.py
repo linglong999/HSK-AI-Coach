@@ -15,6 +15,8 @@ from config.paths import PROJECT_ROOT as _PROJECT_ROOT
 sys.path.insert(0, str(_PROJECT_ROOT))
 from engine.llm.client import LLMClient
 from engine.transfer import match as transfer_match
+from engine.construction_diagnostics import (
+    run_construction_diagnostics, KP_MAP)
 
 # 知识清单路径（HSK 1-4 级 MVP 骨架版）：位于项目根（HSK-AI-Coach/）datasets/
 KNOWLEDGE_POINTS_PATH = os.path.join(_PROJECT_ROOT, "datasets", "knowledge_points_v1_4.json")
@@ -216,6 +218,73 @@ class Recognizer:
                     return True
         return False
 
+    # ---------------- B1 构造诊断器（双轨硬校守门员） ----------------
+
+    @staticmethod
+    def _diag_already_reported(errs: list, d: dict) -> Optional[dict]:
+        """诊断器实例与 LLM 已报偏误的重叠匹配（fragment ⊇ instance 或反之）。"""
+        inst = d.get("instance", "")
+        if not inst:
+            return None
+        for e in errs:
+            frag = e.get("fragment", "")
+            if frag and (frag in inst or inst in frag):
+                return e
+        return None
+
+    def _to_construction_error(self, d: dict, edge: bool = False) -> dict:
+        """诊断器判定 → 补报/提升条目（方案 A）：confidence=score 线性同值、
+        kp_id=主查 kp、correction=""、construction_diagnostics 六键齐。
+        score 字段保留 None（诊断器分只进 trace，不冒充 LLM 连续分）；verdict 显式设。"""
+        main = d.get("_main") or {}
+        kp = main.get("kp_candidate", KP_MAP["ba"])
+        return {
+            "fragment": d.get("instance", ""),
+            "correction": "",
+            "type": "语法",
+            "type_confident": True,
+            "confidence": float(d.get("score") or 0.0),
+            "knowledge_point_id": kp,
+            "score": None,
+            "verdict": d.get("verdict"),
+            "construction_diagnostics": d,
+            "kp_in_list": kp in self.kps,
+            "source": "construction_diagnostics",
+            "uncertain": edge,
+        }
+
+    def _apply_construction_diagnostics(self, text: str, level: int,
+                                        confirmed: list, uncertain: list) -> tuple:
+        """主路径接入：诊断器复核/补漏（§2 ⑦ 时序第 3 步）。
+        - 补漏（LLM 漏报 error）→ 进 confirmed（方案 A）；edge → 进 uncertain（复核）。
+        - 复核已报：挂 construction_diagnostics trace + verdict override（规则>连续>离散）；
+          error 且原在 uncertain → 提升进 confirmed。
+        - acceptable → 不扰动（撤误报归旧护栏，诊断器不撤）。"""
+        diags = run_construction_diagnostics(text, level, confirmed + uncertain)
+        _pool = confirmed + uncertain
+        for d in diags:
+            if d["verdict"] == "acceptable":
+                continue
+            hit = self._diag_already_reported(_pool, d)
+            if d["verdict"] == "error":
+                if hit is None:
+                    confirmed.append(self._to_construction_error(d))
+                else:
+                    hit["construction_diagnostics"] = d
+                    hit["verdict"] = "error"
+                    if hit in uncertain:
+                        uncertain.remove(hit)
+                        hit["uncertain"] = False
+                        confirmed.append(hit)
+            elif d["verdict"] == "edge":
+                if hit is None:
+                    uncertain.append(self._to_construction_error(d, edge=True))
+                else:
+                    hit["construction_diagnostics"] = d
+                    hit["verdict"] = "edge"
+            _pool = confirmed + uncertain
+        return confirmed, uncertain
+
     def recognize(self, text: str, level: int = 3, native_lang: str = "",
                   config: Optional[Dict] = None) -> dict:
         """识别偏误，返回 2.1 v0.3 结构（含 knowledge_point_id 命中校验 + beyond_level 权威判定）。
@@ -234,8 +303,8 @@ class Recognizer:
             raw = self.client.chat_json(SYSTEM_PROMPT.format(knowledge_tree_portal=self.portal),
                                         user_prompt, **ck)
         except Exception as e:
-            # 4.2 降级兜底：LLM 识别不可用 → 确定性规则回退（超纲词候选）
-            return self._rule_fallback(text, beyond, reason=str(e))
+            # 4.2 降级兜底：LLM 识别不可用 → 确定性规则回退（超纲词候选 + 构式诊断补漏）
+            return self._rule_fallback(text, beyond, reason=str(e), level=level)
         errors = raw.get("errors", [])
 
         # 置信度决策序列（2.1 §五）：先初分类，再标注命中校验
@@ -277,6 +346,11 @@ class Recognizer:
                 kept.append(_e)
         confirmed = kept
 
+        # B1：构造诊断器复核/补漏（方案 A：补漏进 confirmed，不留 uncertain 降级口）
+        # 时序：LLM → 旧护栏撤误报 → 诊断器复核/补漏 → 契约字段（transfer 假设前）。
+        confirmed, uncertain = self._apply_construction_diagnostics(
+            text, level, confirmed, uncertain)
+
         # 0.22 方向1 · L1 迁移假设：仅对确认层偏误、且 native_lang 非 zh 时归因。
         # 纯确定性匹配（engine/transfer），status=candidate 绝不进图谱 confirmed 层；
         # 匹配异常静默降级为空（归因失败不影响识别主链）。
@@ -299,11 +373,17 @@ class Recognizer:
                 "dropped_fp": dropped,
                 "verdict": top_verdict, "score": top_score}
 
-    def _rule_fallback(self, text: str, beyond: list, reason: str = "") -> dict:
+    def _rule_fallback(self, text: str, beyond: list, reason: str = "", level: int = 3) -> dict:
         """4.2 降级兜底：识别引擎不可用时的确定性规则回退。
-        只产低置信 uncertain 候选（超纲词命中），绝不产 confirmed——
-        宁漏勿错：规则层没有语法/搭配判断力，进图谱确认层会污染偏误数据。"""
-        uncertain = [{
+        超纲词候选照旧只产低置信 uncertain（宁漏勿错）；
+        但构式诊断器（B1）是确定性判据+trace，独立于 LLM 存活——
+        其 error 判定照补 confirmed（E5 拍板 1：构式守门员随降级路径被调用）。"""
+        diags = run_construction_diagnostics(text, level, [])
+        confirmed = [self._to_construction_error(d)
+                     for d in diags if d["verdict"] == "error"]
+        edge = [self._to_construction_error(d, edge=True)
+                for d in diags if d["verdict"] == "edge"]
+        uncertain = edge + [{
             "fragment": b.get("word", ""),
             "correction": "",
             "type": "词汇",
@@ -312,12 +392,12 @@ class Recognizer:
             "knowledge_point_id": "",
             "source": "rule_fallback",
         } for b in beyond]
-        return {"errors": [], "uncertain": uncertain, "raw": {},
+        return {"errors": confirmed, "uncertain": uncertain, "raw": {},
                 "kp_total": len(self.kps),
                 "hypotheses": [],                  # 降级路径无确认偏误，无迁移假设（0.22）
                 "beyond_level": beyond, "beyond_level_flag": bool(beyond),
                 "dropped_fp": [],
-                "degraded": f"识别引擎不可用，已回退规则匹配（仅超纲词预检）: {reason}"}
+                "degraded": f"识别引擎不可用，已回退规则匹配（超纲词预检 + 构式诊断补漏）: {reason}"}
 
     @staticmethod
     def _normalize(error: dict) -> dict:
