@@ -3,8 +3,10 @@
 # 被测对象：Router.process()（真实引擎：识别→讲解→图谱→复习队列）
 # 设计依据：datasets/docs/0.25-教学judge-rubric-评测设计.md + rubric.md
 # 判分口径：事实类用程序断言（对 expected_behavior.detect），
-#          开放类由 run_tutor_judge 注入被测对话文本（此处算 L2 占位），
+#          开放类由 L2 LLM-judge 打教学质量 6 维 + 自然度 4 维（rubric v2 双门槛）；
 #          红线任一再触发则该 case fail；红线不参与平均分。
+# B6 J2：_l2_llm_judge 真接 LLM（跨家族 judge、pin rubric v2、temperature=0、
+#        输出 JSON schema 非法走 PENDING 人工、不静默 fail）；无 client/mock 时降级不污染。
 # ============================================================
 import os
 import sys
@@ -17,6 +19,17 @@ if _PROJECT_ROOT not in sys.path:
 from engine.router import Router  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+# J2（B6-A）：教学质量 6 维（rubric v2 一）+ 自然度 4 维（rubric v2 二），分列不打总分
+QUALITY_DIMS = (1, 2, 3, 4, 5, 6)
+NATURAL_DIMS = (7, 8, 9, 10)
+RUBRIC_PATH = os.path.join(HERE, "rubric.md")
+
+
+def _load_rubric_v2():
+    """读取 rubric v2 全文作为 judge prompt 的固定打分锚（三元组 rubric_version=含在文首）。"""
+    with open(RUBRIC_PATH, encoding="utf-8") as f:
+        return f.read()
 
 
 def load_cases():
@@ -98,6 +111,97 @@ def _run_target(case, router):
     return errors, out.get("degraded", []), out.get("meta", {})
 
 
+def _build_judge_prompt(case, dialogue_text, rubric_text):
+    """构造 L2 LLM-judge prompt：固定打分表头 + rubric v2 全文注入（score anchor）。
+    返回按难度适配的判分指令，temperature 固定 0（B6-A CI 稳定性）。"""
+    task = case["input"]
+    meta = (case.get("metadata") or {})
+    return (
+        "你是一位 HSK 中文教学专家 judge。对你所见的 HSK 辅导对话，按下列 rubric "
+        "逐维打分。这是评分（非教学出题）。\n"
+        f"rubric：\n{rubric_text}\n\n"
+        f"被测案例任务：{task}\n"
+        f"学习者等级：{meta.get('learner_level', '未知')} · 母语：{meta.get('native_lang', '未知')} · "
+        f"场景：{case.get('case_type')}\n"
+        f"被测对话输出：\n{dialogue_text}\n\n"
+        "请严格只输出一个 JSON 对象（不要任何其他文字），schema：\n"
+        '{"per_dim": {"1": <1-5>, "2": <1-5>, "3": <1-5>, "4": <1-5>, '
+        '"5": <1-5>, "6": <1-5>, "7": <1-5>, "8": <1-5>, "9": <1-5>, '
+        '"10": <1-5>}, "reason": "一句话评分理由"}\n'
+        "per_dim 键为字符串 1..10；1-6=教学质量、7-10=自然度（rubric 二表判据）。")
+
+
+def _parse_l2_json(raw: str):
+    """解析 LLM 输出 → {"per_dim": {1..10}, "reason"}。schema 非法返回 None（→ PENDING）。"""
+    if not raw:
+        return None
+    txt = (raw or "").strip()
+    try:
+        obj = json.loads(txt)
+    except json.JSONDecodeError:
+        # 容错：剥去可能的 ```json 围栏
+        start, end = txt.find("{"), txt.rfind("}")
+        if start == -1 or end <= start:
+            return None
+        try:
+            obj = json.loads(txt[start:end + 1])
+        except json.JSONDecodeError:
+            return None
+    if not isinstance(obj, dict):
+        return None
+    per_dim_raw = obj.get("per_dim")
+    if not isinstance(per_dim_raw, dict):
+        return None
+    per_dim = {}
+    for k, v in per_dim_raw.items():
+        # 严格 schema：仅接受原生 int（布尔除外，字符串"5"视为格式违约 → PENDING）
+        if isinstance(v, bool) or not isinstance(v, int):
+            return None
+        try:
+            per_dim[int(k)] = v
+        except (ValueError, TypeError):
+            return None
+    if not set(per_dim).issuperset({1, 2, 3, 4, 5, 6, 7, 8, 9, 10}):
+        return None
+    if any(not (1 <= per_dim[k] <= 5) for k in per_dim):
+        return None
+    return {"per_dim": per_dim, "reason": obj.get("reason", "")}
+
+
+def _l2_llm_judge(case, rc, client, judge_model=""):
+    """L2 真 LLM-judge（B6 J2）。跨家族（judge_model 由调用方指定，避与生成同族）；
+    score anchor = rubric v2 全文；temperature=0（调用方 client 保证）；双门槛分列：
+    返回 {verdict, per_dim, quality_mean, naturalness_mean, reason, pending}。
+    输出 schema 非法 → pending=True（PENDING 人工分流，不静默 fail）。"""
+    dialogue = json.dumps({"task": case.get("input"),
+                           "errors": rc.detected,
+                           "trace": rc.trace.get("errors", [])},
+                          ensure_ascii=False)
+    prompt = _build_judge_prompt(case, dialogue, _load_rubric_v2())
+    # client 契约：.complete(prompt, temperature=0, model=judge_model) -> str
+    try:
+        raw = client.complete(prompt, temperature=0, model=judge_model) \
+            if judge_model else client.complete(prompt, temperature=0)
+    except Exception as e:  # noqa: BLE001 调用失败 → PENDING（不静默 fail）
+        return {"verdict": None, "per_dim": None, "quality_mean": None,
+                "naturalness_mean": None, "reason": f"LLM 调用失败: {e}",
+                "pending": True, "mock": False}
+    parsed = _parse_l2_json(raw)
+    if parsed is None:
+        return {"verdict": None, "per_dim": None, "quality_mean": None,
+                "naturalness_mean": None,
+                "reason": "L2 输出 schema 非法，转人工复核（PENDING）",
+                "pending": True, "mock": False}
+    per_dim = parsed["per_dim"]
+    quality_mean = sum(per_dim[d] for d in QUALITY_DIMS) / len(QUALITY_DIMS)
+    naturalness_mean = sum(per_dim[d] for d in NATURAL_DIMS) / len(NATURAL_DIMS)
+    verdict = "fail" if rc.redline_fails else "pass"
+    return {"verdict": verdict, "per_dim": per_dim,
+            "quality_mean": round(quality_mean, 2),
+            "naturalness_mean": round(naturalness_mean, 2),
+            "reason": parsed["reason"], "pending": False, "mock": False}
+
+
 def _l2_mock_judge(case, rc, note_base):
     """Mock L2 判分（--mock-llm 用）：不调真实 LLM，按 case 类型给合理分数。
 
@@ -115,6 +219,8 @@ def _l2_mock_judge(case, rc, note_base):
                           "介入时机合理": 4, "语言分层守约": 4, "归因谨慎": 4},
         "intervention":  {"偏误定位准确": 4, "讲解四段完整": 4, "复述验证严格": 4,
                           "介入时机合理": 5, "语言分层守约": 4, "归因谨慎": 4},
+        "naturalness_anchor": {"偏误定位准确": 5, "讲解四段完整": 5, "复述验证严格": 5,
+                               "介入时机合理": 5, "语言分层守约": 5, "归因谨慎": 5},
     }.get(ct, {})
     # L1 无命中且该 case 期望有偏误 → 扣分（虽可能 case 可疑，但 mock 如实体现此类风险）
     if ct in ("explain", "intervention") and rc.l1 and rc.l1["matched"] == 0:
@@ -125,16 +231,16 @@ def _l2_mock_judge(case, rc, note_base):
             "mock": True}
 
 
-def _l2_real_judge(case, rc):
-    """真实 LLM AS-judge 占位。接入时注入讲解文本 + rubric 逐维打分，并人工校准。
+def _l2_real_judge(case, rc, client, judge_model=""):
+    """真实 LLM AS-judge 入口：有 client 才真判；无 client → 降级 skipped（不污染 CI 无 Key 运行）。"""
+    if client is None:
+        return {"verdict": None, "per_dim": None, "pending": False,
+                "note": "未注入 judge client，L2 跳过", "mock": False,
+                "skipped": True}
+    return _l2_llm_judge(case, rc, client, judge_model)
 
-    当前抛 NotImplementedError 由驱动器捕获后降级为 pending（不假跑、不虚报分数）。
-    """
-    raise NotImplementedError(
-        "L2 真实 LLM-judge 尚未接入：需先实现 rubric 打分 prompt + 人工校准（rubric.md §四）")
 
-
-def judge_case(case, router, mock_llm=False):
+def judge_case(case, router, mock_llm=False, client=None, judge_model=""):
     rc = CaseResult(case)
     try:
         rc.detected, rc.degraded, rc.meta = _run_target(case, router)
@@ -151,15 +257,11 @@ def judge_case(case, router, mock_llm=False):
     _rl = _check_redlines(rc)
     rc.redline_fails, rc.pending = _rl["fails"], _rl["pending"]
 
-    # L2：--mock-llm 走规则化占位验证管线；否则真实 judge（未接入则降级 pending）
+    # L2：--mock-llm 走规则化占位验证管线；否则注入 client 走真实 judge，无 client 降级 skipped
     if mock_llm:
         rc.l2 = _l2_mock_judge(case, rc, "首版占位")
     else:
-        try:
-            rc.l2 = _l2_real_judge(case, rc)
-        except NotImplementedError as e:
-            rc.l2 = {"verdict": None, "per_dim": None,
-                     "note": str(e), "mock": False, "skipped": True}
+        rc.l2 = _l2_real_judge(case, rc, client, judge_model)
     rc.trace = {"errors": rc.detected, "degraded": rc.degraded,
                 "elapsed_ms": (rc.meta or {}).get("elapsed_ms")}
     return rc

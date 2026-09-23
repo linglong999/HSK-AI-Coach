@@ -12,6 +12,8 @@ on:
     branches: ["**"]
   pull_request:
     branches: ["**"]
+  schedule:
+    - cron: "30 20 * * *"    # 每晚 20:30 UTC 全量回归（nightly，含 LLM judge 语义质量门控）
 
 jobs:
   test:
@@ -46,6 +48,13 @@ jobs:
           uv run pytest tests -q \
             > pytest_verbose.log 2>&1 || { ec=$?; echo "== pytest exit code: $ec =="; exit $ec; }
 
+      - name: Run B6 deterministic regression (PR gate, zero-LLM)
+        shell: bash
+        run: |
+          # B6-A④：PR gate 只跑影响路径的轻量 subset——deterministic 层（L1/L3 红线全护 +
+          # 语料加载 + D-6 断言，mock 模式零 LLM 成本）。失败即标红阻塞 PR。
+          uv run python -m datasets.eval.run_all --layer deterministic
+
       - name: Emit failure annotations
         if: failure()
         shell: bash
@@ -63,4 +72,44 @@ jobs:
         with:
           name: pytest-verbose-log
           path: pytest_verbose.log
+          if-no-files-found: error
+
+  # B6-A④：全量回归放 nightly（不每条 PR 跑全套，防 CI 过慢 flaky）。
+  # 跑 run_all --layer nightly = deterministic 全量 + llm_judge 语义质量 + 统计门控。
+  # 注：L2 语义门控需注入 judge LLM client（set_judge_client）方生效；未注入时 llm_judge
+  #    suite 记 NOT_RUN 不误阻塞，deterministic 红线/d6 门控仍全效。
+  nightly:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv with python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies (uv sync)
+        shell: bash
+        run: uv sync --frozen -q
+
+      - name: Run full regression (nightly)
+        shell: bash
+        run: |
+          # 全量回归：deterministic(L1/L3+d6) + llm_judge(L2 语义质量 + baseline 统计门控)。
+          # exit 0=过 / 1=阻塞；失败落盘供排查。
+          uv run python -m datasets.eval.run_all --layer nightly \
+            > run_all_nightly.log 2>&1 || { ec=$?; echo "== run_all exit code: $ec =="; exit $ec; }
+
+      - name: Upload run_all log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-all-nightly-log
+          path: run_all_nightly.log
           if-no-files-found: error

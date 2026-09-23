@@ -1,0 +1,6 @@
+{
+  "note": "B6 J6 统计门控基准（首版哨兵）。naturalness_mean 首版为 null=尚无真实 LLM judge 语义基准，门控退化不启用；LLM judge 跑出首轮平均自然度后回填真实值。band=慢漂移容限带宽。",
+  "pass_rate": 0.9,
+  "naturalness_mean": null,
+  "band": 0.3
+}

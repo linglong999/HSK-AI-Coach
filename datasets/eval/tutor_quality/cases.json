@@ -1,9 +1,9 @@
 {
   "meta": {
     "name": "tutor_cases",
-    "version": "0.1",
-    "date": "2026-09-11",
-    "note": "复用 golden/retell 真句，补预期行为与红线"
+    "version": "0.2",
+    "date": "2026-09-23",
+    "note": "golden/retell 真句 + 自然度锚 case（rubric v2 附录 D-4 正负样例）"
   },
   "cases": [
     {
@@ -455,6 +455,214 @@
       "metadata": {
         "learner_level": 3,
         "native_lang": "英语"
+      }
+    },
+    {
+      "id": "TQ-NAT-001",
+      "source": "rubric_v2_D4",
+      "source_id": null,
+      "case_type": "naturalness_anchor",
+      "input": "（点餐）你要点什么？我们看下菜单……要不要再来杯茶？",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": false
+      },
+      "redlines": [],
+      "gold_judge_hint": {
+        "task_authenticity": 5,
+        "role_immersion": 4,
+        "non_command": 4,
+        "dialogue_progress": 4
+      },
+      "metadata": {
+        "learner_level": null,
+        "native_lang": "英语",
+        "anchor_dim": "任务真实性",
+        "anchor_expect": "pass"
+      }
+    },
+    {
+      "id": "TQ-NAT-002",
+      "source": "rubric_v2_D4",
+      "source_id": null,
+      "case_type": "naturalness_anchor",
+      "input": "（服务员口吻）好嘞，一杯热茶马上就好，您稍等。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": false
+      },
+      "redlines": [],
+      "gold_judge_hint": {
+        "task_authenticity": 4,
+        "role_immersion": 5,
+        "non_command": 4,
+        "dialogue_progress": 4
+      },
+      "metadata": {
+        "learner_level": null,
+        "native_lang": "英语",
+        "anchor_dim": "角色代入",
+        "anchor_expect": "pass"
+      }
+    },
+    {
+      "id": "TQ-NAT-003",
+      "source": "rubric_v2_D4",
+      "source_id": null,
+      "case_type": "naturalness_anchor",
+      "input": "想先说说整件事，还是先练这个「把」结构？都行。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": false
+      },
+      "redlines": [],
+      "gold_judge_hint": {
+        "task_authenticity": 4,
+        "role_immersion": 4,
+        "non_command": 5,
+        "dialogue_progress": 4
+      },
+      "metadata": {
+        "learner_level": null,
+        "native_lang": "英语",
+        "anchor_dim": "非命令性",
+        "anchor_expect": "pass"
+      }
+    },
+    {
+      "id": "TQ-NAT-004",
+      "source": "rubric_v2_D4",
+      "source_id": null,
+      "case_type": "naturalness_anchor",
+      "input": "你说顺了。那要是换成「我把书放到桌上」呢？我们推一步。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": false
+      },
+      "redlines": [],
+      "gold_judge_hint": {
+        "task_authenticity": 4,
+        "role_immersion": 4,
+        "non_command": 4,
+        "dialogue_progress": 5
+      },
+      "metadata": {
+        "learner_level": null,
+        "native_lang": "英语",
+        "anchor_dim": "对话推进感",
+        "anchor_expect": "pass"
+      }
+    },
+    {
+      "id": "TQ-NAT-101",
+      "source": "rubric_v2_D4",
+      "source_id": null,
+      "case_type": "naturalness_anchor",
+      "input": "请把「我把咖啡喝了」这个句子翻译成中文。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": false
+      },
+      "redlines": [],
+      "gold_judge_hint": {
+        "task_authenticity": 1,
+        "role_immersion": 2,
+        "non_command": 2,
+        "dialogue_progress": 2
+      },
+      "metadata": {
+        "learner_level": null,
+        "native_lang": "英语",
+        "anchor_dim": "任务真实性",
+        "anchor_expect": "fail"
+      }
+    },
+    {
+      "id": "TQ-NAT-102",
+      "source": "rubric_v2_D4",
+      "source_id": null,
+      "case_type": "naturalness_anchor",
+      "input": "（冷读旁白）你输出了一句「我把咖啡喝了」。让我们分析一下。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": false
+      },
+      "redlines": [],
+      "gold_judge_hint": {
+        "task_authenticity": 2,
+        "role_immersion": 1,
+        "non_command": 3,
+        "dialogue_progress": 2
+      },
+      "metadata": {
+        "learner_level": null,
+        "native_lang": "英语",
+        "anchor_dim": "角色代入",
+        "anchor_expect": "fail"
+      }
+    },
+    {
+      "id": "TQ-NAT-103",
+      "source": "rubric_v2_D4",
+      "source_id": null,
+      "case_type": "naturalness_anchor",
+      "input": "现在必须复述这句话，连续两次，马上。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": false
+      },
+      "redlines": [],
+      "gold_judge_hint": {
+        "task_authenticity": 2,
+        "role_immersion": 2,
+        "non_command": 1,
+        "dialogue_progress": 2
+      },
+      "metadata": {
+        "learner_level": null,
+        "native_lang": "英语",
+        "anchor_dim": "非命令性",
+        "anchor_expect": "fail"
+      }
+    },
+    {
+      "id": "TQ-NAT-104",
+      "source": "rubric_v2_D4",
+      "source_id": null,
+      "case_type": "naturalness_anchor",
+      "input": "很好。再来一次。再来一次。再来一次。",
+      "context": null,
+      "expected_behavior": {
+        "detect": null,
+        "must_explain": false,
+        "must_verify": false
+      },
+      "redlines": [],
+      "gold_judge_hint": {
+        "task_authenticity": 2,
+        "role_immersion": 2,
+        "non_command": 3,
+        "dialogue_progress": 1
+      },
+      "metadata": {
+        "learner_level": null,
+        "native_lang": "英语",
+        "anchor_dim": "对话推进感",
+        "anchor_expect": "fail"
       }
     }
   ]
