@@ -108,3 +108,12 @@
 - **构式晋升 / learned 迁移**（现算派生量，**不落盘**，`to_dict()` 均不输出）：
   - promoted：`positive_count≥3 且 unfixed_streak==0`（PROMOTE_RULE，priority × PROMOTE_BOOST，与 FOSSIL_BOOST 互斥）
   - learned：承接 B3 拍板2，阈值 `attempt_ok_reps≥3` 且无未纠正 attempt_err（LEARNED_RULE）；B3 未落地前缺字段容错为 0。
+
+## 6. B5 实现回填（脚手架 / 超纲确定性 / 排序层）
+
+以下由 B5 落地，**不入识别契约本体**（识别契约顶层/error 条目键集合保持 v2 冻结；脚手架注入与排序属讲解层/独立函数库，非识别 schema）：
+
+- **脚手架渐褪**（`engine/scaffold.py`，纯函数零 LLM）：两层定档——第一层等级定起点 `LEVEL_TIERS{(1,2):full,(3,4):mid,(5,9):minimal}`；第二层单点内表现渐褪 `PERF_LADDER=(full_scaffold→no_pos→keyword_hint→minimal_hint)`。`pick_tier/pick_stage/scaffold_directive` 确定性选档（总纲 §1 决策2：档位由调用层评估，LLM 只做档位内自然讲解）。四域=英文·拼音·中文·词性；**英文最先撤、中文解包恒锚**。表述纪律注释：四域四档=ZPD 原理落地的产品自有实现、非学界既定分级。
+- **讲解事前约束**（explainer.explain 注入段追加，主链零改动）：`SYSTEM_PROMPT/SYSTEM_PROMPT_EN` 各追加 `{b5_scaffold}` 占位符，内容=目标词（等级）+ 已掌握词集硬约束 + 脚手架档位指令。已掌握词集来自新接口 `error_graph.mastered_words()`（mastery≥threshold、等级过滤、priority 降序、limit 截断防 prompt 膨胀；排除 `char: `字子层节点，防污染 allowed_vocab）。graph 缺省/等级未知 → `{b5_scaffold}="（无）"`，不误约束（旧调用方零破坏）。
+- **超纲事事拦截环**（`engine/unpack_guard.py`，复用 `recognizer.detect_beyond_level` 零改动）：`check_unpack` 纯判定（tokenize→查当前生效词表→违规清单）；`guard_unpack` 编排——违规 → 带违规清单重试 1 次（违规词经 `_b5_guard_violations` 注入 error 回灌 prompt）→ 再漏 → `degraded_overscope=True + overscope_violations` 降级标注（非无限重试）。挂载点 = `router.process` 讲解出口（`item.explanation` 内新增 `degraded_overscope/overscope_violations` 可选键，纯降级标注、不改变正常 explanation 形状）；B2 explain_error 深攻讲解落地时同接守门。查表源现行 `lexicon_hsk1_4.json`，B8 完成后随 recognizer 换源 `lexicon_hsk3_2025.json`。（当前 HSK1_4 词表命中上限 4 级，对 HSK4 学习者因宽容相邻仅对 >5 判超纲——数据真源口径由 B8 词表补充高等级后缓解。）
+- **排序层**（`engine/sort/rank.py` 函数库，未落盘）：`rank_syllabus(lexicon, scene_weights)` → `[{item, level, comm_score, rank}]`。主序 level 升序（硬主序，禁越级抬/压级）；同级 comm_score 降序，`scene_weights` 未回填 → `comm≡0.5` → 退化 lexicon 原序（稳定不随机）。排序单元跟随 §4a：白名单词（B4 `sense_whitelist_v1.json`）→ 义项粒度 `item=sense_id`；其余词 → 词形；白名单文件缺席 → 自动退化全词形（软依赖）。语法/构式不进静态序（靠 §4 螺旋）；第二弹性序（复现/掌握度）不进——归 §4 动态调度。`comm_score` 打分管线（方案 A 相关性+对数衰减+封顶）实值待教材线回填，本批只留接口位。

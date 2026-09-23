@@ -19,6 +19,7 @@ from engine.recognizer import Recognizer
 from engine.explainer import Explainer
 from engine.verifier import Verifier
 from engine.graph.error_graph import ErrorGraph
+from engine.unpack_guard import guard_unpack
 
 
 @dataclass
@@ -174,12 +175,29 @@ class Router:
                     "graph_write": graph_write, "verification": None}
 
             try:
+                # B5 事后拦截环（I4）：讲解生成 → 超纲硬查 → 违规重试1次 → 再漏降级标注。
+                # generate 闭包把 guard 重试违规清单经 _b5_guard_violations 注入 error，
+                # explain 追加约束重生成（主链零改动）。
                 ek = {}
                 if provider_config:
                     ek["config"] = provider_config
-                expl = self.explainer.explain({**err, "sentence": user_text},
-                                              user_level=eff_level,
-                                              native_lang=eff_native, **ek)
+
+                def _b5_generate(pending):
+                    err_for_gen = {**err, "sentence": user_text}
+                    if pending:
+                        vstr = "、".join(v["word"] for v in pending)
+                        err_for_gen["_b5_guard_violations"] = vstr
+                    return self.explainer.explain(err_for_gen,
+                                                  user_level=eff_level,
+                                                  native_lang=eff_native, **ek)
+
+                guard_r = guard_unpack(_b5_generate, learner_level=eff_level_int)
+                expl = guard_r["result"]
+                if not guard_r["ok"]:
+                    # 再漏：标注降级呈现（含超纲词 + 兜底标注），不静默透传违规讲解放给用户
+                    expl["degraded_overscope"] = True
+                    expl["overscope_violations"] = guard_r["violations"]
+                    expl.setdefault("explanation", "")
                 item["explanation"] = expl if isinstance(expl, dict) else {"_degraded": True}
             except Exception as e:
                 _notice("explain", str(e), error_index=i)

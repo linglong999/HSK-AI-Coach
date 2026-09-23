@@ -15,6 +15,7 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 from engine.llm.client import LLMClient, JSONStrictError
+from engine.scaffold import pick_stage, pick_tier, scaffold_directive
 from engine.transfer import match_one as transfer_match_one
 
 # 讲解语言策略（0.21 · 面向英语母语学习者）：
@@ -38,12 +39,13 @@ SYSTEM_PROMPT = """【角色】你是一名 HSK 中文教学专家，擅长用"�
 - 超纲标记：{beyond_level}（true → 用更简单语言，并标注"超纲"）
 - 图谱历史（可空，读取自 get_kp）：{learner_history}（如"该点已错 3 次"——若历史非空且该点反复出错，应加重"为什么又错"的针对性讲解）
 - 候选要点（来自 HSK 知识树/领域规则；可能为空）：{candidate_points}
+- 超纲事前约束（B5 方案3 事前环，硬约束）：{b5_scaffold}
 
 【约束】
 1. 少术语、多例子；每个概念配一个生活化例子。
 2. 讲清"为什么错"，不是只给正确答案。
 3. 留白引导：结尾留一句引导学习者自己想的提示，不替学习者把话说完。
-4. 不超纲：超纲内容用简单语言带过，不展开。
+4. 不超纲：超纲内容用简单语言带过，不展开。**严格遵循 {b5_scaffold} 中的讲解用词范围与脚手架档位**（只许用已掌握词集 + 目标词本身，禁用超纲词）。
 5. 字数按段分配：四段每段各约 30–45 字，总长不再设 ≤150 硬上限；整体仍须精炼，避免冗长啰嗦。
 6. key_points 只从"候选要点"中选取并组织语言，不得自由新增与候选无关的点；候选为空时允许自行给出要点，但必须 free_generated=true。
 7. 术语规范：一律用汉语语法表述（如"习惯性动作""完成义""量词""补语""语气词"），禁止把英语时态名/句法标签套用到汉语（如"一般现在时""现在完成时"等）；仅在做跨语言类比时可引用母语本身，但语法术语不得用英语时态名。
@@ -74,12 +76,13 @@ LANGUAGE RULE: Write the explanation shell in English (the learner's native lang
 - Graph history (may be empty): {learner_history} (if the point was missed repeatedly, explain more specifically WHY it keeps recurring)
 - L1 transfer hypothesis (candidate, may be empty): {transfer_hint}
 - Candidate points: {candidate_points}
+- Overscope pre-constraint (B5 before-loop, hard): {b5_scaffold}
 
 [Constraints]
 1. English explanation shell; Chinese for correct sentences, examples, and usage-rule terms.
 2. Explain the "why", not just the right answer.
 3. End with a light open-ended nudge to let the learner think — don't finish it for them.
-4. Keep it simple for beyond-level content.
+4. Keep it simple for beyond-level content. **Strictly follow the allowed-vocabulary range and scaffold level in {b5_scaffold}: use only the mastered word set plus the target word itself; prohibit overscope words.**
 5. Always give a full corrected Chinese sentence; if the original is ambiguous, say which reading you corrected, then give the fix.
 6. key_points must come only from the candidates; if candidates are empty you may propose your own points but must set free_generated=true.
 7. Chinese grammar terms stay Chinese (量词, 补语, 语气词…); do not map them to English tense/syntax labels.
@@ -138,6 +141,54 @@ class Explainer:
             parts.append(f"与 {rel} 易混淆")
         return "；".join(parts)
 
+    @staticmethod
+    def _parse_level_int(user_level: str) -> Optional[int]:
+        """把 user_level（"HSK3"/"3"/"HSK1"）解析为整数等级；无法解析 → None。
+        未知等级 → 不注入事前约束（防误约束讲解范围）。"""
+        if not user_level:
+            return None
+        digits = "".join(ch for ch in str(user_level) if ch.isdigit())
+        try:
+            n = int(digits)
+        except (TypeError, ValueError):
+            return None
+        return n if 1 <= n <= 9 else None
+
+    @classmethod
+    def _b5_scaffold(cls, graph, kp_id: str, user_level: str,
+                     native_lang: str = "", mastered_limit: int = 200) -> str:
+        """B5 方案3 事前环（确定性注入段）：选定档位 + 已掌握词集硬约束。
+        graph 无/等级未知/无图谱 → 返回空串（不误导讲解范围）。
+        kp_mastery 读图谱 Node.mastery（长期熟练度）；近期 verify 留 neutral
+        （常规讲解不掌握当次 verify 序列；B2 深攻讲解另带）。"""
+        level = cls._parse_level_int(user_level)
+        if graph is None or level is None:
+            return ""
+        # 目标 kp 的 mastery（长期熟练度 → pick_stage）
+        kp_mastery = 0.0
+        target_name = kp_id or ""
+        try:
+            info = graph.get_kp(kp_id)
+            node = info.get("node", {}) if info else {}
+            kp_mastery = float(node.get("mastery", 0.0) or 0.0)
+            target_name = node.get("knowledge_point") or target_name
+        except Exception:  # noqa: BLE001 图谱读取/字段缺省不阻断注入
+            kp_mastery = 0.0
+        tier = pick_tier(level)
+        stage = pick_stage(level, kp_mastery, None)
+        directive = scaffold_directive(tier, stage, bilingual=bool(
+            native_lang and native_lang.lower() != "zh"))
+        # 已掌握词集（只喂 ≤max_level 等级段 + limit 截断，防 prompt 膨胀）
+        try:
+            mastered_raw = graph.mastered_words(max_level=level, limit=mastered_limit)
+        except Exception:  # noqa: BLE001 词集查询失败 → 不注入可用词范围
+            mastered_raw = None
+        mastered = [str(m) for m in (mastered_raw or [])] if mastered_raw else []
+        vocab_note = "（无已掌握词记录）" if not mastered else "、".join(mastered)
+        return (f"目标词本身（{target_name}，HSK{level}）可出现；讲解用词范围 = "
+                f"学习者等级内词汇 + 已掌握词集[{vocab_note}]；禁用超纲词。"
+                f"脚手架档位：{directive}")
+
     def explain(self, error: dict, user_level: str = "HSK3", native_lang: str = "",
                 graph=None, candidate_points: Optional[List[dict]] = None,
                 config: Optional[Dict] = None) -> dict:
@@ -156,6 +207,13 @@ class Explainer:
         beyond = "true" if error.get("beyond_level") else "false"
 
         learner_history = self._learner_history(graph, kp_id)
+        # B5 方案3 事前环：确定性档位 + 已掌握词集硬约束（graph 无 → 空，不误约束）
+        b5_scaffold = self._b5_scaffold(graph, kp_id, user_level, native_lang)
+        # B5 事后环重试注入：guard 重试时把上一轮违规清单带给讲解（追加约束，
+        # 不改四段式主链）——error.get("_b5_guard_violations") 为 guard 注入。
+        _gz = error.get("_b5_guard_violations")
+        if _gz:
+            b5_scaffold += f"〔上一轮解包混入了超纲词 {_gz}，本轮严禁再出现。〕"
 
         # 候选要点槽（可能有空 → 约束 6 free_generated 降级）
         if candidate_points:
@@ -210,6 +268,7 @@ class Explainer:
             beyond_level=beyond, learner_history=learner_history or "（空）",
             transfer_hint=transfer_hint or "(none)",
             candidate_points=cand_str,
+            b5_scaffold=b5_scaffold or "（无）",
         )
 
         try:

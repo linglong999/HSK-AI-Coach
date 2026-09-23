@@ -614,6 +614,48 @@ class ErrorGraph:
             node = self._store.nodes.get(f"{CHAR_NODE_PREFIX}{ch}")
             return node.to_dict() if node else None
 
+    # ---------------- B5 I2：已掌握词集（脚手架事前约束唯一数据源） ----------------
+    @staticmethod
+    def _level_grade(level: str) -> Optional[int]:
+        """解析节点 level 字符串得整数等级。
+        "HSK3"→3、"char-HSK2"→2；"未知"/空/非数字 → None（不参与等级过滤）。
+        注：char 节点回归根（避免字级混入词集），负责过滤；此处仅取数值。"""
+        if not level:
+            return None
+        digits = "".join(ch for ch in str(level) if ch.isdigit())
+        return int(digits) if digits else None
+
+    def mastered_words(self, threshold: float = 0.7, max_level: Optional[int] = None,
+                       limit: int = 200) -> list:
+        """B5 I2：已掌握词集（脚手架事前约束的唯一数据源，不另造）。
+        取 mastery≥threshold 的词节点，按 priority 降序取 limit（防 prompt 膨胀，
+        只喂等级段高频已掌握词——B5-A 已拍）。
+        排除项（本轮 review 补）：①char: 前缀节点（B4 字子层自有 mastery，
+        字不进"词集"——防污染 allowed_vocab 注入）；②level 形如 char-HSK* 的字级节点。
+        max_level: 只含 level 数字≤max_level 的词（None → 不限）。
+        返回 list[str]：词形粒度（knowledge_point 值）；senses[] 子卡不单列
+        （白名单词整体按词形出）。"""
+        with self._lock:
+            excluded = set()
+            for node in self._store.nodes.values():
+                if node.id.startswith(CHAR_NODE_PREFIX) \
+                        or (node.level or "").startswith(f"{CHAR_NODE_PREFIX}HSK"):
+                    excluded.add(node.id)
+            pool = []
+            for node in self._store.nodes.values():
+                if node.id in excluded:
+                    continue                       # 字子层不入词集
+                if node.mastery < threshold:
+                    continue
+                grade = self._level_grade(node.level)
+                if max_level is not None and grade is not None and grade > max_level:
+                    continue                       # 超出等级段 → 排除
+                if not node.knowledge_point:        # 无词形 → 跳过（无注入价值）
+                    continue
+                pool.append((self._priority(node), node.knowledge_point))
+            pool.sort(key=lambda t: t[0], reverse=True)
+            return [kp for _prio, kp in pool[:limit]]
+
     # ---------------- 持久化 ----------------
     def save(self, path: Optional[str] = None):
         with self._lock:
