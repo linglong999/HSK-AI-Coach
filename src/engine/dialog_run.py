@@ -15,13 +15,15 @@ class DialogRun:
 
     def __init__(self, router, planner, identify_skill, mem, wb, tracker,
                  normalize_user_level, writeback_ledger_events,
-                 assistant_payload):
+                 assistant_payload, deep_dived_kps=None):
         self._router = router
         self._planner = planner
         self._identify_skill = identify_skill
         self._mem = mem
         self._wb = wb
         self._tracker = tracker
+        # B2：跨回合已深攻 kp 集合（会话级，DialogService 缓存传入；缺省会话内集）
+        self._deep_dived_kps = deep_dived_kps or set()
         # 纯静态助手（DialogService 稳定挂点，注入以保持解耦与可测性）
         self._normalize_user_level = normalize_user_level
         self._writeback_ledger_events = writeback_ledger_events
@@ -179,13 +181,65 @@ class DialogRun:
         intervention_directive = build_intervention_directive(
             level, reason, native_lang, recognition=pre_scan,
             hsk_level=level_int)
+        # B2 反馈策略选择器（层于时机层之上：追加 [FeedbackStrategy] 段，不碰时机层）。
+        # 时机层已定(level)，策略层在此只细分工反馈形态；encourage/none 档策略段为空或仅轻点。
+        strategies = self._select_and_log_strategies(
+            pre_scan, level_int, level, native_lang,
+            scanned=bool(pre_scan), user_input=user_input) if too_long is not True else {}
+        if strategies.get("section"):
+            intervention_directive = (
+                intervention_directive.rstrip() + "\n\n" + strategies["section"])
         return {
             "pre_scan": pre_scan,
             "scan_notices": scan_notices,
             "level": level,
             "reason": reason,
             "intervention_directive": intervention_directive,
+            "strategies": strategies,
         }
+
+    def _select_and_log_strategies(self, pre_scan, level_int, level, native_lang,
+                                   scanned, user_input):
+        """B2：策略选择（F2/F3 纯函数）→ 归类 + 向账本记 feedback_presented。
+        仅当预扫产出了 errors 且 level 非 encourage 时才产段；none 档深攻=空但可轻点。
+        too_long/material 档（level="none" 且 pre_scan 为 None/材料句）→ 无策略段。
+        deep 记入 self._deep_dived_kps（会话级跨回合去重）。"""
+        if not scanned or not isinstance(pre_scan, dict):
+            return {}
+        errors = pre_scan.get("errors") or []
+        if not errors:
+            return {}
+        from engine.feedback_selector import (
+            select_feedback_strategies, compile_strategy_section)
+        # 复发数注入：账本该 kp 累计撞错（F2 优先级 ②），驱动深攻选点
+        recurrence = {}
+        try:
+            for e in errors:
+                kp = e.get("knowledge_point_id")
+                if kp:
+                    recurrence[kp] = self._wb.ledger.repeated_count(kp)
+        except Exception:  # noqa: BLE001 账本不可用 → 复发全按 0，不阻断
+            recurrence = {}
+        strategies = select_feedback_strategies(
+            errors, level_int, level, recurrence_map=recurrence,
+            deep_dived_kps=self._deep_dived_kps)
+        section = compile_strategy_section(strategies, native_lang)
+        # 深攻点进会话级去重集；深攻/轻标呈现均向账本记 feedback_presented
+        deep = strategies.get("deep_dive") or {}
+        if deep.get("knowledge_point_id"):
+            self._deep_dived_kps.add(deep["knowledge_point_id"])
+        for mark in ([deep] + (strategies.get("light_marks") or [])):
+            kp = (mark or {}).get("knowledge_point_id")
+            if not kp:
+                continue
+            try:
+                self._wb.ledger.present_feedback(
+                    kp, signature=(mark or {}).get("fragment", ""),
+                    evidence=user_input)
+            except Exception:  # noqa: BLE001 记账失败不阻断对话
+                pass
+        strategies["section"] = section
+        return strategies
 
     def _writeback_round(self, res, pre, user_input, conversation_id,
                          history, provider, native_lang):
@@ -227,7 +281,35 @@ class DialogRun:
                              metadata={"skills": res.get("used_skills", []),
                                        "fallback": bool(res.get("fallback", False)),
                                        **meta})
+        self._observe_uptake()   # B2：反馈采纳观测（先于写回返回，账本已含确认链）
         return {"notices": m8_notices, "why_items": why_items, "reply": reply}
+
+    def _observe_uptake(self):
+        """B2 F5：uptake 观测（跨轮，基于账本自身推导）。
+        采纳判定 = 该 kp 曾反馈呈现（feedback_presented）且其后出现 concept_confirmed
+        （复述验证通过=repair）→ 记 uptake_observed。present 与 confirm 的相对先后
+        用账本事件顺序判定（ledger.recent() 为升序列表）。幂等链继承 record()。"""
+        try:
+            events = self._wb.ledger.recent()
+        except Exception:  # noqa: BLE001
+            return
+        for e in events:
+            if e.get("kind") != "concept_confirmed":
+                continue
+            kp = e.get("kp_id")
+            if not kp:
+                continue
+            confirm_idx = next((i for i, x in enumerate(events)
+                                if x.get("id") == e.get("id")), -1)
+            presented = [x for x in events[:confirm_idx]
+                         if x.get("kind") == "feedback_presented"
+                         and x.get("kp_id") == kp]
+            if not presented:
+                continue
+            try:
+                self._wb.ledger.observe_uptake(kp, evidence="反馈后复述通过")
+            except Exception:  # noqa: BLE001
+                pass
 
     def _build_dialog_response(self, learner_id, conversation_id, provider,
                                res, pre, wb_out, cap, graph_snapshot):

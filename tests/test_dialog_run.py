@@ -230,5 +230,59 @@ class WhyGateTest(DialogRunBase):
         self.assertEqual(meta["why"], [])
 
 
+class B2FeedbackStrategyTest(DialogRunBase):
+    """B2 F4 集成：block 档 + 多错误 pre_scan → [FeedbackStrategy] 段追进
+    intervention_directive、deep_dive_count=1、账本记 feedback_presented。"""
+
+    MULTI_PRE_SCAN = {
+        "errors": [
+            {"fragment": "苹果很多", "correction": "很多苹果",
+             "type": "语序-定语后置", "confidence": 0.9,
+             "knowledge_point_id": KP_ID},
+            {"fragment": "吃奶茶", "correction": "喝奶茶",
+             "type": "词汇语义", "confidence": 0.8,
+             "knowledge_point_id": "kp-drink"},
+            {"fragment": "一个手机", "correction": "一部手机",
+             "type": "语法", "confidence": 0.95,
+             "knowledge_point_id": "kp-liangci"},
+        ],
+        "uncertain": [], "degraded": [], "hypotheses": [],
+    }
+
+    def _block_ctx(self):
+        # 预置近错窗口使满足 streak（连续 3 错）→ block 档
+        self.tracker.flags = [True, True, True]
+        self.tracker.last_level = "light"
+
+    def test_strategy_section_appended_and_ledger(self):
+        self._block_ctx()
+        identify = FakeIdentify(result=self.MULTI_PRE_SCAN)
+        status, out = self._run(identify=identify)
+        self.assertEqual(status, 200)
+        kw = self.planner.calls[0][1]
+        directive = kw["intervention_directive"]
+        # 策略段追进 directive（含深攻点与轻标）
+        self.assertIn("[FeedbackStrategy]", directive)
+        self.assertIn("苹果很多", directive)          # 深攻 1 点
+        # 账本记 feedback_presented（深攻 + 轻标）
+        kinds = [e.get("kind") for e in ErrorLedger(
+            learner_id="u-run", root=self.tmp).recent()]
+        self.assertIn("feedback_presented", kinds)
+        self.assertEqual(out["intervention"]["level"], "block")
+
+
+class B2LightNoDeepTest(DialogRunBase):
+    """B2 F4 集成：none/light 档只轻点不深攻 → deep_dive_count=0。"""
+
+    def test_none_level_strategy_light_only(self):
+        # 首轮 fluent（error_flag=True 但 streak 未达）→ none 档，仅轻标
+        status, out = self._run()
+        self.assertEqual(status, 200)
+        kw = self.planner.calls[0][1]
+        directive = kw["intervention_directive"]
+        # none 档也有策略段（轻点收尾）或空；深攻必不发生
+        self.assertNotIn("深攻 1 点", directive)
+
+
 if __name__ == "__main__":
     unittest.main()

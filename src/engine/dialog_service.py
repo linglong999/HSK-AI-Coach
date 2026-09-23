@@ -128,6 +128,7 @@ class DialogService:
         self._memories = {}             # learner_id -> LearnerMemory（M5）
         self._writebacks = {}           # learner_id -> Writeback（M8）
         self._interventions = {}        # conversation_id -> InterventionTracker
+        self._deep_dived = {}           # conversation_id -> set[kp_id]（B2 跨回合深攻去重）
         self._identify_skill = None     # 预扫识别技能（共享 router.recognizer+graph）
 
     # ---------- 对外只读：HTTP 层遗留 handler 借用共享实例 ----------
@@ -260,6 +261,7 @@ class DialogService:
                 mem=self._get_memory(ctx["learner_id"]),
                 wb=self._get_writeback(ctx["learner_id"]),
                 tracker=self._get_tracker(ctx["conversation_id"]),
+                deep_dived_kps=self._get_deep_dived(ctx["conversation_id"]),
                 # 纯静态助手注入（构造时取类属性：测试 patch DialogService._xxx
                 # 对 dialog 主链同样生效，稳定挂点不破坏）
                 normalize_user_level=DialogService._normalize_user_level,
@@ -435,6 +437,14 @@ class DialogService:
             tr = InterventionTracker()
             self._interventions[conversation_id] = tr
         return tr
+
+    def _get_deep_dived(self, conversation_id: str) -> set:
+        """按 conversation_id 缓存跨回合已深攻 kp 集合（B2：同一错误点最多深攻 1 次）。"""
+        s = self._deep_dived.get(conversation_id)
+        if s is None:
+            s = set()
+            self._deep_dived[conversation_id] = s
+        return s
 
     def _get_identify_skill(self):
         """预扫识别技能（0.22 方向3 D3.4：识别触发移到 dialog 主链——每轮产出句

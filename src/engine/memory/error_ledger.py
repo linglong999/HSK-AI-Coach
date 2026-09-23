@@ -13,7 +13,8 @@ from typing import Any, Dict, List, Optional
 from engine.memory import store
 
 KINDS = {"observation_error", "repeated_error",
-         "concept_confirmed", "concept_reviewed"}
+         "concept_confirmed", "concept_reviewed",
+         "feedback_presented", "uptake_observed"}   # B2：反馈呈现/采纳观测（新 kind）
 MAX_EVENTS = 500          # ring buffer 上限（仿 MAX_ENGAGEMENT_EVENTS）
 REPEAT_THRESHOLD = 3      # 惯犯判定阈值（决策 B-乙）
 
@@ -65,6 +66,18 @@ class ErrorLedger:
 
     def review(self, kp_id: str, evidence: str = "") -> str:
         return self.record("concept_reviewed", kp_id, signature=kp_id, evidence=evidence)
+
+    def present_feedback(self, kp_id: str, signature: Optional[str] = None,
+                         evidence: str = "") -> str:
+        """B2：反馈呈现（deep/light 点呈现时记）。signature 建议带 fragment
+        区分同 kp 不同错误点；复用 record() 幂等链，但不会被误改 repeated_error。"""
+        return self.record("feedback_presented", kp_id,
+                           signature=signature or kp_id, evidence=evidence)
+
+    def observe_uptake(self, kp_id: str, evidence: str = "") -> str:
+        """B2：采纳观测——feedback_presented 后同会话该 kp 修正被确认/产出无错。"""
+        return self.record("uptake_observed", kp_id,
+                           signature=kp_id, evidence=evidence)
 
     # ---------------- 读 ----------------
     def count_for_kp(self, kp_id: str) -> int:

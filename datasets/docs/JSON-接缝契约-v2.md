@@ -91,7 +91,7 @@
 | 3 | `meta_confidence` | 图谱 Node 最近快照 + message 完整事件；**不进识别契约本体** | B3 | 仅钉挂载位 |
 | 4 | 回避（avoidance）独立类型 | 图谱层独立类型，**不入识别契约** | B3 | 仅钉挂载位 |
 | 5 | `senses[]` 词义项 | Node 属性/子键（`sense_id/gloss/example/s_*` 四字段），主键仍 `kp_id` | B4 | ✔ 本批落地 |
-| 6 | 账本 KINDS 扩展 | 同一 KINDS 常量四路：`feedback_presented`/`uptake_observed`(B2)、`avoidance_observed`(B3)、token 用量事件(B7)，与 `_writeback_ledger_events` 对齐 | B2/B3/B7 | 仅钉挂载位 |
+| 6 | 账本 KINDS 扩展 | 同一 KINDS 常量四路：`feedback_presented`/`uptake_observed`(B2)、`avoidance_observed`(B3)、token 用量事件(B7)，与 `_writeback_ledger_events` 对齐 | B2/B3/B7 | ✔ B2 新增 `feedback_presented`/`uptake_observed`（实值见 §8）；B3/B7 仅钉挂载位 |
 | 7 | SSE 四事件形状 | message/done/error/intercept 的 JSON 传输层形状（payload = 契约 v1/v2 原样内嵌，只钉形状不新造 schema） | B7 S1 | 仅钉挂载位 |
 
 > 顺手锁定：`priority`（L3）与候选质量（L2）**不进契约 schema**（派生量归主路径现算）；`meta_confidence`/回避类型由 B3（图谱层）消费，B0 只钉挂载位不实现。
@@ -125,3 +125,13 @@
 - **确定性守门员**（`engine/construction_diagnostics.py`，纯确定性、零 LLM、零第三方分词；轻量关键成分定位）：把字句 6 查（C2 宾语有定 / C3 动词不光杆 / C4 否定能愿位次 / C5 结构判定链、C6 补语搭配位次；C1 构式义=汇总门）+ 补语 5 查。与旧护栏（`_is_legal_ba_disposal`/`_is_false_de_adverb`）**并存不混用**（方向相反：旧护栏撤 LLM 误报，诊断器复核/补漏）。
 - **接入时序**（`recognizer.recognize` 主路径，旧护栏撤误报后、transfer_match 前）：补漏（LLM 漏报 error）→ **进 confirmed（方案 A）**；edge → 进 uncertain（触发复核）；复核已报 → 挂 `construction_diagnostics` + verdict override（规则>连续>离散）。`score` 字段保留 LLM 连续分不覆盖；诊断器分留 trace 内。降级路径 `_rule_fallback` 亦跑诊断器、error 照补 confirmed（构式守门员独立于 LLM 存活）。
 - **6 键实值与判分**：`{construction, instance, verdict, score, checks[], explanation}`（+ 内部 `_main` 供主路径取主错 kp）。评分确定性直判三值——任一硬违 fail → `error/0.40`；仅次违 edge → `edge/0.70`；全 pass → `acceptable/0.90`（与 B0 VERDICT 阈值区间对齐，不走 `derive_verdict`）。单一主错：error 时 `kp_candidate` 取优先级链最高硬违（C4>C5>C3>C6），`checks[]` 全录 trace。可正常 `ordered_error(version=2)` 持久化（第 10 键自此有实值，B0 期恒 None）。
+
+## 8. B2 实现回填（反馈策略选择器 + 深攻 1）
+
+以下由 B2 落地，**非识别契约字段**（反馈策略属讲解/介入层注入段，识别契约顶/error 条目键集合保持 v2 冻结）：
+
+- **策略选择器**（`engine/feedback_selector.py`，纯确定性、零 LLM）：Lyster & Ranta 六分类降为编码框架（`LR_TAGS`，每条反馈贴 1 标签供 B6 D-4 锚样例，不进决策）。规则 A 降为软偏好表 `TYPE_PREFERENCE`（error.type→倾向 direction/lr_tag，低权重不硬锁）；主决权=水平+ctx+诊断器强信号。水平调节（规则 B，Krashen+Swain）：HSK1-2→input 多示范、HSK4+→prompt 逼 self-repair。诊断器 bias（规则③）：`construction_diagnostics.verdict=="error"` → 语法类强制 metalinguistic/显式（学界 recast repair 最低）。
+- **去向分层 × 深攻 1**：`{deep_dive, light_marks(≤2), silent_kps, preferences, deep_dive_count}`。深攻只在 block 档（显式精讲+引导复述），`deep_dive_count ∈ {0,1}`；none/light 只轻点不深攻；encourage 档全空。跨回合 `deep_dived_kps`（DialogService 按 conversation_id 会话缓存）保证同一错误点最多深攻 1 次（命中顺延次位）。
+- **注入形态**（`dialog_run._pre_scan_intervene`，directive 编译后追加段，`intervention.py` 零改动）：`[FeedbackStrategy]` 段列深攻 1 点+轻标点+形态指令，文案过 tutor-style；silent 清单**不进 directive**（学习者不可见，后台记录进复习队列）。策略段仅 errors 非空且档位非 encourage 时产生。
+- **三维观测**（`error_ledger` 账本，见 §5 表 #6 同源 KINDS 扩展）：`feedback_presented`（deep/light 呈现时记 kp+signature）、`uptake_observed`（账本推导：该 kp 曾 present 且其后有 concept_confirmed=复述通过 → 采纳）。repair 现成链不动（verify_retell pass→concept_confirmed，verdict=partial 亦可记 partial 供 B6 观测）；错误复发现成（同 kp+signature observation_error 自动改记 repeated_error）。两新 kind 走 `record()` 既有幂等链，不会被误改 repeated_error。
+- **深攻计数**：`deep_dive_count` 由选择器产出（供 B6 D-6 断言消费），策略段附于 `intervention_directive` 进主链。

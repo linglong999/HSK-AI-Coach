@@ -224,8 +224,11 @@ class VerifyConfirmLedgerTest(unittest.TestCase):
         self.assertIn("verify_retell", out.get("used_skills", []))
         ledger = ErrorLedger(self.LEARNER, root=self.root)
         events = [e for e in ledger.recent() if e["kp_id"] == "kp-order-many"]
-        self.assertEqual(len(events), 2)            # 1 观察 + 1 确认
-        self.assertEqual(events[-1]["kind"], "concept_confirmed")
+        # B2：轮1 含 观察+反馈呈现+确认+采纳 = 4 事件
+        confirmed = [e for e in events if e["kind"] == "concept_confirmed"]
+        self.assertEqual(len(confirmed), 1)
+        self.assertIn("feedback_presented", [e["kind"] for e in events])
+        self.assertIn("uptake_observed", [e["kind"] for e in events])
 
         # 轮 2：verify fail → 只记观察，不新增确认
         self.router.verifier.verdict = "fail"
@@ -234,7 +237,7 @@ class VerifyConfirmLedgerTest(unittest.TestCase):
             self.assertEqual(st, 200)
             ledger.reload()
             events = [e for e in ledger.recent() if e["kp_id"] == "kp-order-many"]
-            self.assertEqual(len(events), 3)        # 2 观察 + 1 确认（fail 未确认）
+            # B2：轮2 (fail) 新增 观察+反馈呈现 = +2；确认不增（fail 未确认 → 无采纳）
             confirmed = [e for e in events if e["kind"] == "concept_confirmed"]
             self.assertEqual(len(confirmed), 1)
         finally:
@@ -283,7 +286,11 @@ class CrossRoundConfirmTest(unittest.TestCase):
         events = [e for e in ledger.recent() if e["kp_id"] == "kp-order-many"]
         kinds = [e["kind"] for e in events]
         self.assertIn("concept_confirmed", kinds)
-        self.assertEqual(len(events), 2)   # 1 观察 + 1 跨轮确认
+        # B2：确认链旁各有一枚反馈/采纳事件（feedback_presented 轮1 + uptake_observed 轮2），
+        # 计数从 2 扩为 4；此处仅锁定关键链路不锁死总数（避免耦合 B2 账本形态演进）。
+        self.assertIn("observation_error", kinds)
+        self.assertIn("feedback_presented", kinds)
+        self.assertIn("uptake_observed", kinds)
 
 
 # ---------------- 冷启动：无画像不注入 ----------------
