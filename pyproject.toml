@@ -7,7 +7,7 @@ name = "HSK-AI-Coach"
 version = "0.1.0"
 description = "面向 HSK 中文学习者的 AI 偏误纠错陪练：偏误检测 → 讲清原因 → 复述检验 → 复习计划。"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [{ name = "linglong999" }]
 license = { text = "MIT" }
 keywords = ["HSK", "中文学习", "偏误纠错", "AI", "中文教育"]
@@ -23,6 +23,7 @@ dependencies = [
     "sse-starlette>=2.1",
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
+    "fsrs==6.3.2",
 ]
 
 [dependency-groups]

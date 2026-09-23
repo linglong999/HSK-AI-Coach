@@ -28,6 +28,13 @@ class Node:
     last_positive_at: Optional[str] = None   # P0.3：最近一次正向证据时间戳（UTC）
     unfixed_streak: int = 0       # P0.4：连续复习未纠正次数（pass→0 / fail→+1，落盘）
     fossilized: bool = False      # P0.4：化石化标记（现算，不落盘；读取前须 refresh）
+    promoted: bool = False        # B4 H4：构式晋升标记（现算，不落盘；与 fossilized 同构）
+    # ---- B4 H3 词义项子卡 senses[] 子键（D-5 §4a，默认空 list 向后兼容）----
+    # 每项 = {"sense_id": "打-01", "gloss": "", "example": "",
+    #         "s_stability": 0.0, "s_difficulty": 5.0,
+    #         "s_last_review_at": None, "s_next_review_at": None}
+    # 独立 FSRS 状态（子卡 S/D/调度时间）；词级四字段与子卡同步更新=词形整体记忆
+    senses: List[dict] = field(default_factory=list)
     # ---- P0.17 间隔调度字段（FSRS）----
     last_review_at: Optional[str] = None    # 最近一次复习动作时间(UTC)；FSRS elapsed_days 唯一来源
     next_review_at: Optional[str] = None    # 下次到期时间(UTC)；到期筛选唯一判据(IS NOT NULL AND ≤ now)
@@ -51,6 +58,7 @@ class Node:
             "positive_sources": self.positive_sources,
             "last_positive_at": self.last_positive_at,
             "unfixed_streak": self.unfixed_streak,
+            "senses": self.senses,
             # P0.17 调度字段（fossilized 不落盘，现算）
             "last_review_at": self.last_review_at,
             "next_review_at": self.next_review_at,

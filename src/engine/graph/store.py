@@ -63,7 +63,7 @@ class GraphStore:
                             "positive_count", "positive_sources",
                             "last_positive_at", "unfixed_streak",
                             "last_review_at", "next_review_at",
-                            "fsrs_stability", "fsrs_difficulty"]})
+                            "fsrs_stability", "fsrs_difficulty", "senses"]})
             node.id = nid
             # P0.5(修正)：created_at 必须在白名单——旧数据含它，缺失会丢 aging 起算点
             if not node.created_at:
@@ -78,6 +78,9 @@ class GraphStore:
                 node.last_positive_at = None
             if node.unfixed_streak is None:
                 node.unfixed_streak = 0   # P0.4：旧数据缺 streak → 0
+            # B4 H3：旧图谱 JSON 缺 senses[] → 空 list（零迁移载入）
+            if not node.senses:
+                node.senses = []
             if not node.error_kind or not node.nature:
                 dims = resolve(node.error_types, node.id)
                 if not node.error_kind:

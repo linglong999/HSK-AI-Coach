@@ -61,9 +61,35 @@ NATURE_WEIGHT = {
 }
 FOSSIL_RULE = {"unfixed_streak": 3, "days_idle": 180}  # 连续≥3次复习未纠正 且 距上次学习≥180天
 FOSSIL_BOOST = 1.5        # 化石化节点 priority 乘数（与 nature 权重互斥，不叠乘）
+# B4 H4：构式晋升（FOSSIL 同机制一规则两用：错侧石化 / 对侧晋升）
+PROMOTE_RULE = {"positive_reps": 3}   # 复现阈值：正向证据 positive_count≥3 且近期无未纠正
+PROMOTE_BOOST = 1.5        # 晋升节点 priority 乘数（仿 FOSSIL_BOOST，与 nature 权重互斥）
+# B4 H4-2：learned 迁移判据（B3 拍板2 阈值归 B4；attempt_ok 计数源自 B3 avoidance_observer）
+LEARNED_RULE = {"attempt_ok_reps": 3}   # 推荐值=3（镜像 PROMOTE_RULE 对称，拍板点 4）
 
 # B4：py-fsrs 调度内核模块级单例（Scheduler 无状态可共享；每 learner 一份 graph 实例共用）
 _FSRS = FsrsSchedulerAdapter()
+
+# B4 H5：字子层（图谱独立 char 节点）。字级超纲判定不受影响
+# （recognizer.detect_beyond_level 读 lexicon char_level，与图谱字节点无关）。
+# 这里仅在需要字级时懒加载 char_level；加载失败静默降级 char-HSK0。
+CHAR_NODE_PREFIX = "char:"
+_CHAR_LEVEL = None
+
+
+def _load_char_level() -> Dict[str, int]:
+    """懒加载 lexicon char_level（{字: HSK 级}）；失败静默返回 {}（字节点回退 char-HSK0）。"""
+    global _CHAR_LEVEL
+    if _CHAR_LEVEL is not None:
+        return _CHAR_LEVEL
+    try:
+        path = PROJECT_ROOT / "datasets" / "lexicon_hsk1_4.json"
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        _CHAR_LEVEL = data.get("char_level") or {}
+    except Exception:  # noqa: BLE001 数据源不可用不阻断建点流程
+        _CHAR_LEVEL = {}
+    return _CHAR_LEVEL
 
 # 冲突优先级（§八）：跨类按类序（verdict 写 > 识别偏误写 > 图谱自身更新）
 _CLASS_ORDER = {"verdict": 0, "error": 1, "graph": 2}
@@ -163,17 +189,38 @@ class ErrorGraph:
         node.fossilized = (node.unfixed_streak >= FOSSIL_RULE["unfixed_streak"]
                            and days >= FOSSIL_RULE["days_idle"])
 
+    def _refresh_promoted(self, node: Node) -> None:
+        """B4 H4：现算构式晋升（不落盘，与 _refresh_fossilized 同构）。
+        positive_count ≥ PROMOTE_RULE[positive_reps] 且 unfixed_streak == 0
+        → promoted=True（达复现阈值、近期无错 → 该构式从挂靠升独立复合卡）。"""
+        node.promoted = (node.positive_count >= PROMOTE_RULE["positive_reps"]
+                         and node.unfixed_streak == 0)
+
+    def _refresh_learned(self, node: Node) -> None:
+        """B4 H4-2：现算 learned 迁移（不落盘，同构）。承接 B3 拍板2"阈值归 B4"。
+        effort: 待 B3 avoidance_observer 落地后，attempt_ok 计数挂 Node 字段读取。
+        B3 未落地前缺字段 → 容错为 0（不误判 learned，避免越界造 B3 字段）。
+        判据：attempt_ok 累积 ≥ LEARNED_RULE[attempt_ok_reps] 且期间无未纠正 attempt_err
+        → avoidance_state 迁 learned（"该用未用"节点经反复正确使用退出回避监控）。"""
+        ok = node.__dict__.get("attempt_ok_reps", 0) or 0
+        err = node.__dict__.get("attempt_err_unresolved", 0) or 0
+        node.learned = (ok >= LEARNED_RULE["attempt_ok_reps"] and err == 0)
+
     def _priority(self, node: Node) -> float:
-        """P0.4：priority = base × 分类型加权（读前先 refresh 化石化）。
+        """P0.4+B4H4：priority = base × 分类型加权（读前先 refresh 化石化/晋升）。
         base = min(error_count,5) × (1-mastery) × aging（3.4 封顶）。
-        加权（A1/A3 拍板）：
-          - 非化石 → × NATURE_WEIGHT.get(nature, 1.0)（错序/误代1.3；误加/遗漏/未知/"" → 1.0）
-          - 化石   → × FOSSIL_BOOST(1.5)，**互斥**：替代 nature 权重，不叠乘
-        fossilized 每次读取前现算，保证 streak 落盘后随时刷新。"""
+        加权（A1/A3 拍板，互斥不叠乘）：
+          - 化石   → × FOSSIL_BOOST(1.5)（正负对立，优先于晋升）
+          - 晋升   → × PROMOTE_BOOST(1.5)（构式达复现阈值无未纠正 → 独立复合卡提权）
+          - 其余   → × NATURE_WEIGHT（错序/误代1.3；误加/遗漏/未知/"" → 1.0）
+        fossilized/promoted 每次读取前现算，保证落盘字段随时刷新。"""
         self._refresh_fossilized(node)
+        self._refresh_promoted(node)
         base = min(node.error_count, ERROR_COUNT_CAP) * (1.0 - node.mastery) * self._aging(node)
         if node.fossilized:
             return base * FOSSIL_BOOST
+        if node.promoted:
+            return base * PROMOTE_BOOST
         return base * NATURE_WEIGHT.get(node.nature, 1.0)
 
     def _edge_key(self, a: str, b: str) -> str:
@@ -354,14 +401,18 @@ class ErrorGraph:
             return {"status": "touched", "kp_id": kp_id}
 
     def review_feedback(self, kp_id: str, correct: Optional[bool] = None,
-                        rating: Optional[int] = None, event_key: str = "") -> dict:
+                        rating: Optional[int] = None, event_key: str = "",
+                        sense_id: Optional[str] = None) -> dict:
         """P0.17：复习环节单点反馈，融合 FSRS 调度 + P0.4 化石化 streak。
         rating 直传优先（1忘记/2困难/3想起/4轻松）；未传则 correct 兜底
         （false→1 / true→3）。顺带同步 mastery？否——本接口只属"复习调度"层：
         - FSRS：last_review_at=now；next_state 更新 S/D；next_review_at 重算（≥1 天）
         - streak：rating==1 → unfixed_streak+1，否则 0（P0.4 规则）
         不 touch mastery / last_learnt_at / error_count（复习调度语义独立）。
-        ingest_verdict 是唯一驱动 mastery 的教学主体，不驱动 FSRS（见边界）。"""
+        ingest_verdict 是唯一驱动 mastery 的教学主体，不驱动 FSRS（见边界）。
+        B4 H3 义项路由：sense_id 指定且命中 node.senses[] 非空子卡 → 该义项子卡
+        独立 FSRS 状态更新（s_* 四字段），词级四字段同步更新=词形整体记忆；
+        未指定/未命中 → 现行词级单卡路径（零行为变化）。"""
         with self._lock:
             if event_key and self._event_seen(event_key):
                 return {"status": "idempotent_skip"}
@@ -399,9 +450,31 @@ class ErrorGraph:
             # P0.4 化石化 streak：rating==1 视为未纠正 → +1，否则 0
             node.unfixed_streak = (node.unfixed_streak + 1) if r == 1 else 0
             self._refresh_fossilized(node)
+
+            # B4 H3 义项路由：sense_id 命中 node.senses[] 非空子卡 → 更新该子卡独立 FSRS
+            sense_routed = None
+            if sense_id and node.senses:
+                for s in node.senses:
+                    if s.get("sense_id") == sense_id:
+                        st_old = MemoryState(stability=s.get("s_stability") or 0.0,
+                                             difficulty=s.get("s_difficulty") or 5.0)
+                        base = s.get("s_last_review_at") or node.created_at or now
+                        if s.get("s_last_review_at") is None and not (s.get("s_stability") or 0):
+                            st_s = _FSRS.init_state(r)
+                        else:
+                            st_s = _FSRS.next_state(st_old, r, self._days_since(base))
+                        s["s_stability"] = st_s.stability
+                        s["s_difficulty"] = st_s.difficulty
+                        s["s_last_review_at"] = now
+                        s_days = max(1, round(_FSRS.interval(st_s.stability)))
+                        s["s_next_review_at"] = time.strftime(
+                            "%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + s_days * 86400))
+                        sense_routed = {"sense_id": sense_id, "interval_days": s_days}
+                        break
             return {"status": "review_feedback", "kp_id": kp_id,
                     "rating": r, "interval_days": days,
-                    "node": node.to_dict(), "fossilized": node.fossilized}
+                    "node": node.to_dict(), "fossilized": node.fossilized,
+                    "sense": sense_routed}
 
     def reject_item(self, item_key: str) -> dict:
         """明确非偏误 → 驳回清除（§七）"""
@@ -511,6 +584,35 @@ class ErrorGraph:
                      "priority": round(self._priority(nd), 4),
                      "node": nd.to_dict()}
                     for nd in pool[:n]]
+
+    # ---------------- B4 H5 字子层 ----------------
+    def ensure_char_node(self, word: str) -> List[str]:
+        """B4 H5：跟词带出字节点（幂等）。词形 word → 逐字 ensure char Node
+        （id="char:璃"、knowledge_point="璃"、level="char-HSK{n}"）。
+        只建当前字，不预建全量字表（MVP 随学习事件增量生长）。
+        返回本次实际新建的字（已存在 → 不重复建、不进返回）。
+        """
+        with self._lock:
+            created = []
+            char_level = _load_char_level()
+            for ch in word:
+                if not ch.strip():
+                    continue
+                cid = f"{CHAR_NODE_PREFIX}{ch}"
+                if cid in self._store.nodes:
+                    continue                       # 幂等：已存在不重建
+                lv = char_level.get(ch, 0) or 0
+                node = Node(id=cid, knowledge_point=ch,
+                            level=f"char-HSK{lv}", created_at=self._now())
+                self._store.nodes[cid] = node
+                created.append(cid)
+            return created
+
+    def get_char_node(self, ch: str) -> Optional[dict]:
+        """§五 get_char_node：按字查字子层节点（undef→None）。"""
+        with self._lock:
+            node = self._store.nodes.get(f"{CHAR_NODE_PREFIX}{ch}")
+            return node.to_dict() if node else None
 
     # ---------------- 持久化 ----------------
     def save(self, path: Optional[str] = None):

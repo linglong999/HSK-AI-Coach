@@ -90,8 +90,21 @@
 | 2 | `construction_diagnostics` | error 条目内 1 层嵌套 `{matched_rule,expected,actual,severity}` | B1 | 挂载位已钉，恒 `None` |
 | 3 | `meta_confidence` | 图谱 Node 最近快照 + message 完整事件；**不进识别契约本体** | B3 | 仅钉挂载位 |
 | 4 | 回避（avoidance）独立类型 | 图谱层独立类型，**不入识别契约** | B3 | 仅钉挂载位 |
-| 5 | `senses[]` 词义项 | Node 属性/子键，主键仍 `kp_id` | B4 | 仅钉挂载位 |
+| 5 | `senses[]` 词义项 | Node 属性/子键（`sense_id/gloss/example/s_*` 四字段），主键仍 `kp_id` | B4 | ✔ 本批落地 |
 | 6 | 账本 KINDS 扩展 | 同一 KINDS 常量四路：`feedback_presented`/`uptake_observed`(B2)、`avoidance_observed`(B3)、token 用量事件(B7)，与 `_writeback_ledger_events` 对齐 | B2/B3/B7 | 仅钉挂载位 |
 | 7 | SSE 四事件形状 | message/done/error/intercept 的 JSON 传输层形状（payload = 契约 v1/v2 原样内嵌，只钉形状不新造 schema） | B7 S1 | 仅钉挂载位 |
 
 > 顺手锁定：`priority`（L3）与候选质量（L2）**不进契约 schema**（派生量归主路径现算）；`meta_confidence`/回避类型由 B3（图谱层）消费，B0 只钉挂载位不实现。
+
+## 5. B4 实现回填（2026-09-23）
+
+以下三处由 B4 落地，**不入识别契约本体**（都在图谱 Node 层 / 现算派生量）：
+
+- **词义项子键 `senses[]`**（Node dataclass 子键，默认空 list，向后兼容零迁移）：
+  每项 `{"sense_id", "gloss", "example", "s_stability", "s_difficulty", "s_last_review_at", "s_next_review_at"}`。
+  白名单源 `datasets/sense_whitelist_v1.json`（义项数≥5 × HSK1-2，243 词，`seed/level_filter/min_senses` 落产物 metadata 可复现）。
+  `review_feedback(sense_id=...)` 命中非空 `senses[]` → 子卡独立 FSRS 更新 + 词级四字段同步；未命中/非白名单 → 词级单卡零变化。
+- **字子层**（图谱独立 char Node，id=`char:璃`、knowledge_point=字、level=`char-HSK{n}`）：事件驱动增量建点（不预建全量字表），字卡自有 FSRS/mastery，防词频绑架；字级超纲判定仍走 recognizer 读 lexicon `char_level`，与图谱字节点无关。
+- **构式晋升 / learned 迁移**（现算派生量，**不落盘**，`to_dict()` 均不输出）：
+  - promoted：`positive_count≥3 且 unfixed_streak==0`（PROMOTE_RULE，priority × PROMOTE_BOOST，与 FOSSIL_BOOST 互斥）
+  - learned：承接 B3 拍板2，阈值 `attempt_ok_reps≥3` 且无未纠正 attempt_err（LEARNED_RULE）；B3 未落地前缺字段容错为 0。
