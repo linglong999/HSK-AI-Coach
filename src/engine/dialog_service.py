@@ -129,6 +129,8 @@ class DialogService:
         self._writebacks = {}           # learner_id -> Writeback（M8）
         self._interventions = {}        # conversation_id -> InterventionTracker
         self._deep_dived = {}           # conversation_id -> set[kp_id]（B2 跨回合深攻去重）
+        self._meta_ask = {}             # conversation_id -> dict（B3 每任务自评≤1 标记）
+        self._target_constructions = {} # conversation_id -> list[kp_id]（B3 该用未用目标，骨架期空）
         self._identify_skill = None     # 预扫识别技能（共享 router.recognizer+graph）
 
     # ---------- 对外只读：HTTP 层遗留 handler 借用共享实例 ----------
@@ -262,6 +264,9 @@ class DialogService:
                 wb=self._get_writeback(ctx["learner_id"]),
                 tracker=self._get_tracker(ctx["conversation_id"]),
                 deep_dived_kps=self._get_deep_dived(ctx["conversation_id"]),
+                target_constructions=self._get_target_constructions(
+                    ctx["conversation_id"]),
+                meta_ask_state=self._get_meta_ask(ctx["conversation_id"]),
                 # 纯静态助手注入（构造时取类属性：测试 patch DialogService._xxx
                 # 对 dialog 主链同样生效，稳定挂点不破坏）
                 normalize_user_level=DialogService._normalize_user_level,
@@ -296,6 +301,9 @@ class DialogService:
             "native_lang": ui_lang,  # 局部别名：下游调用兼容旧字段
             "learner_l1": learner_l1,
             "scene_id": str((payload.get("scene_id") or "")).strip(),
+            # B3：学习者本轮元认知自评档（certain/half/uncertain，可选，非本回合默 None）
+            "meta_self_level": (str(payload.get("meta_self_level") or "").strip()
+                                or None),
         }, None
 
     def _consume_visitor_quota(self, vid):
@@ -445,6 +453,23 @@ class DialogService:
             s = set()
             self._deep_dived[conversation_id] = s
         return s
+
+    def _get_target_constructions(self, conversation_id: str) -> list:
+        """B3：会话级"该用未用"观测目标构式 kp 列表（focused 任务偏置=语境必要证据）。
+        骨架期场景包尚未声明 target_constructions → 空列表 → 回避观测不激活（零行为）。"""
+        ls = self._target_constructions.get(conversation_id)
+        if ls is None:
+            ls = []
+            self._target_constructions[conversation_id] = ls
+        return ls
+
+    def _get_meta_ask(self, conversation_id: str) -> dict:
+        """B3：会话级元认知自评"每任务≤1"标记（跨回合去重，防疲态追问）。"""
+        d = self._meta_ask.get(conversation_id)
+        if d is None:
+            d = {}
+            self._meta_ask[conversation_id] = d
+        return d
 
     def _get_identify_skill(self):
         """预扫识别技能（0.22 方向3 D3.4：识别触发移到 dialog 主链——每轮产出句

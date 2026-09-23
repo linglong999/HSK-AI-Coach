@@ -88,10 +88,10 @@
 |---|---|---|---|---|
 | 1 | `verdict` / `score` | 识别输出：顶层 + error 条目 | **B0**（已实现） | ✔ 本批落地 |
 | 2 | `construction_diagnostics` | error 条目内 1 层嵌套，**B1 实值 6 键** `{construction,instance,verdict,score,checks[],explanation}`（早期草案 `{matched_rule,expected,actual,severity}` 已废弃） | B1 | ✔ 本批落地 |
-| 3 | `meta_confidence` | 图谱 Node 最近快照 + message 完整事件；**不进识别契约本体** | B3 | 仅钉挂载位 |
-| 4 | 回避（avoidance）独立类型 | 图谱层独立类型，**不入识别契约** | B3 | 仅钉挂载位 |
+| 3 | `meta_confidence` | 图谱 Node 最近快照 + message 完整事件；**不进识别契约本体** | B3 | ✔ 本批落地 |
+| 4 | 回避（avoidance）独立类型 | 图谱层独立类型，**不入识别契约** | B3 | ✔ 本批落地 |
 | 5 | `senses[]` 词义项 | Node 属性/子键（`sense_id/gloss/example/s_*` 四字段），主键仍 `kp_id` | B4 | ✔ 本批落地 |
-| 6 | 账本 KINDS 扩展 | 同一 KINDS 常量四路：`feedback_presented`/`uptake_observed`(B2)、`avoidance_observed`(B3)、token 用量事件(B7)，与 `_writeback_ledger_events` 对齐 | B2/B3/B7 | ✔ B2 新增 `feedback_presented`/`uptake_observed`（实值见 §8）；B3/B7 仅钉挂载位 |
+| 6 | 账本 KINDS 扩展 | 同一 KINDS 常量四路：`feedback_presented`/`uptake_observed`(B2)、`avoidance_observed`(B3)、token 用量事件(B7)，与 `_writeback_ledger_events` 对齐 | B2/B3/B7 | ✔ B2 新增 `feedback_presented`/`uptake_observed`（实值见 §8）；✔ B3 新增 `avoidance_observed`（实值见 §9）；B7 仅钉挂载位 |
 | 7 | SSE 四事件形状 | message/done/error/intercept 的 JSON 传输层形状（payload = 契约 v1/v2 原样内嵌，只钉形状不新造 schema） | B7 S1 | 仅钉挂载位 |
 
 > 顺手锁定：`priority`（L3）与候选质量（L2）**不进契约 schema**（派生量归主路径现算）；`meta_confidence`/回避类型由 B3（图谱层）消费，B0 只钉挂载位不实现。
@@ -135,3 +135,19 @@
 - **注入形态**（`dialog_run._pre_scan_intervene`，directive 编译后追加段，`intervention.py` 零改动）：`[FeedbackStrategy]` 段列深攻 1 点+轻标点+形态指令，文案过 tutor-style；silent 清单**不进 directive**（学习者不可见，后台记录进复习队列）。策略段仅 errors 非空且档位非 encourage 时产生。
 - **三维观测**（`error_ledger` 账本，见 §5 表 #6 同源 KINDS 扩展）：`feedback_presented`（deep/light 呈现时记 kp+signature）、`uptake_observed`（账本推导：该 kp 曾 present 且其后有 concept_confirmed=复述通过 → 采纳）。repair 现成链不动（verify_retell pass→concept_confirmed，verdict=partial 亦可记 partial 供 B6 观测）；错误复发现成（同 kp+signature observation_error 自动改记 repeated_error）。两新 kind 走 `record()` 既有幂等链，不会被误改 repeated_error。
 - **深攻计数**：`deep_dive_count` 由选择器产出（供 B6 D-6 断言消费），策略段附于 `intervention_directive` 进主链。
+
+## 9. B3 实现回填（元认知自评 + 回避观测）
+
+以下由 B3 落地，**不入识别契约本体**（识别契约顶层/error 条目键 v2 冻结；两者都落图谱 Node 层 + 独立事件流）：
+
+- **元认知自评 `self_rating`**（D-8 契约，`meta_confidence` 消费批落地）：
+  - 判定模块 `engine/meta_judgment.py`（纯确定性零 LLM）：`SELF_LEVELS=(certain/half/uncertain)` 三档 × 产出两列（correct/wrong）＝ **6 格 MATRIX** → `route_bias(self_level, outcome)` 只产路由偏置（`{route, scheduling}`；`half+wrong`＝unlearned 核心校准信号），不判对错、**永远不盖过 B1 确定性判据**（B3-G1 契约注释）；`should_ask_meta(target_kps_hit, outcome_has_error, already_asked)` 定两高危时机（目标构式正确产出一次后 / 疑似误用后）＋每任务≤1 防疲态。
+  - **完整事件落 message.metadata_json**（`store.py` 现成列，零 DDL）：每条 `{"meta_event":"self_rating","self_level":"certain|half|uncertain","anchor":<kp_id 标准 id>,"outcome_at_time":"correct|wrong","construction_ref":<目标 kp>,"ts":<unix>}`；锚点禁自由文本（标准 kp_id/构式锚点）。`engine.memory.error_ledger.query_meta_events(learner_id)` 从 messages.metadata_json 聚合 `(self_level, outcome_at_time)` 成对序列——B6 ECE/Brier/Calibration-Gap 直算源。
+  - **Node 最近一次快照**：`meta_confidence` + `meta_anchor` 两新字段（默认 None 向后兼容零迁移，`to_dict()` 同步输出；主键 `knowledge_point` 不变）。
+  - **接入**（`dialog_run._b3_observe`，PreScanIntervene 后、WritebackLedger 前聚合一次）：学习者本轮 `meta_self_level`（payload 透传，合法三档）→ 落 message 完整事件 + Node 快照 + route_bias 偏置（喂 B4 调度/B2 反馈）。`meta_ask_state`（DialogService 按 conversation_id 缓存）保证每任务自评≤1。
+- **回避（avoidance）"该用未用"独立类型**（区分于"错误"，不入识别契约）：
+  - 图谱四态 `GRAPH_STATES=(avoided/unlearned/learned/undetermined)`；观测信号 `OBSERVED_SIGNALS` 五态（attempt_ok/attempt_err/avoided/unlearned/undetermined）与图谱态**两组并存、映射有测试锁定**。
+  - 判定模块 `engine/avoidance_observer.py`：`observe_avoidance(task_targets, learner_output, identify_result, graph_nodes)`，证据链＝2 自动（语境必要=目标构式任务偏置 / 能力历史=`positive_count>0`）+1 观察（替代表达=人工抽查，不进自动判定）。avoided=没用+有历史能力（该复习）；unlearned=没用+无证据（该教）/用到但错；attempt_ok=用了且对（正向链，learned 迁移阈值归 B4）；undetermined=判不准保守态。
+  - **完整事件进账本**（同一 KINDS 四路扩展）：`avoidance_observed` kind（`error_ledger.observe_avoidance(kp, state, evidence)`，走 record() 幂等链不误改 repeated）；不与"错误"混：错误=`error_count/error_types`，该用未用=`avoidance_state/avoidance_count` 独立可查。
+  - **Node 快照**：`avoidance_state`/`avoidance_count`/`last_avoidance_at` 三新字段（默认值向后兼容）。
+  - **静默处置**（总纲 §2）：avoided→"该复习"喂 B4 调度权重、unlearned→"该教"喂 B5 排序层——**绝不进 intervention/directive**（学习者不可见）。骨架期 `target_constructions` 为空 → 观测不激活零行为（B3 拍板3）；`attempt_ok/attempt_err` 走既有正向/偏误链，不重复写避险账本。

@@ -35,6 +35,13 @@ class Node:
     #         "s_last_review_at": None, "s_next_review_at": None}
     # 独立 FSRS 状态（子卡 S/D/调度时间）；词级四字段与子卡同步更新=词形整体记忆
     senses: List[dict] = field(default_factory=list)
+    # ---- B3 元认知自评快照（D-8 契约，最近一次）----
+    meta_confidence: Optional[str] = None   # 最近一次自评档（certain/half/uncertain）
+    meta_anchor: Optional[str] = None       # 最近一次锚点（标准 kp_id/构式锚点，禁自由文本）
+    # ---- B3 回避（"该用未用"）独立类型快照（区别于"错误"分型）----
+    avoidance_state: Optional[str] = None   # 图谱四态（avoided/unlearned/learned/undetermined）
+    avoidance_count: int = 0                # "该用未用"累计次数
+    last_avoidance_at: Optional[str] = None
     # ---- P0.17 间隔调度字段（FSRS）----
     last_review_at: Optional[str] = None    # 最近一次复习动作时间(UTC)；FSRS elapsed_days 唯一来源
     next_review_at: Optional[str] = None    # 下次到期时间(UTC)；到期筛选唯一判据(IS NOT NULL AND ≤ now)
@@ -59,6 +66,11 @@ class Node:
             "last_positive_at": self.last_positive_at,
             "unfixed_streak": self.unfixed_streak,
             "senses": self.senses,
+            "meta_confidence": self.meta_confidence,
+            "meta_anchor": self.meta_anchor,
+            "avoidance_state": self.avoidance_state,
+            "avoidance_count": self.avoidance_count,
+            "last_avoidance_at": self.last_avoidance_at,
             # P0.17 调度字段（fossilized 不落盘，现算）
             "last_review_at": self.last_review_at,
             "next_review_at": self.next_review_at,

@@ -15,7 +15,8 @@ class DialogRun:
 
     def __init__(self, router, planner, identify_skill, mem, wb, tracker,
                  normalize_user_level, writeback_ledger_events,
-                 assistant_payload, deep_dived_kps=None):
+                 assistant_payload, deep_dived_kps=None,
+                 target_constructions=None, meta_ask_state=None):
         self._router = router
         self._planner = planner
         self._identify_skill = identify_skill
@@ -24,6 +25,12 @@ class DialogRun:
         self._tracker = tracker
         # B2：跨回合已深攻 kp 集合（会话级，DialogService 缓存传入；缺省会话内集）
         self._deep_dived_kps = deep_dived_kps or set()
+        # B3：会话级"该用未用"观测目标构式 kp 列表（骨架期=空→观测不激活/零行为）；
+        #     元认知自评"每任务≤1"标记（会话级，DialogService 缓存传入）。
+        self._target_constructions = list(target_constructions or [])
+        self._meta_ask_state = meta_ask_state or {}
+        # B3 本轮观测产物（自评事件/路由偏置/回避 trace），供写回消费与 B4/B2 读
+        self._b3 = {}
         # 纯静态助手（DialogService 稳定挂点，注入以保持解耦与可测性）
         self._normalize_user_level = normalize_user_level
         self._writeback_ledger_events = writeback_ledger_events
@@ -50,9 +57,13 @@ class DialogRun:
             persona_brief=directives["persona_brief"],
             style_directive=directives["style_directive"],
             intervention_directive=pre["intervention_directive"])
+        # B3 接入点：PreScanIntervene 后、WritebackLedger 前聚合一次（识别结果已出、
+        # 账本写入前）——自评事件+Node 快照+route_bias+observe_avoidance，全程静默
+        # （仅进账本/图谱/调度权重，绝不进 intervention/directive）。
+        self._b3 = self._b3_observe(pre, ctx["user_input"], ctx)
         wb_out = self._writeback_round(
             res, pre, ctx["user_input"], ctx["conversation_id"],
-            history, provider, ctx["native_lang"])
+            history, provider, ctx["native_lang"], b3=self._b3)
         graph_snapshot = self._router.graph.graph_snapshot()
         out = self._build_dialog_response(
             ctx["learner_id"], ctx["conversation_id"], provider, res, pre,
@@ -241,11 +252,109 @@ class DialogRun:
         strategies["section"] = section
         return strategies
 
+    def _b3_observe(self, pre, user_input, ctx):
+        """阶段 · B3 接入点（PreScanIntervene 后、WritebackLedger 前聚合一次）：
+        ①回避观测（静默）：target_constructions 非空才激活（B3 拍板3）；used但错走
+        attempt_err 既有链（预扫已记账本）、attempt_ok 走正向链（B4 阈值迁 learned）——
+        本阶段只对 avoided/unlearned（该用未用）写 avoidance_observed 账本 + Node 快照。
+        ②元认知自评：高危险时机（目标构式产出/疑似误用）+ 学习者已给 self_level →
+        自评事件 + Node.meta_confidence/anchor 快照 + route_bias（6 格矩阵只产调度偏置，
+        不判对错、绝不盖过 B1 确定性判据）。全程降级为 notices，绝不阻断对话；
+        任何结果不进 intervention/directive（总纲 §2 静默处置）。
+        返回 {"avoidance","meta_event","route_bias","notices","active"}。"""
+        from engine.avoidance_observer import observe_avoidance
+        from engine.meta_judgment import (SELF_LEVELS, route_bias, should_ask_meta)
+        import time
+        notices = []
+        graph = getattr(self._router, "graph", None)
+        nodes_map = getattr(graph, "_nodes", {}) if graph is not None else {}
+        if not isinstance(nodes_map, dict):
+            nodes_map = {}
+
+        # ---- ① 回避观测（静默） ----
+        avoidance = {"active": False}
+        if self._target_constructions:
+            try:
+                avoidance = observe_avoidance(
+                    self._target_constructions, user_input,
+                    pre.get("pre_scan"), nodes_map)
+                for kp, rec in (avoidance.get("per_kp") or {}).items():
+                    signal = rec.get("signal")
+                    state = rec.get("state")
+                    # attempt_ok/attempt_err 走既有链（正向/偏误识别），此处不重复写
+                    # 避险账本——只有"该用未用"信号（avoided/unlearned）才记 avoidance_observed
+                    if signal not in ("avoided", "unlearned"):
+                        continue
+                    try:
+                        self._wb.ledger.observe_avoidance(
+                            kp, state,
+                            evidence=f"signal={rec.get('signal','')} "
+                                     f"positive={rec.get('positive_count',0)}")
+                    except Exception as e:  # noqa: BLE001 记账失败不阻断
+                        notices.append({"stage": "avoidance_ledger",
+                                        "reason": str(e), "fatal": False})
+                    node = nodes_map.get(kp)
+                    if node is not None:
+                        try:
+                            node.avoidance_state = state
+                            node.avoidance_count = int(getattr(
+                                node, "avoidance_count", 0)) + 1
+                            node.last_avoidance_at = str(int(time.time()))
+                        except Exception:  # noqa: BLE001 快照失败不阻断
+                            pass
+            except Exception as e:  # noqa: BLE001 观测失败不阻断对话
+                notices.append({"stage": "avoidance_observe",
+                                "reason": str(e), "fatal": False})
+
+        # ---- ② 元认知自评（高危险时机 + 学习者已给 self_level） ----
+        meta_event = None
+        route = None
+        self_level = ctx.get("meta_self_level")
+        if self_level in SELF_LEVELS:
+            pre_scan = pre.get("pre_scan") or {}
+            err_kps = {e.get("knowledge_point_id") or e.get("kp_candidate") or ""
+                       for e in (pre_scan.get("errors") or [])
+                       + (pre_scan.get("uncertain") or [])}
+            err_kps.discard("")
+            already_asked = bool(self._meta_ask_state.get("asked_this_task"))
+            target_hit = [kp for kp in self._target_constructions
+                          if kp not in err_kps]
+            outcome_has_error = bool(err_kps)
+            ask_flag, anchor = should_ask_meta(
+                target_hit, outcome_has_error, already_asked)
+            if ask_flag and not already_asked:
+                self._meta_ask_state["asked_this_task"] = True
+                anchor = anchor or (target_hit[0] if target_hit else "")
+            outcome = "wrong" if outcome_has_error else "correct"
+            meta_event = {
+                "meta_event": "self_rating",
+                "self_level": self_level,
+                "anchor": anchor,
+                "outcome_at_time": outcome,
+                "construction_ref": (target_hit[0] if target_hit else ""),
+                "ts": int(time.time()),
+            }
+            route = route_bias(self_level, outcome)
+            if anchor:
+                node = nodes_map.get(anchor)
+                if node is not None:
+                    try:
+                        node.meta_confidence = self_level
+                        node.meta_anchor = anchor
+                    except Exception:  # noqa: BLE001 快照失败不阻断
+                        pass
+        return {"avoidance": avoidance, "meta_event": meta_event,
+                "route_bias": route, "notices": notices,
+                "active": (bool(self._target_constructions)
+                           or meta_event is not None)}
+
     def _writeback_round(self, res, pre, user_input, conversation_id,
-                         history, provider, native_lang):
+                         history, provider, native_lang, b3=None):
         """阶段 · WritebackLedger：planner 回来后的写回——M8 两段式账本事件 +
         画像 facts 写回记忆 + M5 记忆追加（user 必记/assistant 非空才记）+
-        会话标题（首句）+ 0.27 成果卡 metadata。失败降级为 notices，不阻断对话。"""
+        会话标题（首句）+ 0.27 成果卡 metadata。失败降级为 notices，不阻断对话。
+        b3（B3 观测产物，可选）：meta_event 并入本轮 user 消息 metadata_json
+        （query_meta_events 据此聚合 ECE/Brier），全程不进 assistant 回复面。"""
         from engine.memory.summarize import build_profile_facts
         pre_scan = pre["pre_scan"]
         reason = pre["reason"]
@@ -261,9 +370,12 @@ class DialogRun:
         except Exception as e:  # noqa: BLE001
             m8_notices.append({"stage": "profile_writeback",
                                "reason": str(e), "fatal": False})
-        # 写回记忆：user 必记；assistant 回复非空才记（fallback 文案也记，多轮不断档）
+        # 写回记忆：user 必记（B3 meta_event 并入 metadata，静默不阻断）；
+        # assistant 回复非空才记（fallback 文案也记，多轮不断档）
         reply = str(res.get("text") or "")
-        self._mem.append(conversation_id, "user", user_input)
+        meta_event = ((b3 or {}).get("meta_event") or None)
+        self._mem.append(conversation_id, "user", user_input,
+                         metadata=(dict(meta_event) if meta_event else None))
         # 会话标题（0.19 前端 v2）：首条消息自动设为标题（取自首句提问，便于侧栏回访识别）
         if not history:
             try:

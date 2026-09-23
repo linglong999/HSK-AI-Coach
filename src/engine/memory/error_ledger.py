@@ -7,6 +7,7 @@
 #   语义与 JSON 版逐条对齐（repeated_error 判定、惯犯阈值、ring buffer）。
 # ============================================================
 
+import json
 import time
 from typing import Any, Dict, List, Optional
 
@@ -14,7 +15,8 @@ from engine.memory import store
 
 KINDS = {"observation_error", "repeated_error",
          "concept_confirmed", "concept_reviewed",
-         "feedback_presented", "uptake_observed"}   # B2：反馈呈现/采纳观测（新 kind）
+         "feedback_presented", "uptake_observed",   # B2：反馈呈现/采纳观测
+         "avoidance_observed"}                      # B3：回避观测（该用未用）
 MAX_EVENTS = 500          # ring buffer 上限（仿 MAX_ENGAGEMENT_EVENTS）
 REPEAT_THRESHOLD = 3      # 惯犯判定阈值（决策 B-乙）
 
@@ -79,6 +81,14 @@ class ErrorLedger:
         return self.record("uptake_observed", kp_id,
                            signature=kp_id, evidence=evidence)
 
+    def observe_avoidance(self, kp_id: str, state: str,
+                          evidence: str = "") -> str:
+        """B3：回避观测——"该用未用"发生时记账（state ∈ 图谱四态线索）。
+        与"错误"分型可查：avoidance_* 独立事件，走 record() 幂等链（不误改 repeated）。"""
+        return self.record("avoidance_observed", kp_id,
+                           signature=kp_id,
+                           evidence=f"state={state} {evidence}".strip())
+
     # ---------------- 读 ----------------
     def count_for_kp(self, kp_id: str) -> int:
         row = self._conn.execute(
@@ -129,3 +139,32 @@ class ErrorLedger:
         except Exception:  # noqa: BLE001
             pass
         self._conn = store.ensure_store(self._root)
+
+
+def query_meta_events(learner_id: str = "default", root: str = "data"):
+    """B3 G2：从 messages.metadata_json 聚合元认知自评事件，返回成对的
+    (self_level, outcome_at_time) 序列——供 B6 ECE/Brier/Calibration-Gap 直算。
+    每条 meta_event=="self_rating" 且含合法 self_level/outcome_at_time 才纳入；
+    锚点自由文本 / 字段残缺事件跳过（校验器语义）。库不可用时返回空列表（不炸）。"""
+    pairs = []
+    try:
+        conn = store.ensure_store(root)
+        rows = conn.execute(
+            "SELECT metadata_json FROM messages WHERE learner_id=?"
+            " ORDER BY ts ASC, seq ASC", (learner_id,)).fetchall()
+    except Exception:  # noqa: BLE001 库不可用/SQL 异常 → 空，不阻断
+        return pairs
+    for (meta_json,) in rows:
+        if not meta_json:
+            continue
+        try:
+            meta = json.loads(meta_json) if isinstance(meta_json, str) else meta_json
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if not isinstance(meta, dict) or meta.get("meta_event") != "self_rating":
+            continue
+        lv = meta.get("self_level")
+        out = meta.get("outcome_at_time")
+        if lv in ("certain", "half", "uncertain") and out in ("correct", "wrong"):
+            pairs.append((lv, out))
+    return pairs
