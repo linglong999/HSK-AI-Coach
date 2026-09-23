@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-"""P0.17 间隔调度（FSRS）—— 单元 + ErrorGraph 集成测试。
+"""P0.17 间隔调度 —— ErrorGraph 集成测试（B4：内核换 py-fsrs 适配器后保留调用点回归）。
 
-覆盖 v1 §P0.17 / v2 间隔调度：
-  - fsrs 四函数（retrievability/init_state/next_state/interval）+ W 参数
+覆盖 v1 §P0.17 / v2 间隔调度（自实现 fsrs 数学单测已迁 test_fsrs_adapter.py）：
   - 通过/失败后 S/D/next_review_at 变化符合 FSRS 规则（连续答对拉长、答错重置变短）
   - 冷启动缺省（无历史 → init_state + 保守首轮 ≥1 天）
   - due_nodes 严格到期口径；冷启动不进 due，走 unscheduled_topn（boost）
@@ -10,7 +9,6 @@
   - ingest_verdict 不驱动 FSRS（唯一写入方=review_feedback）
 运行: python -m unittest tests.test_fsrs_scheduler -v
 """
-import math
 import os
 import sys
 import unittest
@@ -20,63 +18,16 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from engine.scheduler import fsrs
+from engine.scheduler.fsrs_adapter import FsrsSchedulerAdapter
 from engine.graph.error_graph import ErrorGraph
+
+# 与 error_graph 模块级 _FSRS 同一语义的内核实例，用于期望值重算（非死写数值）
+_ADAPTER = FsrsSchedulerAdapter()
 
 
 def _ts(days_ago: float) -> str:
     t = datetime.now(timezone.utc) - timedelta(days=days_ago)
     return t.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-# ---------------- fsrs 模块单元 ----------------
-
-class FsrsMathTest(unittest.TestCase):
-
-    def test_retrievability_range(self):
-        # R∈(0,1]；t=0 时 R=1；t 越大 R 越小
-        self.assertAlmostEqual(fsrs.retrievability(1.0, 0.0), 1.0, places=6)
-        r_now = fsrs.retrievability(5.0, 0.0)
-        r_later = fsrs.retrievability(5.0, 10.0)
-        self.assertGreater(r_now, r_later)
-
-    def test_w_params_match_official(self):
-        # W 与 py-fsrs v5.1.3 官方 FSRS-5 记忆参考值逐值核对（用户已 19/19 核过）
-        expect = [0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604,
-                  0.0046, 1.54575, 0.1192, 1.01925, 1.9395, 0.11, 0.29605,
-                  2.2698, 0.2315, 2.9898, 0.51655, 0.6621, 0.0, 0.0]
-        self.assertEqual(len(fsrs.W), 21)
-        for i in range(21):
-            self.assertAlmostEqual(fsrs.W[i], expect[i], places=4, msg=f"W[{i}]")
-        self.assertAlmostEqual(fsrs.DECAY, -0.5)
-        self.assertAlmostEqual(fsrs.FACTOR, 19.0 / 81.0)
-
-    def test_init_state_rating_ladder(self):
-        # 首次：更高评级 → 更高 S0；D0 在 [1,10] 且随评级升高
-        s1 = fsrs.init_state(1).stability
-        s4 = fsrs.init_state(4).stability
-        self.assertGreater(s4, s1)
-        for r in (1, 2, 3, 4):
-            st = fsrs.init_state(r)
-            self.assertGreaterEqual(st.difficulty, 1.0)
-            self.assertLessEqual(st.difficulty, 10.0)
-
-    def test_next_state_repeat_extends_interval(self):
-        # 连续想起(3) → S 递增 → interval 拉长
-        st = fsrs.init_state(3)
-        i0 = fsrs.interval(st.stability)
-        st2 = fsrs.next_state(st, 3, elapsed_days=1.0)
-        i1 = fsrs.interval(st2.stability)
-        self.assertGreater(st2.stability, st.stability)
-        self.assertGreater(i1, i0)
-
-    def test_next_state_forget_resets_interval(self):
-        # 答错(1) → 遗忘，S 重回更低 → interval 变短
-        st = fsrs.init_state(3)
-        st2 = fsrs.next_state(st, 3, elapsed_days=1.0)
-        st3 = fsrs.next_state(st2, 1, elapsed_days=20.0)
-        self.assertLessEqual(st3.stability, st2.stability)  # 遗忘后 S 不高于旧
-        self.assertLess(fsrs.interval(st3.stability), fsrs.interval(st2.stability))
 
 
 # ---------------- ErrorGraph 集成 ----------------
@@ -138,9 +89,8 @@ class ReviewFeedbackFsrsTest(unittest.TestCase):
         self.assertIsNotNone(nd["next_review_at"])
         # 首轮保守：间隔 ≥1 天（下限 max(1, round(...)) 保证不进 0）
         self.assertGreaterEqual(out["interval_days"], 1)
-        # 冷启动 init_state(3) → interval≈3.17 → round=3；断言它由 S0 自然推出（而非死写 1）
-        import engine.scheduler.fsrs as fs
-        expect = round(fs.interval(fs.init_state(3).stability))
+        # 冷启动 init_state(3) → 由适配器内核推出（关系断言而非死写数值，规避 FSRS-5→6 漂移）
+        expect = round(_ADAPTER.interval(_ADAPTER.init_state(3).stability))
         self.assertEqual(out["interval_days"], max(1, expect))
 
     def test_rating1_forget_increments_streak(self):

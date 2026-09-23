@@ -18,7 +18,7 @@ from config.paths import PROJECT_ROOT
 from engine.graph.error_kind_map import resolve
 from engine.graph.model import Edge, Node, QueueItem
 from engine.graph.store import GraphStore
-from engine.scheduler import fsrs
+from engine.scheduler.fsrs_adapter import FsrsSchedulerAdapter, MemoryState
 
 # aging 形态：线性 1 + LAMBDA*days（3.x 定案 T1：λ=0.1/天，敏感区间[0.05,0.2]）
 LAMBDA_AGING = 0.1
@@ -61,6 +61,9 @@ NATURE_WEIGHT = {
 }
 FOSSIL_RULE = {"unfixed_streak": 3, "days_idle": 180}  # 连续≥3次复习未纠正 且 距上次学习≥180天
 FOSSIL_BOOST = 1.5        # 化石化节点 priority 乘数（与 nature 权重互斥，不叠乘）
+
+# B4：py-fsrs 调度内核模块级单例（Scheduler 无状态可共享；每 learner 一份 graph 实例共用）
+_FSRS = FsrsSchedulerAdapter()
 
 # 冲突优先级（§八）：跨类按类序（verdict 写 > 识别偏误写 > 图谱自身更新）
 _CLASS_ORDER = {"verdict": 0, "error": 1, "graph": 2}
@@ -378,17 +381,17 @@ class ErrorGraph:
             elapsed_days = self._days_since(base_ts)
 
             # 冷启动（无复习史）：首次用 init_state；否则推进 next_state
-            prev = fsrs.MemoryState(stability=node.fsrs_stability,
-                                    difficulty=node.fsrs_difficulty)
+            prev = MemoryState(stability=node.fsrs_stability,
+                               difficulty=node.fsrs_difficulty)
             if node.last_review_at is None and node.fsrs_stability <= 0:
-                st = fsrs.init_state(r)
+                st = _FSRS.init_state(r)
             else:
-                st = fsrs.next_state(prev, r, elapsed_days)
+                st = _FSRS.next_state(prev, r, elapsed_days)
 
             node.fsrs_stability = st.stability
             node.fsrs_difficulty = st.difficulty
             node.last_review_at = now
-            days = max(1, round(fsrs.interval(st.stability)))
+            days = max(1, round(_FSRS.interval(st.stability)))
             node.next_review_at = time.strftime(
                 "%Y-%m-%dT%H:%M:%SZ",
                 time.gmtime(time.time() + days * 86400))
