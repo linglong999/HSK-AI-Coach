@@ -2,14 +2,16 @@
 # LLM 客户端
 # 统一封装 LLM 调用，支持 DeepSeek / Qwen 切换（OpenAI 兼容格式）
 # 所有 Agent 通过本模块调用模型，便于后续替换或加日志/成本统计。
-# 传输层：requests.Session（主流 HTTP 客户端，原生支持流式）。测试经
-#   self._session 注入 duck-typed fake（post() 须按 requests.Response 语义返回）。
+# 传输层：openai SDK（B7 S0 由 requests 自写迁移，保行为）——对外调用
+#   接口/错误语义不变，仅换传输；测试经 http_client 注入 httpx.MockTransport
+# 替身（handler 按 httpx.Response 语义返回）。响应对象 .usage 原生透出
+#   （self.last_usage / chat_with_usage），供 S2 能量计量读取。
 # ============================================================
 
 import time
 from typing import List, Dict, Optional
 
-import requests
+from openai import OpenAI, OpenAIError, APIStatusError
 
 from config import settings
 
@@ -24,105 +26,129 @@ class LLMHTTPError(RuntimeError):
 
 class LLMClient:
     """轻量 LLM 客户端，OpenAI 兼容协议（/chat/completions）。
-    支持供应商配置覆盖（config 字典，0.20 BYOK）与真实流式（chat_stream）。"""
+    支持供应商配置覆盖（config 字典，0.20 BYOK）与真实流式（chat_stream）。
+    http_client: 可选注入 httpx.Client（测试传 MockTransport），None → openai 默认。
+    响应 usage 在每次成功 chat()/chat_stream() 后落在 self.last_usage。"""
 
-    def __init__(self, provider: Optional[str] = None, session: Optional["requests.Session"] = None):
+    def __init__(self, provider: Optional[str] = None,
+                 http_client: Optional[object] = None,
+                 timeout: float = 60):
         self.provider = provider or settings.LLM_PROVIDER
-        self._session = session if session is not None else requests.Session()
+        self._http_client = http_client
+        self._timeout = timeout
+        self.last_usage: Optional[Dict] = None
+
+    # ---------- 传输构造 ----------
+    def _openai(self, config: Optional[Dict]):
+        """按 config/全局配置解析 OpenAI 兼容三元组，构造一次调用用的 SDK client。
+        max_retries=0：SDK 内建重试关闭——退避重试由本模块自定义循环负责（保行为）。"""
+        if config:
+            base_url = config.get("base_url") or ""
+            api_key = config.get("api_key") or ""
+            model = config.get("model") or ""
+        else:
+            base_url, api_key, model = settings.get_llm_config()
+        if not api_key:
+            raise RuntimeError(
+                "未配置 API Key。请设置环境变量 DEEPSEEK_API_KEY （或 QWEN_API_KEY），"
+                "或在 .env 文件中填写。本项目为开源项目，API Key 由用户自行提供。"
+            )
+        client = OpenAI(
+            base_url=base_url.rstrip("/") or None,
+            api_key=api_key,
+            max_retries=0,
+            timeout=self._timeout,
+            http_client=self._http_client,
+        )
+        return model, client
 
     # ---------- 公共接口 ----------
     def chat(self, messages: List[Dict], temperature: float = 0.3,
              max_tokens: int = 2000, json_mode: bool = False,
              config: Optional[Dict] = None) -> str:
         """发送对话，返回纯文本回复（已剥离可能的 JSON 代码块标记）
-        json_mode: True 时启用 API 级 JSON 模式（response_format=json_object），
-                  提示词不必再靠"严格 JSON"愿望堆叠（对齐 2.1-2.3 调用层强约束）。
-        config: 可选供应商覆盖（0.20 BYOK）：{base_url, api_key, model}，
-                None → settings 全局配置（.env）。OpenAI 兼容协议统一格式。
+        json_mode: True 时启用 API 级 JSON 模式（response_format=json_object）。
+        config: 可选供应商覆盖（0.20 BYOK）：{base_url, api_key, model}。
         """
-        if config:
-            base_url = config.get("base_url") or ""
-            api_key = config.get("api_key") or ""
-            model = config.get("model") or ""
-        else:
-            base_url, api_key, model = settings.get_llm_config()
-        if not api_key:
-            raise RuntimeError(
-                "未配置 API Key。请设置环境变量 DEEPSEEK_API_KEY （或 QWEN_API_KEY），"
-                "或在 .env 文件中填写。本项目为开源项目，API Key 由用户自行提供。"
-            )
-
-        payload = {
+        model, client = self._openai(config)
+        kwargs = {
             "model": model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
-            "stream": False,
         }
         if json_mode:
             # DeepSeek/Qwen 均支持 OpenAI 兼容的 response_format json_object
-            payload["response_format"] = {"type": "json_object"}
-
-        # 注意：此处按 provider 切换 base_url，但统一使用 OpenAI 兼容 /chat/completions
-        url = base_url.rstrip("/") + "/chat/completions"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        }
+            kwargs["response_format"] = {"type": "json_object"}
 
         try:
-            return self._post_chat(url, headers, payload)
+            return self._create(client, kwargs)
         except LLMHTTPError as e:
             # json_mode 兼容性兜底（0.20）：部分供应商（Ollama 部分模型/GLM 某些版本）
             # 拒绝 response_format 参数返回 400 → 去掉该参数重试一次；
             # 仍失败则抛新错误（信息更真实），不静默吞掉。
             if json_mode and e.code == 400:
-                fallback = dict(payload)
+                fallback = dict(kwargs)
                 fallback.pop("response_format", None)
                 try:
-                    return self._post_chat(url, headers, fallback)
+                    return self._create(client, fallback)
                 except Exception as e2:  # noqa: BLE001
                     raise RuntimeError(
                         f"LLM 调用失败（json_mode 降级重试仍失败）: {e2}") from e2
             raise RuntimeError(f"LLM 调用失败(HTTP {e.code}): {e}") from e
 
+    def chat_with_usage(self, messages: List[Dict], temperature: float = 0.3,
+                        max_tokens: int = 2000, json_mode: bool = False,
+                        config: Optional[Dict] = None):
+        """兼容 chat() 语义，额外返回 (text, usage)；
+        usage = {prompt_tokens, completion_tokens}，失败/零产出走抛错路径不入账（S2）。
+        """
+        text = self.chat(messages, temperature=temperature, max_tokens=max_tokens,
+                         json_mode=json_mode, config=config)
+        return text, self.last_usage
+
     # ---------- 便捷方法 ----------
     def chat_stream(self, messages: List[Dict], temperature: float = 0.3,
                     max_tokens: int = 2000, config: Optional[Dict] = None):
         """流式对话：逐段产出增量文本（生成器），支持打字机节奏。
-        请求 stream=True；每次 yield 一个文本增量（SSE `\data:` 已剥外层）。
         错误语义与 chat 一致：4xx 抛 LLMHTTPError，网络/5xx/429 走退避重试。
         config: 可选供应商覆盖（同 chat）。"""
-        if config:
-            base_url = config.get("base_url") or ""
-            api_key = config.get("api_key") or ""
-            model = config.get("model") or ""
-        else:
-            base_url, api_key, model = settings.get_llm_config()
-        if not api_key:
-            raise RuntimeError(
-                "未配置 API Key。请设置环境变量 DEEPSEEK_API_KEY （或 QWEN_API_KEY），"
-                "或在 .env 文件中填写。本项目为开源项目，API Key 由用户自行提供。"
-            )
-        url = base_url.rstrip("/") + "/chat/completions"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        }
-        payload = {
+        model, client = self._openai(config)
+        kwargs = {
             "model": model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
             "stream": True,
         }
-        for chunk in self._post_chat_stream(url, headers, payload):
-            yield chunk
+        last_err = None
+        for attempt in range(3):
+            try:
+                stream = client.chat.completions.create(**kwargs)
+                for chunk in stream:
+                    if chunk.choices and chunk.choices[0].delta \
+                            and chunk.choices[0].delta.content:
+                        yield chunk.choices[0].delta.content
+                return
+            except LLMHTTPError:
+                raise
+            except APIStatusError as e:
+                sc = e.status_code or 0
+                if 400 <= sc < 500 and sc != 429:
+                    raise LLMHTTPError(
+                        f"LLM 调用失败(HTTP {sc})", code=sc)
+                last_err = e
+                if attempt < 2:
+                    time.sleep(0.5 * (attempt + 1))
+            except OpenAIError as e:
+                last_err = e
+                if attempt < 2:
+                    time.sleep(0.5 * (attempt + 1))
+        raise RuntimeError(f"LLM 调用失败(已重试): {last_err}")
 
     def chat_json(self, system: str, user: str, temperature: float = 0.2,
                   config: Optional[Dict] = None) -> dict:
-        """请求模型返回 JSON，并自动解析（非强制，供宽松场景用）。
-        config: 可选供应商覆盖（0.26 why 复用），透传给 chat()。"""
+        """请求模型返回 JSON，并自动解析（非强制，供宽松场景用）。"""
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -137,7 +163,7 @@ class LLMClient:
         - 启用 API 级 JSON 模式（response_format=json_object）；
         - 解析失败重试最多 retries 次（默认 1），仍失败抛 JSONStrictError（由调用方降级）；
         - 绝不静默返回空/坏结果。（P1-1：降级方向不能偏向"通过"）
-        config: 可选供应商覆盖（默认 None → settings 全局配置；0.26 why 需按请求供应商）。
+        config: 可选供应商覆盖（默认 None → settings 全局配置）。
         """
         if retries < 0:
             raise ValueError("retries 必须 >= 0")
@@ -160,68 +186,47 @@ class LLMClient:
         raise JSONStrictError("unreachable")  # 不可达占位
 
     # ---------- 传输层 ----------
-    def _post_chat(self, url: str, headers: Dict, payload: Dict) -> str:
-        """单次 HTTP POST（含瞬时故障退避重试，4xx 不重试直接抛）。
-        经 self._session.post() 发送；网络/超时/5xx/429 重试最多 2 次，4xx 立即抛。"""
+    def _create(self, client: OpenAI, kwargs: Dict) -> str:
+        """单次完成调用（含瞬时故障退避重试，4xx 不重试直接抛）。
+        网络/超时/5xx/429 重试最多 2 次，4xx 立即抛；成功回填 self.last_usage。"""
+        self.last_usage = None
         last_err = None
         for attempt in range(3):
             try:
-                resp = self._session.post(
-                    url, json=payload, headers=headers, timeout=60)
-                if resp.status_code >= 400:
-                    if 400 <= resp.status_code < 500 and resp.status_code != 429:
-                        raise LLMHTTPError(
-                            f"LLM 调用失败(HTTP {resp.status_code})", code=resp.status_code)
-                    raise requests.HTTPError(f"HTTP {resp.status_code}: {resp.text!r}")
-                content = resp.json()["choices"][0]["message"]["content"]
+                resp = client.chat.completions.create(**kwargs)
+                self.last_usage = _to_usage(getattr(resp, "usage", None))
+                content = ""
+                if resp.choices and resp.choices[0].message:
+                    content = resp.choices[0].message.content or ""
                 return strip_code_fence(content)
             except LLMHTTPError:
                 raise   # 4xx 不重试
-            except requests.RequestException as e:
+            except APIStatusError as e:
+                sc = e.status_code or 0
+                if 400 <= sc < 500 and sc != 429:
+                    raise LLMHTTPError(
+                        f"LLM 调用失败(HTTP {sc})", code=sc)
                 last_err = e
                 if attempt < 2:
                     time.sleep(0.5 * (attempt + 1))
-        raise RuntimeError(f"LLM 调用失败(已重试): {last_err}")
-
-    def _post_chat_stream(self, url: str, headers: Dict, payload: Dict):
-        """流式传输：解析 OpenAI 兼容 SSE（`data: {...}`，末尾 `data: [DONE]`）。
-        逐 chunk 产出 content 增量；4xx → LLMHTTPError，网络/5xx/429 退避重试。"""
-        for attempt in range(3):
-            try:
-                resp = self._session.post(
-                    url, json=payload, headers=headers, timeout=60, stream=True)
-                if resp.status_code >= 400:
-                    if 400 <= resp.status_code < 500 and resp.status_code != 429:
-                        raise LLMHTTPError(
-                            f"LLM 调用失败(HTTP {resp.status_code})", code=resp.status_code)
-                    raise requests.HTTPError(f"HTTP {resp.status_code}: {resp.text!r}")
-                for line in resp.iter_lines(decode_unicode=True):
-                    if not line or not line.startswith("data:"):
-                        continue
-                    data = line[len("data:"):].strip()
-                    if data == "[DONE]":
-                        return
-                    try:
-                        chunk_obj = json_loads(data)
-                    except Exception:  # noqa: BLE001 非 JSON 行（心跳等）跳过
-                        continue
-                    choices = chunk_obj.get("choices") or []
-                    if choices and choices[0].get("delta", {}).get("content"):
-                        yield choices[0]["delta"]["content"]
-                return
-            except LLMHTTPError:
-                raise
-            except requests.RequestException as e:
+            except OpenAIError as e:   # 断连/超时等传输层（含 APIConnectionError）
                 last_err = e
                 if attempt < 2:
                     time.sleep(0.5 * (attempt + 1))
-            except (ValueError, KeyError, TypeError) as e:
-                # 响应格式异常：非网络错误，重试无益，直接抛
-                raise RuntimeError(f"LLM 流式响应解析失败: {e}") from e
         raise RuntimeError(f"LLM 调用失败(已重试): {last_err}")
 
 
 # ---------- 工具函数 ----------
+def _to_usage(usage) -> Optional[Dict]:
+    """openai usage 对象 → 可序列化 {prompt_tokens, completion_tokens}；None 原样返回。"""
+    if usage is None:
+        return None
+    return {
+        "prompt_tokens": getattr(usage, "prompt_tokens", None),
+        "completion_tokens": getattr(usage, "completion_tokens", None),
+    }
+
+
 def json_dumps(obj) -> str:
     import json
     return json.dumps(obj, ensure_ascii=False)

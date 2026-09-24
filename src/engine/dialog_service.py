@@ -22,9 +22,14 @@ from engine.dialog_run import DialogRun
 
 
 def _default_dialog_llm(messages):
-    """planner 的默认 LLM 调用（无静默降级：网络/Key 异常如实上抛，由上层报错）。"""
+    """planner 的默认 LLM 调用（无静默降级：网络/Key 异常如实上抛，由上层报错）。
+    B7 S2：用 chat_with_usage 取 token 用量回报入回合收集器（S2 能量计量）。"""
     from engine.llm.client import LLMClient
-    return LLMClient().chat(messages, temperature=0.3)
+    from engine.quota import report_usage
+    client = LLMClient()
+    text, usage = client.chat_with_usage(messages, temperature=0.3)
+    report_usage(usage)
+    return text
 
 
 def _provider_cfg(provider) -> Optional[dict]:
@@ -36,11 +41,18 @@ def _provider_cfg(provider) -> Optional[dict]:
 
 
 def _provider_llm(provider):
-    """绑定供应商配置的 llm_call（0.20 BYOK）：请求级覆盖 settings 全局配置。"""
+    """绑定供应商配置的 llm_call（0.20 BYOK）：请求级覆盖 settings 全局配置。
+    B7 S2：chat_with_usage 取用量回报入回合收集器（与默认路径同口径）。"""
     from engine.llm.client import LLMClient
+    from engine.quota import report_usage
     cfg = _provider_cfg(provider)
     client = LLMClient()
-    return lambda messages: client.chat(messages, temperature=0.3, config=cfg)
+
+    def _call(messages):
+        text, usage = client.chat_with_usage(messages, temperature=0.3, config=cfg)
+        report_usage(usage)
+        return text
+    return _call
 
 
 class ProviderResolver:
@@ -250,29 +262,38 @@ class DialogService:
             ctx, err = self._load_session_context(payload)
             if err is not None:
                 return err
-            err = self._consume_visitor_quota(vid)
+            err = self._consume_visitor_quota(vid, ctx["conversation_id"])
             if err is not None:
                 return err
             provider, err = self._resolve_dialog_provider(ctx["provider_id"])
             if err is not None:
                 return err
-            return DialogRun(
-                router=self._router,
-                planner=self._get_planner(provider),
-                identify_skill=self._get_identify_skill(),
-                mem=self._get_memory(ctx["learner_id"]),
-                wb=self._get_writeback(ctx["learner_id"]),
-                tracker=self._get_tracker(ctx["conversation_id"]),
-                deep_dived_kps=self._get_deep_dived(ctx["conversation_id"]),
-                target_constructions=self._get_target_constructions(
-                    ctx["conversation_id"]),
-                meta_ask_state=self._get_meta_ask(ctx["conversation_id"]),
-                # 纯静态助手注入（构造时取类属性：测试 patch DialogService._xxx
-                # 对 dialog 主链同样生效，稳定挂点不破坏）
-                normalize_user_level=DialogService._normalize_user_level,
-                writeback_ledger_events=DialogService._writeback_ledger_events,
-                assistant_payload=DialogService._assistant_payload,
-            ).run(ctx, provider)
+            # B7 S2：回合用量收集器入坑 → DialogRun 全链（含 planner 多次 LLM 调用）
+            # 经 llm_call 包装回报；run 后取走折算+记账（失败/零产出不扣）。
+            from engine.quota import begin_round, end_round
+            usage = begin_round()
+            try:
+                status, out = DialogRun(
+                    router=self._router,
+                    planner=self._get_planner(provider),
+                    identify_skill=self._get_identify_skill(),
+                    mem=self._get_memory(ctx["learner_id"]),
+                    wb=self._get_writeback(ctx["learner_id"]),
+                    tracker=self._get_tracker(ctx["conversation_id"]),
+                    deep_dived_kps=self._get_deep_dived(ctx["conversation_id"]),
+                    target_constructions=self._get_target_constructions(
+                        ctx["conversation_id"]),
+                    meta_ask_state=self._get_meta_ask(ctx["conversation_id"]),
+                    # 纯静态助手注入（构造时取类属性：测试 patch DialogService._xxx
+                    # 对 dialog 主链同样生效，稳定挂点不破坏）
+                    normalize_user_level=DialogService._normalize_user_level,
+                    writeback_ledger_events=DialogService._writeback_ledger_events,
+                    assistant_payload=DialogService._assistant_payload,
+                ).run(ctx, provider)
+            finally:
+                usage = end_round()
+            self._account_energy(ctx, out, status, usage, vid)
+            return status, out
 
     # ---------- dialog 入口阶段（深化批次B 保留；其余阶段见 engine/dialog_run.py） ----------
 
@@ -306,21 +327,88 @@ class DialogService:
                                 or None),
         }, None
 
-    def _consume_visitor_quota(self, vid):
-        """阶段 · 游客配额闸门（P0.10，放在供应商解析之前：满额直接 429，不调模型、
-        不计次、不深校验）。owner-key 判定与 vid 提取在 HTTP 层；此处只做扣减。"""
+    def _consume_visitor_quota(self, vid, session_id=None):
+        """阶段 · 游客能量闸门（B7 S3，放在供应商解析之前：满额/超回合直接 429，不调模型、
+        不计能量、不深校验）。owner-key 判定与 vid 提取在 HTTP 层；此处只做入口校验。
+        session_id = conversation_id：换会话自动归位回合计数（单会话 ≤12 硬限）。"""
         if self._gate is None or vid is None:
             return None
         with self._lock:
-            ok, remaining, reset = self._gate.check_and_consume(vid)
-        if ok:
+            allowed, tier, st = self._gate.check_start(vid, session_id)
+        if allowed:
             return None
+        if tier == "round_cap":
+            return 429, {
+                "error": st.get("reset_at", ""),
+                "code": "visitor_round_cap",
+                "message": "单会话已达回合上限，明天再来开一段新的。",
+                "remaining": 0, "round_count": st.get("round_count"),
+                "intercept": {"tier": "round_cap",
+                              "energy_left": st.get("energy_left"),
+                              "est_cost": st.get("est_cost"),
+                              "msg": "这次我们先聊到这，你今天这几句已经很有进步了。"
+                                     "想接着练，明天再来开一段新的。"},
+            }
         return 429, {
-            "error": "今日游客额度已用尽，次日 UTC 00:00 重置；"
+            "error": "今日能量额度已用尽，次日 UTC 00:00 重置；"
                      "配置你自己的 API Key 可无限使用。",
-            "code": "visitor_quota_exceeded",
+            "code": "visitor_energy_exhausted",
             "message": "配置你自己的 API Key 可无限使用",
-            "remaining": 0, "reset_at": reset}
+            "remaining": 0, "reset_at": st.get("reset_at"),
+            "intercept": {"tier": "exhaust",
+                          "energy_left": st.get("energy_left"),
+                          "est_cost": st.get("est_cost"),
+                          "msg": "今天的会话额度用完了。不过复习队列里还有几个小练习，"
+                                 "可以接着练，不耽误你巩固今天的收获。"},
+        }
+
+    def _account_energy(self, ctx, out, status, usage, vid) -> None:
+        """B7 S2 · 回合能量计量：体面成功且有产出的回合，把 LLM token 用量折算为
+        统一能量分并写 ledger token_usage 事件；失败/零产出回合不入账不扣。
+        判定口径（对齐计划"失败/零产出（tr.ok=false）不入账"）：
+          - status != 200 → 硬失败，不入账
+          - trace 无任何 ok 项（全 fallback/未产成）→ 零产出，不入账
+        流量：usage=end_round() 收集器 → TokenMeter.energy(prompt,completion)。
+        energy_used 回填 out 供 SSE done 透出（S1 已置默认 0）。
+        S3 将在此处把 energy 继续喂给 VisitorGate 能量判据做日档位扣减。"""
+        if status != 200 or not isinstance(out, dict):
+            return
+        produced = any(t.get("ok") for t in out.get("trace", []) or [])
+        if not produced or usage is None:
+            return
+        prompt_t, completion_t = usage.totals()
+        if (prompt_t + completion_t) <= 0:
+            return                             # 无 LLM 用量回报（如 mock）→ 0 分不记账
+        from engine.quota import TokenMeter
+        energy = TokenMeter().energy(prompt_t, completion_t)
+        try:
+            self._get_writeback(ctx["learner_id"]).ledger.record_token_usage(
+                prompt_t, completion_t, energy=energy,
+                evidence=f"conv={ctx['conversation_id']}")
+        except Exception:  # noqa: BLE001 记账失败不阻断对话
+            pass
+        out["energy_used"] = energy
+        # B7 S3：结算进游客能量闸门（扣能量+回合计数）；产出档位 → SSE intercept 事件。
+        # 静默拦截后记账照常进 ledger（防绕过）；only when gate active & vid present。
+        if self._gate is not None and vid is not None:
+            try:
+                with self._lock:
+                    tier, st = self._gate.settle(
+                        vid, ctx["conversation_id"], energy=energy)
+                if tier:
+                    out["intercept"] = {
+                        "tier": tier,
+                        "energy_left": st.get("energy_left"),
+                        "est_cost": st.get("est_cost"),
+                        "round_count": st.get("round_count"),
+                        "msg": {"low": "今天还能再聊一小段，随时回来继续。",
+                                "exhaust": "今天的会话额度用完了。不过复习队列里还有"
+                                           "几个小练习，可以接着练，不耽误你巩固今天的收获。",
+                                "round_cap": "这次我们先聊到这，你今天这几句已经很有进步了。"
+                                             "想接着练，明天再来开一段新的。"}[tier],
+                    }
+            except Exception:  # noqa: BLE001 闸门异常不阻断对话
+                pass
 
     def _resolve_dialog_provider(self, provider_id: str):
         """阶段 · ResolveProvider：委托 ProviderResolver 注入缝（默认生产实现，

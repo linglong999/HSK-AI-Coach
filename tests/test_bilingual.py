@@ -353,13 +353,10 @@ def _start_server(router, dialog_llm):
 
 
 def _post(port, body):
-    c = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
-    c.request("POST", "/api/dialog", json.dumps(body).encode(),
-              {"Content-Type": "application/json"})
-    r = c.getresponse()
-    raw = r.read()
-    c.close()
-    return r.status, json.loads(raw.decode())
+    from ._serve_common import handle_response, parse_body
+    st, raw, _hs = handle_response(port, "POST", "/api/dialog",
+                                   json.dumps(body).encode())
+    return st, parse_body("/api/dialog", raw.decode())
 
 
 class ServeLangTest(unittest.TestCase):

@@ -87,6 +87,11 @@ class BindLlmCallTest(unittest.TestCase):
                                 config=config)
                 return "resp"
 
+            def chat_with_usage(self, messages, temperature=None, config=None):
+                captured.update(messages=messages, temperature=temperature,
+                                config=config)
+                return "resp", {"prompt_tokens": 1, "completion_tokens": 1}
+
         with mock.patch("engine.llm.client.LLMClient", FakeClient):
             llm = r.bind_llm_call(_provider())
         self.assertEqual(llm([{"role": "user", "content": "hi"}]), "resp")

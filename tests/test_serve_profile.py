@@ -76,16 +76,10 @@ def _start_server(router, dialog_llm=None):
 
 
 def _post(port, path, body):
-    c = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
-    c.request("POST", path, body.encode(),
-              {"Content-Type": "application/json"})
-    r = c.getresponse()
-    raw = r.read()
-    c.close()
-    try:
-        return r.status, json.loads(raw.decode())
-    except Exception:
-        return r.status, None
+    from ._serve_common import handle_response, parse_body
+    st, raw, _hs = handle_response(port, "POST", path,
+                                   body.encode() if isinstance(body, str) else json.dumps(body).encode())
+    return st, parse_body(path, raw.decode())
 
 
 def _get(port, path):

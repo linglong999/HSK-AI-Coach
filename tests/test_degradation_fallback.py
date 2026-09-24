@@ -15,6 +15,8 @@ import sys
 import unittest
 from unittest.mock import MagicMock
 
+import httpx
+
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
@@ -27,42 +29,32 @@ from engine.verifier import Verifier
 import config.settings as settings
 
 
-class FakeResp:
-    """requests.Response 替身：含 status_code/json()/text（供 LLMClient 传输层消费）。"""
-
-    def __init__(self, body: dict, status_code: int = 200):
-        self._body = body
-        self.status_code = status_code
-
-    def json(self):
-        return self._body
-
-    @property
-    def text(self):
-        import json
-        return json.dumps(self._body)
+def _cc_ok(content="hello"):
+    """构造合法 ChatCompletion JSON（含 usage，供 openai SDK 解析透出）。"""
+    return {"id": "chatcmpl-p", "object": "chat.completion",
+            "created": 0, "model": "test-model",
+            "choices": [{"index": 0,
+                         "message": {"role": "assistant", "content": content},
+                         "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 5, "completion_tokens": 3,
+                      "total_tokens": 8}}
 
 
-def _ok_body():
-    return {"choices": [{"message": {"content": "hello"}}]}
+def _script_transport(state):
+    """httpx.MockTransport handler：脚本化失败次数/要抛的传输异常/固定状态码。"""
+    import json
 
+    def handler(request):
+        state["payloads"].append(
+            json.loads(request.content) if request.content else {})
+        if state["fails"] > 0:
+            state["fails"] -= 1
+            raise state["err"]
+        if state.get("status") is not None:
+            return httpx.Response(state["status"], json={"error": "unauthorized"})
+        return httpx.Response(200, json=_cc_ok())
 
-class FakeSession:
-    """requests.Session 替身：可脚本化，post() 抛指定异常或返回 FakeResp。
-    校验 payload 非空 / 捕获 JSON body（用于断言是否含 response_format）。"""
-
-    def __init__(self):
-        self.payloads = []
-        self._fails = 0          # 剩余连续抛错的次数
-        self._err = None
-        self._resp = None        # 成功后返回的响应；None → _ok_body()
-
-    def post(self, url, json=None, headers=None, timeout=60):
-        self.payloads.append(json)
-        if self._fails > 0:
-            self._fails -= 1
-            raise self._err
-        return self._resp if self._resp is not None else FakeResp(_ok_body())
+    return handler
 
 
 class ClientRetryTestBase(unittest.TestCase):
@@ -71,47 +63,57 @@ class ClientRetryTestBase(unittest.TestCase):
         settings.get_llm_config = lambda: ("http://fake.local", "test-key", "test-model")
         self._orig_sleep = client_mod.time.sleep
         client_mod.time.sleep = lambda s: None
-        self.client = LLMClient(provider="deepseek")
-        self._orig_session = self.client._session
-        self.client._session = FakeSession()
+        self._state = {"payloads": [], "fails": 0, "err": None, "status": None}
+        self._transport = httpx.Client(transport=httpx.MockTransport(
+            _script_transport(self._state)))
+        self.client = LLMClient(provider="deepseek", http_client=self._transport)
 
     def tearDown(self):
         settings.get_llm_config = self._orig_cfg
         client_mod.time.sleep = self._orig_sleep
-        self.client._session = self._orig_session
+        self._transport.close()
 
 
 class TestLLMNetworkRetry(ClientRetryTestBase):
     def test_transient_error_retries_then_succeeds(self):
         """连接错误×2 → 第3次成功：chat 正常返回，不抛"""
-        import requests
-        self.client._session._fails = 2
-        self.client._session._err = requests.ConnectionError("瞬时连接故障")
+        self._state["fails"] = 2
+        self._state["err"] = httpx.ConnectError("瞬时连接故障")
         out = self.client.chat([{"role": "user", "content": "hi"}])
         self.assertEqual(out, "hello")
-        self.assertEqual(len(self.client._session.payloads), 3)
+        self.assertEqual(len(self._state["payloads"]), 3)
 
     def test_persistent_error_raises_after_retries(self):
         """持续故障：重试 3 次后抛 RuntimeError（带已重试标记）"""
-        import requests
-        self.client._session._fails = 99
-        self.client._session._err = requests.ConnectionError("断网")
+        self._state["fails"] = 99
+        self._state["err"] = httpx.ConnectError("断网")
         with self.assertRaisesRegex(RuntimeError, "已重试"):
             self.client.chat([{"role": "user", "content": "hi"}])
 
     def test_http_4xx_no_retry(self):
         """HTTP 401（Key 无效）：重试无意义，立即抛（不带已重试标记）"""
-        calls = []
-        real = self.client._session
-
-        def unauthorized(*a, **kw):
-            calls.append(1)
-            return FakeResp({"error": "unauthorized"}, status_code=401)
-
-        self.client._session = type("F", (), {"post": unauthorized})()
+        self._state["status"] = 401
         with self.assertRaisesRegex(RuntimeError, "HTTP 401"):
             self.client.chat([{"role": "user", "content": "hi"}])
-        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(self._state["payloads"]), 1)
+
+    def test_chat_with_usage_returns_tuple(self):
+        """chat_with_usage 返回 (text, usage)——S2 计量的数据源接口"""
+        text, usage = self.client.chat_with_usage(
+            [{"role": "user", "content": "hi"}])
+        self.assertEqual(text, "hello")
+        self.assertEqual(usage, {"prompt_tokens": 5, "completion_tokens": 3})
+
+    def test_usage_exposed_on_success(self):
+        """成功调用后 self.last_usage 透出 prompt/completion tokens（S2 计量源）"""
+        self.client.chat([{"role": "user", "content": "hi"}])
+        self.assertEqual(self.client.last_usage,
+                         {"prompt_tokens": 5, "completion_tokens": 3})
+        # 失败（4xx）路径不残留上次 usage —— 失败/零产出不入账语义
+        self._state["status"] = 401
+        with self.assertRaises(RuntimeError):
+            self.client.chat([{"role": "user", "content": "hi"}])
+        self.assertIsNone(self.client.last_usage)
 
 
 class TestRecognizerRuleFallback(unittest.TestCase):

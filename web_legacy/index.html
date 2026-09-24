@@ -1,0 +1,3188 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="memphis">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HSK-AI-Coach · 自由对话 · 认知地图</title>
+<!--
+  前端壳 v2（0.19 · 卡片画布，2026-09-02）
+  单强调色+灰阶、可折叠侧栏、卡片画布、主题切换、大弹窗设置。
+  驯化语义（项目铁律）：卡片分支动作只沿图谱权威边（↗深挖已有KP / →混淆边相邻 / ↓待复习），
+  无权威边方向置灰——"界面自由，数据规则"。
+  主题：孟菲斯 / 暖橙 两套（用户拍板），data-theme 切换派生 token。
+  零依赖铁律（M10）：无 CDN/字体外链，系统字体栈，单文件可离线。
+  数据接缝：/api/dialog（planner 唯一入口，conversation_id 多轮记忆）+ /api/graph
+            + /api/profile（画像/会话列表）+ /api/conversation?id=（深链恢复）。
+-->
+<style>
+  /* ============ 主题 token（两套，用户拍板：孟菲斯 / 暖橙） ============ */
+  :root,[data-theme="memphis"]{
+    --brand:223 107 140; --brand-ink:#fff;
+    --bg:250 248 243; --panel:244 240 234; --panel2:255 255 255;
+    --line:212 204 190; --line-strong:196 184 166;
+    --tx:42 36 34; --tx2:96 86 80; --tx3:140 128 120;
+    --input:242 238 232; --usermsg:252 230 236;
+    --item:240 236 228; --item-active:252 226 236;
+    /* 语义色（承载信息，不随主题降级为灰阶） */
+    --sem-ok:34 154 104; --sem-warn:183 121 26; --sem-err:206 74 64;
+    --kp-vocab:52 118 186; --kp-grammar:128 84 186; --kp-pragma:206 116 40; --kp-char:206 74 64;
+  }
+  [data-theme="warm"]{
+    --brand:244 95 40; --brand-ink:#fff;
+    --bg:242 234 219; --panel:236 226 209; --panel2:255 252 247;
+    --line:208 197 180; --line-strong:190 176 156;
+    --tx:32 28 24; --tx2:90 82 72; --tx3:145 135 130;
+    --input:236 228 215; --usermsg:250 228 210;
+    --item:240 232 220; --item-active:250 222 205;
+    --sem-ok:34 154 104; --sem-warn:183 121 26; --sem-err:206 74 64;
+    --kp-vocab:52 118 186; --kp-grammar:128 84 186; --kp-pragma:206 116 40; --kp-char:206 74 64;
+  }
+  /* 暗夜（移植自个人工作台 midnight：暖褐黑 + 亮米白 + 亮铜金，无蓝味）*/
+  [data-theme="midnight"]{
+    --brand:212 160 84; --brand-ink:#241f1c;
+    --bg:36 31 28; --panel:43 38 34; --panel2:51 46 41;
+    --line:66 58 52; --line-strong:84 74 66;
+    --tx:236 231 224; --tx2:200 192 184; --tx3:158 149 141;
+    --input:40 35 31; --usermsg:74 58 42;
+    --item:48 42 38; --item-active:74 60 44;
+    /* 语义色整体提亮一档（暗底下同亮度会显脏）*/
+    --sem-ok:92 186 140; --sem-warn:214 156 66; --sem-err:232 106 92;
+    --kp-vocab:96 156 220; --kp-grammar:166 128 220; --kp-pragma:232 150 84; --kp-char:232 106 92;
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:rgb(var(--bg));color:rgb(var(--tx));
+       font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;
+       transition:background .25s ease,color .25s ease}
+  .mono{font-family:Consolas,"JetBrains Mono","Courier New",monospace}
+  .a{color:rgb(var(--brand))}
+
+  #app{display:flex;height:100vh}
+
+  /* ============ 左：侧栏（0.19 新增） ============ */
+  .side{width:238px;flex-shrink:0;display:flex;flex-direction:column;background:rgb(var(--panel));
+        border-right:1px solid rgb(var(--line));transition:width .2s ease,transform .2s ease;overflow:hidden}
+  .side.closed{width:0;border-right:0}
+  .side-top{display:flex;align-items:center;gap:8px;padding:13px 12px 9px;white-space:nowrap}
+  .side-top .logo{font-weight:700;font-size:16px;letter-spacing:.4px}
+  .side-top .logo b{color:rgb(var(--brand))}
+  .fold{margin-left:auto;background:none;border:0;color:rgb(var(--tx3));cursor:pointer;font-size:16px;padding:4px 6px;border-radius:6px}
+  .fold:hover{color:rgb(var(--tx));background:rgb(var(--item))}
+  .side-open{position:fixed;top:12px;left:12px;z-index:60;width:34px;height:34px;border-radius:9px;
+             border:1px solid rgb(var(--line));background:rgb(var(--panel2));color:rgb(var(--tx2));
+             cursor:pointer;font-size:15px;display:none;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+  .side-open:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+  .side-open.show{display:block}   /* 全局生效：宽屏收起侧栏后也能拉起 */
+  .side-scroll{flex:1;overflow-y:auto;padding:2px 10px 10px;display:flex;flex-direction:column;gap:2px;min-height:0}
+  .side-scroll::-webkit-scrollbar{width:7px}
+  .side-scroll::-webkit-scrollbar-thumb{background:rgb(var(--line));border-radius:4px}
+  .hd{display:flex;align-items:center;gap:7px;padding:10px 6px 5px;color:rgb(var(--tx3));
+      font-size:11px;font-weight:700;letter-spacing:1.2px;white-space:nowrap}
+  .hd .sep{flex:1;height:1px;background:rgb(var(--line))}
+  .hd .ct{font-weight:400;letter-spacing:0}
+  .resident{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:10px;
+            background:rgb(var(--item));border:1px solid rgb(var(--line));cursor:pointer;white-space:nowrap}
+  .resident:hover{border-color:rgb(var(--brand)/.5)}
+  .resident .av{width:30px;height:30px;border-radius:8px;background:rgb(var(--brand));color:rgb(var(--brand-ink));
+                display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
+  .resident .mt{flex:1;min-width:0}
+  .resident .mt .t{font-size:13px;font-weight:600}
+  .resident .mt .s{font-size:10.5px;color:rgb(var(--tx3))}
+  .resident .chip{font-size:9.5px;padding:1px 7px;border-radius:6px;
+                  background:rgb(var(--brand)/.14);color:rgb(var(--brand))}
+  .sbtn{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:9px;cursor:pointer;
+        color:rgb(var(--tx2));transition:background .15s;white-space:nowrap;user-select:none}
+  .sbtn:hover{background:rgb(var(--item))}
+  .sbtn .ic{width:17px;text-align:center;color:rgb(var(--tx3));flex-shrink:0;font-size:13px}
+  .sbtn.add{border:1px dashed rgb(var(--line-strong));color:rgb(var(--tx3));justify-content:center;font-size:12.5px;padding:7px}
+  /* 0.25 免 Key 首屏配置引导条 */
+  .cfgbar{display:flex;align-items:center;gap:10px;margin:10px 14px 0;padding:10px 13px;border:1px solid rgb(var(--sem-warn)/.5);background:rgb(var(--sem-warn)/.12);border-radius:10px;font-size:13px}
+  .cfgbar.hidden{display:none}
+  .cfgbar .cb-ico{flex:none;font-size:16px;line-height:1}
+  .cfgbar .cb-t{font-weight:700;color:rgb(var(--sem-warn));margin-right:8px}
+  .cfgbar .cb-sub{color:rgb(var(--tx2));flex:1;min-width:0}
+  .cfgbar .cb-go{flex:none;padding:5px 12px;border-radius:8px;background:rgb(var(--brand));color:var(--brand-ink);font-weight:600;border:0;cursor:pointer;font-size:12.5px}
+  .cfgbar .cb-x{flex:none;background:none;border:0;color:rgb(var(--tx3));cursor:pointer;font-size:15px;line-height:1;padding:2px}
+  .sbtn.add:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+  .sbtn .bdg{margin-left:auto;font-size:10.5px;color:rgb(var(--tx3))}
+  .sbtn.cur{background:rgb(var(--item-active));color:rgb(var(--tx));font-weight:600}
+  .sbtn.cur .ic{color:rgb(var(--brand))}
+  .srow-sub{font-size:10.5px;color:rgb(var(--tx3));margin-left:auto}
+  .side-bot{border-top:1px solid rgb(var(--line));padding:8px 10px;display:flex;flex-direction:column;gap:2px;white-space:nowrap}
+  .status{display:flex;align-items:center;gap:6px;font-size:11px;color:rgb(var(--tx3));padding:4px 9px;overflow:hidden;text-overflow:ellipsis}
+  .status .dot{width:7px;height:7px;border-radius:50%;background:rgb(var(--tx3));flex-shrink:0}
+  .status.on .dot{background:rgb(var(--sem-ok))}
+  .status.off .dot{background:rgb(var(--sem-err))}
+
+  /* ============ 主区：对话画布（0.19 第三轮：地图不常驻，仅经侧栏「◈ 认知地图」进入） ============ */
+  main{flex:1;display:grid;grid-template-columns:1fr;min-width:0;min-height:0}
+  .right{display:none}                        /* 地图默认隐藏 */
+  main.mapview .right{display:flex;flex-direction:column;border-left:0}
+  main.mapview .left{display:none}
+  .back-chat{display:none;align-items:center;gap:4px;border:1px solid rgb(var(--line));background:rgb(var(--panel2));
+             color:rgb(var(--tx2));font-size:12px;padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap}
+  .back-chat:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+  main.mapview .back-chat{display:inline-flex}
+  /* P0.13 独立复习页视图：集中做题，地图留侧栏入口 */
+  main.reviewview .left{display:none}
+  main.reviewview .right{display:none}
+  main.reviewview .back-chat{display:inline-flex}
+  main.reviewview .reviewwrap{display:flex;flex-direction:column;min-height:0}
+  .reviewwrap{display:none}
+  .left{background:rgb(var(--panel));display:flex;flex-direction:column;min-height:0}
+  .chat{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px;
+        align-items:center}
+  .chat>*{width:100%;max-width:880px}         /* 全宽画布下内容居中限宽，保可读性 */
+  .chat::-webkit-scrollbar{width:8px}
+  .chat::-webkit-scrollbar-thumb{background:rgb(var(--line));border-radius:4px}
+
+  .empty{color:rgb(var(--tx2));padding:24px 6px;line-height:1.9}
+  .empty h2{margin:0 0 8px;font-size:17px;color:rgb(var(--tx));font-weight:700}
+  .empty p{margin:0 0 14px;font-size:13px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{padding:6px 13px;border-radius:20px;border:1px solid rgb(var(--line));background:rgb(var(--panel2));
+        color:rgb(var(--tx2));font-size:12.5px;cursor:pointer;transition:border-color .15s,color .15s}
+  .chip:hover{border-color:rgb(var(--brand));color:rgb(var(--brand))}
+
+  .msg-user{align-self:flex-end;max-width:86%;background:rgb(var(--usermsg));border:1px solid rgb(var(--line));
+            border-radius:12px 12px 4px 12px;padding:8px 12px;line-height:1.55;white-space:pre-wrap;animation:pop .18s ease}
+  .branch-tag{align-self:flex-end;font-size:10.5px;font-weight:700;color:rgb(var(--brand));
+              background:rgb(var(--brand)/.1);border:1px solid rgb(var(--brand)/.3);border-radius:6px;
+              padding:1px 8px;margin-bottom:-6px;letter-spacing:.5px}
+  @keyframes pop{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+  .ai-text{padding:2px 0 2px 12px;border-left:3px solid rgb(var(--brand));color:rgb(var(--tx));
+           line-height:1.7;white-space:pre-wrap;font-size:14px;animation:pop .18s ease}
+  .note-c{color:rgb(var(--brand));text-decoration:underline;text-decoration-color:rgb(var(--brand)/.5);
+          text-underline-offset:3px;cursor:pointer}
+  .note-c:hover{background:rgb(var(--brand)/.1);border-radius:3px}
+
+  /* ---- 0.26 隐性"为什么"折叠块（默认折叠，点击展开） ---- */
+  .why-block{margin-bottom:4px;animation:pop .18s ease}
+  .why-toggle{background:none;border:none;color:rgb(var(--brand));cursor:pointer;
+              font:inherit;font-size:13px;padding:2px 4px;display:inline-flex;align-items:center;gap:3px;
+              opacity:.85}
+  .why-toggle:hover{opacity:1}
+  .why-toggle .chev{transition:transform .15s ease;display:inline-block}
+  .why-toggle.open .chev{transform:rotate(180deg)}
+  .why-body{margin:4px 0 6px 12px;padding:8px 12px;border-left:3px solid rgb(var(--brand)/.35);
+            background:rgb(var(--bg-sink));border-radius:6px;font-size:14px}
+  .why-item{margin:4px 0;position:relative}
+  .why-item:hover .why-tools{opacity:1}
+
+  /* ---- P0.18 对话结束评分卡片 ---- */
+  .fb-card{margin:2px 0 8px;opacity:.9}
+  .fb-row{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+  .fb-ask{font-size:12px;color:rgb(var(--ink)/.6);margin-right:6px}
+  .fb-star{background:none;border:none;cursor:pointer;font-size:18px;line-height:1;
+           color:rgb(var(--ink)/.28);padding:1px 2px;transition:transform .12s ease,color .12s ease}
+  .fb-star:hover{color:#f4b400;transform:scale(1.25)}
+  .fb-star:focus-visible{outline:2px solid rgb(var(--brand))}
+  .fb-skip{background:none;border:none;cursor:pointer;color:rgb(var(--ink)/.45);
+           font:inherit;font-size:12px;padding:2px 6px;margin-left:4px}
+  .fb-skip:hover{color:rgb(var(--ink)/.8)}
+  .fb-done{font-size:13px;color:rgb(var(--brand));font-weight:600}
+  .fb-submitted{opacity:.7}
+  .why-tools{position:absolute;top:-4px;right:0;display:flex;gap:4px;opacity:0;transition:opacity .15s}
+  .why-tools .tool{width:24px;height:24px;font-size:12px}
+  .why-q{font-weight:600;color:rgb(var(--tx));padding-right:64px}
+  .why-q .why-ar{color:rgb(var(--brand));margin:0 4px;font-weight:400}
+  .why-p{color:rgb(var(--tx)/.85);line-height:1.65;margin-top:2px}
+  .why-l1{color:rgb(var(--sem-warn));margin-top:2px;font-size:13px}
+
+  /* ---- 学习成果卡 ---- */
+  .card{position:relative;background:rgb(var(--panel2));border:1px solid rgb(var(--line));border-radius:12px;
+        padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.07);animation:pop .18s ease}
+  .cardlabel{font-size:11px;font-weight:700;letter-spacing:1px;color:rgb(var(--tx3));margin-bottom:7px}
+  .card .head{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+  .tag{font-size:11px;padding:2px 9px;border-radius:20px;font-weight:600}
+  .tag.vocab{background:rgb(var(--kp-vocab)/.14);color:rgb(var(--kp-vocab))}
+  .tag.grammar{background:rgb(var(--kp-grammar)/.14);color:rgb(var(--kp-grammar))}
+  .tag.pragma{background:rgb(var(--kp-pragma)/.16);color:rgb(var(--kp-pragma))}
+  .tag.char{background:rgb(var(--kp-char)/.14);color:rgb(var(--kp-char))}
+  .frag{font-size:15px;font-weight:600;color:rgb(var(--sem-err));text-decoration:line-through;
+        text-decoration-color:rgb(var(--sem-err)/.5)}
+  .corr{font-size:15px;font-weight:600;color:rgb(var(--sem-ok))}
+  .expl-text{font-size:13px;line-height:1.7;white-space:pre-wrap}
+  .kp-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .kp{padding:2px 9px;border-radius:6px;font-size:12px;color:rgb(var(--brand));
+      background:rgb(var(--brand)/.08);border:1px solid rgb(var(--brand)/.25);cursor:pointer}
+  .kp:hover{background:rgb(var(--brand)/.16)}
+  .kp-plain{padding:2px 9px;border-radius:6px;font-size:12px;color:rgb(var(--tx2));
+            background:rgb(var(--item));border:1px solid rgb(var(--line))}
+  .meta-row{font-size:11px;color:rgb(var(--tx3));margin-top:8px;display:flex;gap:10px;flex-wrap:wrap}
+
+  /* 低置信候选条（琥珀虚线 = 与已确认偏误卡明确区分） */
+  .uc-strip{font-size:12px;color:rgb(var(--sem-warn));background:rgb(var(--sem-warn)/.07);
+            border:1px dashed rgb(var(--sem-warn)/.45);border-radius:8px;padding:7px 11px;line-height:1.6}
+
+  .card.clean{border-color:rgb(var(--sem-ok)/.4);background:linear-gradient(180deg,rgb(var(--sem-ok)/.06),rgb(var(--panel2)))}
+  .clean-title{display:flex;align-items:center;gap:8px;font-weight:700;color:rgb(var(--sem-ok));font-size:14px}
+  .clean-sub{font-size:12.5px;color:rgb(var(--tx2));margin-top:4px;line-height:1.6}
+
+  .card.verify{border-left:3px solid rgb(var(--sem-warn))}
+  .card.verify.v-pass{border-left-color:rgb(var(--sem-ok))}
+  .card.verify.v-fail{border-left-color:rgb(var(--sem-err))}
+  .v-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .v-badge{font-size:12px;font-weight:700;padding:3px 11px;border-radius:20px}
+  .v-badge.pass{background:rgb(var(--sem-ok)/.13);color:rgb(var(--sem-ok))}
+  .v-badge.partial{background:rgb(var(--sem-warn)/.14);color:rgb(var(--sem-warn))}
+  .v-badge.fail{background:rgb(var(--sem-err)/.12);color:rgb(var(--sem-err))}
+  .v-cov{font-size:12.5px;color:rgb(var(--tx2))}
+  .v-bar{height:7px;border-radius:5px;background:rgb(var(--item));overflow:hidden;margin:9px 0 4px}
+  .v-bar>div{height:100%;border-radius:5px;background:linear-gradient(90deg,rgb(var(--brand)),rgb(var(--sem-ok)));transition:width .5s ease}
+  .v-points{margin-top:8px;display:flex;flex-direction:column;gap:5px}
+  .v-point{display:flex;gap:8px;font-size:12.5px;line-height:1.55;align-items:flex-start}
+  .v-point .mk{font-weight:700;flex-shrink:0}
+  .v-point.hit .mk{color:rgb(var(--sem-ok))}
+  .v-point.miss .mk{color:rgb(var(--sem-err))}
+  .v-point .ev{color:rgb(var(--tx3));font-size:11.5px}
+  .v-feedback{margin-top:9px;font-size:12.5px;line-height:1.65;background:rgb(var(--panel));border-radius:8px;padding:8px 11px}
+  .v-action{margin-top:8px;font-size:12px;padding:7px 10px;border-radius:8px;display:inline-block}
+  .v-action.a-retry{background:rgb(var(--sem-warn)/.11);color:rgb(var(--sem-warn))}
+  .v-action.a-teacher{background:rgb(var(--sem-err)/.1);color:rgb(var(--sem-err))}
+  .v-hollow{margin-top:8px;font-size:12px;color:rgb(var(--sem-warn));background:rgb(var(--sem-warn)/.09);border-radius:8px;padding:7px 10px}
+
+  .kp-li{display:flex;gap:10px;align-items:baseline;padding:7px 2px;border-bottom:1px solid rgb(var(--line)/.6);line-height:1.6}
+  .kp-li:last-child{border-bottom:0}
+  .kp-li .nm{font-weight:600;font-size:13.5px}
+  .kp-li .lv{flex-shrink:0;font-size:11px;color:rgb(var(--tx2));border:1px solid rgb(var(--line));border-radius:20px;padding:1px 8px}
+  .kp-li .sm{font-size:12.5px;color:rgb(var(--tx2));margin-top:2px}
+  .rv-li{display:flex;gap:9px;align-items:center;font-size:12.5px;padding:5px 7px;border-radius:7px;cursor:pointer}
+  .rv-li:hover{background:rgb(var(--item))}
+  .bar{height:6px;border-radius:4px;background:rgb(var(--item));overflow:hidden;flex:1}
+  .bar>div{height:100%;background:linear-gradient(90deg,rgb(var(--brand)/.7),rgb(var(--brand)))}
+  .rv-prio{color:rgb(var(--tx2));min-width:42px;text-align:right;font-variant-numeric:tabular-nums}
+
+  .card.unit{border-color:rgb(var(--brand)/.35)}
+  .unit-title{font-weight:700;font-size:14px;margin:2px 0 6px}
+  .unit-th{font-size:13px;font-weight:600;margin:1px 0 5px}
+  .unit-sec{font-size:12px;color:rgb(var(--tx3));margin-top:8px}
+  .unit-li,.unit-forbid{font-size:12.5px;line-height:1.6;margin:0;padding-left:18px}
+  .unit-forbid{color:rgb(var(--sem-warn))}
+  .unit-kp{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+
+  details.src{background:rgb(var(--panel2));border:1px solid rgb(var(--line));border-radius:12px;padding:10px 14px;animation:pop .18s ease}
+  details.src summary{cursor:pointer;font-size:12.5px;color:rgb(var(--tx2));font-weight:600;list-style:none;display:flex;align-items:center;gap:7px}
+  details.src summary::-webkit-details-marker{display:none}
+  details.src summary::before{content:"▸";color:rgb(var(--tx3));transition:transform .15s}
+  details.src[open] summary::before{transform:rotate(90deg)}
+  .src-list{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+  .src-item{font-size:12.5px;line-height:1.6}
+  .src-item a{color:rgb(var(--brand));text-decoration:none;font-weight:600}
+  .src-item a:hover{text-decoration:underline}
+  .src-item .sn{color:rgb(var(--tx2));display:block;font-size:12px;margin-top:2px}
+  .blk-pre{font-size:12px;color:rgb(var(--tx2));background:rgb(var(--panel));border-radius:6px;padding:7px 10px;margin-top:6px;line-height:1.6;white-space:pre-wrap}
+
+  .note{border-radius:8px;font-size:12.5px;padding:8px 11px;line-height:1.7;animation:pop .18s ease}
+  .note.warn{background:rgb(var(--sem-warn)/.09);border:1px solid rgb(var(--sem-warn)/.35);color:rgb(var(--sem-warn))}
+  .note.err{background:rgb(var(--sem-err)/.08);border:1px solid rgb(var(--sem-err)/.4);color:rgb(var(--sem-err))}
+  .note.plain{background:rgb(var(--panel2));border:1px solid rgb(var(--line));color:rgb(var(--tx2))}
+  .note .hint{display:block;margin-top:5px;font-size:11.5px;color:rgb(var(--tx2));opacity:.9}
+
+  /* ---- 卡片分支动作（锚定图谱权威边；无方向置灰） ---- */
+  .card-tools{position:absolute;top:-13px;right:12px;display:flex;gap:5px;opacity:0;transition:opacity .15s}
+  .card:hover .card-tools{opacity:1}
+  .tool{width:27px;height:27px;border-radius:8px;border:1px solid rgb(var(--line-strong));background:rgb(var(--panel2));
+        color:rgb(var(--tx2));cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;
+        transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  .tool:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+  .tool.del:hover{color:rgb(var(--sem-err));border-color:rgb(var(--sem-err))}
+  .tool.off{opacity:.35;cursor:not-allowed}
+  .tool.off:hover{color:rgb(var(--tx2));border-color:rgb(var(--line-strong))}
+  .popover{position:fixed;z-index:80;background:rgb(var(--panel2));border:1px solid rgb(var(--line-strong));
+           border-radius:10px;padding:5px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+  .popover .po-t{font-size:10.5px;color:rgb(var(--tx3));padding:4px 9px 5px;font-weight:700;letter-spacing:.5px}
+  .pop-item{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:7px;cursor:pointer;font-size:12.5px}
+  .pop-item:hover{background:rgb(var(--item-active))}
+  .pop-item .pl{font-size:10.5px;color:rgb(var(--tx3))}
+
+  /* 报告卡（0.19 · AI 学习报告，数据只读来源 /api/profile） */
+  .card.report{border-color:rgb(var(--brand)/.35)}
+  .rep-stats{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:rgb(var(--tx2));margin-bottom:8px}
+  .rep-stats b{color:rgb(var(--tx));font-size:14px}
+  .rf-row{display:flex;gap:9px;align-items:center;padding:7px 6px;border-radius:8px;cursor:pointer;flex-wrap:wrap}
+  .rf-row:hover{background:rgb(var(--item))}
+  .rf-row .nm{font-weight:600;font-size:13px;min-width:96px}
+  .rf-row .lv{font-size:10.5px;color:rgb(var(--tx2));border:1px solid rgb(var(--line));border-radius:20px;padding:0 7px}
+  .rf-off{font-size:10.5px;font-weight:700;color:rgb(var(--sem-err));background:rgb(var(--sem-err)/.1);
+          border-radius:5px;padding:1px 6px}
+  .rf-rep{font-size:11px;color:rgb(var(--tx3))}
+  .rf-ev{flex-basis:100%;font-size:11.5px;color:rgb(var(--tx3));line-height:1.5;padding-left:2px}
+
+  /* 输入行（与对话内容同宽居中） */
+  .hint{font-size:11px;color:rgb(var(--tx3));padding:6px 16px 0;width:100%;max-width:880px;
+        margin:0 auto;box-sizing:border-box}
+  .inputrow{padding:10px 14px 12px;display:flex;gap:9px;justify-content:center;background:rgb(var(--panel2));border-top:1px solid rgb(var(--line))}
+  .inputbox{flex:1;max-width:880px;display:flex;align-items:flex-end;gap:8px;background:rgb(var(--input));
+            border:1px solid rgb(var(--line));border-radius:12px;padding:9px 12px}
+  .inputbox:focus-within{border-color:rgb(var(--brand))}
+  .inputbox textarea{flex:1;background:transparent;border:0;outline:none;resize:none;color:rgb(var(--tx));
+                     font-family:inherit;font-size:14px;line-height:1.45;max-height:140px}
+  .inputbox textarea::placeholder{color:rgb(var(--tx3))}
+  .send{width:36px;height:36px;border-radius:9px;background:rgb(var(--brand));color:rgb(var(--brand-ink));
+        border:0;cursor:pointer;font-size:15px;flex-shrink:0;transition:filter .15s}
+  .send:hover{filter:brightness(1.08)}
+  .send:disabled{opacity:.5;cursor:default}
+
+  /* 0.22 方向2 · 场景对话入口 */
+  .scenebar{display:flex;align-items:center;gap:8px;justify-content:center;padding:8px 14px 0}
+  .scene-pick{flex:0 0 auto;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+              background:transparent;border:1px dashed rgb(var(--line));color:rgb(var(--tx2));
+              border-radius:999px;padding:6px 14px;font-size:12.5px;cursor:pointer;transition:all .15s}
+  .scene-pick:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+  .scene-pick.active{border-style:solid;border-color:rgb(var(--brand));color:rgb(var(--brand))}
+  .scene-clear{margin-left:4px;color:rgb(var(--tx3));cursor:pointer;padding:0 4px}
+  .scene-clear:hover{color:rgb(var(--brand))}
+  .scene-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-top:6px}
+  .scene-card{background:rgb(var(--panel2));border:1px solid rgb(var(--line));border-radius:12px;
+              padding:14px 16px;cursor:pointer;transition:all .15s;text-align:left}
+  .scene-card:hover{transform:translateY(-2px);border-color:rgb(var(--brand))}
+  .scene-card b{display:block;font-size:15px;color:rgb(var(--tx))}
+  .scene-card .sc-zh{font-size:13px;color:rgb(var(--brand));margin-top:2px}
+  .scene-card .sc-goals{font-size:12px;color:rgb(var(--tx2));margin-top:8px;line-height:1.5}
+  .scene-card .sc-meta{display:flex;gap:8px;font-size:11px;color:rgb(var(--tx3));margin-top:8px;flex-wrap:wrap}
+  .scene-card .sc-tag{border:1px solid rgb(var(--line));border-radius:999px;padding:2px 8px}
+
+  .pending{display:flex;gap:5px;align-items:center;padding:12px 14px;background:rgb(var(--panel2));
+           border:1px solid rgb(var(--line));border-radius:12px;color:rgb(var(--tx2));font-size:13px}
+  .pending .ti{width:6px;height:6px;border-radius:50%;background:rgb(var(--brand));animation:blink 1.1s infinite}
+  .pending .ti:nth-child(2){animation-delay:.22s}
+  .pending .ti:nth-child(3){animation-delay:.44s}
+  @keyframes blink{0%,70%,100%{opacity:.25}35%{opacity:1}}
+
+  /* ============ 右：认知地图 + 复习队列 ============ */
+  .right{min-height:0}
+  .maptitle{padding:11px 16px;font-size:12px;color:rgb(var(--tx2));border-bottom:1px solid rgb(var(--line));
+            display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .maplegend{display:flex;gap:11px;font-size:11px;color:rgb(var(--tx3));align-items:center}
+  .maplegend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+  .mapwrap{flex:1;overflow:hidden;position:relative;background:radial-gradient(ellipse at 50% 38%,rgb(var(--panel)) 0%,rgb(var(--bg)) 75%)}
+  #map{width:100%;height:100%;display:block;cursor:default}
+  .map-empty{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;align-items:center;
+             justify-content:center;color:rgb(var(--tx3));font-size:13px;pointer-events:none}
+  .map-empty .big{font-size:30px;opacity:.5}
+  .queue{max-height:200px;overflow-y:auto;padding:10px 16px 12px;border-top:1px solid rgb(var(--line));background:rgb(var(--panel))}
+  .queue h4{margin:2px 0 8px;font-size:12px;color:rgb(var(--tx2));display:flex;justify-content:space-between;font-weight:600}
+  .qitem{display:flex;gap:9px;align-items:center;font-size:12.5px;padding:5px 7px;border-radius:7px;cursor:pointer}
+  .qitem:hover{background:rgb(var(--item))}
+  .q-prio{color:rgb(var(--tx2));min-width:42px;text-align:right;font-variant-numeric:tabular-nums}
+
+  /* P0.13 独立复习页做题样式 */
+  .reviewhead{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid rgb(var(--line))}
+  .reviewhead h2{margin:0;font-size:16px}
+  .reviewhead .rv-prog{color:rgb(var(--tx2));font-size:12.5px;margin-left:auto;font-variant-numeric:tabular-nums}
+  .rv-body{flex:1;overflow-y:auto;padding:22px 30px;display:flex;flex-direction:column;gap:20px;align-items:center}
+  .rv-body>*{width:100%;max-width:720px}
+  .rv-empty{text-align:center;color:rgb(var(--tx2));padding:60px 0;font-size:14px}
+  .rv-card{background:rgb(var(--panel2));border:1px solid rgb(var(--line));border-radius:12px;padding:26px 28px;
+           box-shadow:0 2px 14px rgb(var(--shadow)/.06)}
+  .rv-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .rv-tag{font-size:11px;padding:2px 9px;border-radius:20px;background:rgb(var(--item));color:rgb(var(--tx2))}
+  /* P0.19 fe2：recall 卡的教学信息（kp 定义 + 关键词） */
+  .rv-note{font-size:14px;line-height:1.7;color:rgb(var(--tx2));background:rgb(var(--bg));
+           border:1px dashed rgb(var(--line));border-radius:8px;padding:10px 14px;margin-bottom:12px}
+  .rv-kws{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .rv-kw{font-size:11.5px;padding:2px 9px;border-radius:16px;background:rgb(var(--kp-grammar)/.12);
+         color:rgb(var(--tx2))}
+  .rv-sent{font-size:21px;line-height:1.75;color:rgb(var(--tx))}
+  .rv-sent b{color:rgb(var(--brand));font-weight:600;letter-spacing:1px}
+  .rv-ans{display:flex;gap:10px;margin-top:18px;align-items:center}
+  .rv-ans input{flex:1;min-width:0;padding:10px 14px;font-size:16px;border:1px solid rgb(var(--line));
+               border-radius:8px;background:rgb(var(--bg));color:rgb(var(--tx))}
+  .rv-ans input:focus{outline:none;border-color:rgb(var(--brand))}
+  .rv-ans button{padding:10px 22px;border-radius:8px;border:none;background:rgb(var(--brand));
+                color:#fff;cursor:pointer;font-size:15px;white-space:nowrap}
+  .rv-ans button:disabled{opacity:.45;cursor:default}
+  .rv-ans.rv-btns{gap:12px;justify-content:center}
+  .rv-btn{font-size:15px;padding:12px 34px;border-radius:9px;border:none;cursor:pointer;font-weight:600}
+  .rv-btn.ok{background:rgb(var(--sem-ok)/.16);color:rgb(var(--sem-ok))}
+  .rv-btn.bad{background:rgb(var(--sem-warn)/.16);color:rgb(var(--sem-warn))}
+  .rv-btn:disabled{opacity:.45;cursor:default}
+  .rv-fb{margin-top:16px;font-size:13.5px;line-height:1.7}
+  .rv-fb.ok{color:rgb(var(--sem-ok))}
+  .rv-fb.bad{color:rgb(var(--sem-warn))}
+  /* ---- P0.12 冷启动引导 ---- */
+  .modal-body.onb{max-width:440px}
+  .onb .onstep{animation:fadeIn .2s ease}
+  .onb .onp{font-size:14px;line-height:1.8;color:rgb(var(--tx3));margin:2px 0 14px}
+  .onopts{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+  .onopt{padding:10px 16px;border:1px solid rgb(var(--line));border-radius:10px;
+        background:rgb(var(--panel2));cursor:pointer;font-size:14px;color:rgb(var(--tx))}
+  .onopt:hover{border-color:rgb(var(--brand))}
+  .onopt.sel{border-color:rgb(var(--brand));background:rgb(var(--brand)/.12);color:rgb(var(--brand));font-weight:600}
+  .onb textarea{width:100%;box-sizing:border-box;min-height:76px;resize:vertical;margin-top:6px;
+        padding:10px 12px;font-size:14px;line-height:1.8;border:1px solid rgb(var(--line));
+        border-radius:10px;background:rgb(var(--panel2));color:rgb(var(--tx))}
+  .onb textarea:focus{outline:none;border-color:rgb(var(--brand))}
+  .onassess-row{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+  .onassess-row .sec{padding:9px 16px;border-radius:9px;border:1px solid rgb(var(--line));
+        background:rgb(var(--panel2));cursor:pointer;color:rgb(var(--tx));font-size:13.5px}
+  .onhint{font-size:12.5px;color:rgb(var(--tx3));line-height:1.7}
+  .onnav{display:flex;align-items:center;gap:12px;margin-top:22px}
+  .onnav .ghost{padding:9px 16px;border-radius:9px;border:1px solid rgb(var(--line));
+        background:transparent;cursor:pointer;color:rgb(var(--tx3));font-size:13.5px}
+  .onnav .pri{padding:10px 22px;border-radius:9px;border:none;background:rgb(var(--brand));
+        color:#fff;cursor:pointer;font-size:14px;font-weight:600}
+  .rv-nav{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+  .rv-nav button{padding:8px 16px;border-radius:8px;border:1px solid rgb(var(--line));background:rgb(var(--panel2));
+                color:rgb(var(--tx));cursor:pointer;font-size:13.5px}
+  .rv-fini{text-align:center;padding:70px 0;color:rgb(var(--tx2))}
+  .rv-fini .tick{font-size:44px;margin-bottom:16px}
+  .rv-fini h3{margin:0 0 10px;font-size:19px;color:rgb(var(--tx))}
+  .rv-fini .stat{font-size:14px;margin:6px 0}
+
+  .node{cursor:pointer;transition:opacity .25s ease}
+  .node:hover circle.core{filter:brightness(1.15)}
+  .node.hot circle.core{filter:brightness(1.12) drop-shadow(0 0 7px rgb(var(--sem-warn)/.8))}
+  .node.dim{opacity:.14}
+  .node.born circle.core{animation:grow .55s cubic-bezier(.22,1.2,.4,1)}
+  @keyframes grow{0%{transform:scale(0)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
+  .node-label{pointer-events:none;font-size:11px;fill:rgb(var(--tx2));transition:opacity .25s ease}
+  .node-label.dim{opacity:.1}
+  .edge{stroke:rgb(var(--tx3)/.35);transition:opacity .25s ease,stroke .2s ease}
+  .edge.lit{stroke:rgb(var(--brand)/.8)}
+  .edge.dim{opacity:.08}
+  .lv-band{fill:rgb(var(--tx)/.025)}
+  /* 分区头（HSK 等级 pill） */
+  .lv-chip-bg{fill:rgb(var(--panel2));stroke:rgb(var(--line));stroke-width:1}
+  .lv-chip{font-size:10.5px;font-weight:700;fill:rgb(var(--tx2));text-anchor:middle;pointer-events:none}
+  .lv-chip .ct{fill:rgb(var(--tx3));font-weight:500}
+  /* 掌握度环 + 待复习虚线描边 */
+  .mastery-ring-bg{fill:none;stroke:rgb(var(--tx)/.2);stroke-width:3}
+  .mastery-ring{fill:none;stroke:rgb(var(--sem-ok));stroke-width:3;stroke-linecap:round}
+  .node circle.core{transition:filter .2s ease}
+  .node circle.core.rv{stroke:rgb(var(--sem-warn));stroke-width:2;stroke-dasharray:4 3}
+  .node.selected circle.core{stroke:rgb(var(--tx));stroke-width:2.5;stroke-dasharray:none;
+    filter:brightness(1.05) drop-shadow(0 0 8px rgb(var(--tx)/.4))}
+  .node.rec circle.core{animation:mapPulse 2.4s ease-in-out infinite}
+  @keyframes mapPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.28) drop-shadow(0 0 7px rgb(var(--sem-warn)/.55))}}
+  /* 下一步推荐条 */
+  .next-bar{display:none;align-items:center;gap:10px;padding:8px 12px;margin:0 16px 8px;
+    background:rgb(var(--panel));border:1px solid rgb(var(--line));border-radius:12px}
+  .next-bar.show{display:flex}
+  .next-bar .nb-glyph{width:26px;height:26px;border-radius:8px;background:rgb(var(--brand)/.14);color:rgb(var(--brand));
+    display:flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+  .next-bar .nb-main{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;font-size:12.5px}
+  .next-bar .nb-label{color:rgb(var(--brand));font-weight:700;flex:none}
+  .next-bar .nb-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .next-bar .nb-reason{color:rgb(var(--tx3));font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nb-btn{flex:none;border:0;cursor:pointer;padding:6px 12px;border-radius:9px;font-size:12px;font-weight:600;
+    background:rgb(var(--brand));color:var(--brand-ink)}
+  .nb-btn:hover{filter:brightness(1.08)}
+  .nb-btn.ghost{background:transparent;border:1px solid rgb(var(--line-strong));color:rgb(var(--tx2))}
+  /* 节点详情面板（点击聚焦） */
+  .node-detail{display:none;flex-direction:column;gap:8px;margin:0 16px 10px;padding:10px 12px;
+    background:rgb(var(--panel));border:1px solid rgb(var(--line));border-radius:12px;font-size:12.5px}
+  .node-detail.show{display:flex}
+  .node-detail .nd-head{display:flex;align-items:center;gap:8px}
+  .node-detail .nd-dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .node-detail .nd-name{font-weight:700;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .node-detail .nd-chip{flex:none;font-size:10.5px;padding:2px 8px;border-radius:99px;background:rgb(var(--tx)/.07);color:rgb(var(--tx2))}
+  .node-detail .nd-close{margin-left:auto;border:0;background:transparent;cursor:pointer;color:rgb(var(--tx3));font-size:15px;line-height:1;padding:2px 4px}
+  .node-detail .nd-close:hover{color:rgb(var(--tx))}
+  .node-detail .nd-stats{display:flex;align-items:center;gap:10px;color:rgb(var(--tx2));font-size:11.5px;flex-wrap:wrap}
+  .node-detail .nd-bar{flex:1;min-width:90px;height:6px;border-radius:4px;background:rgb(var(--tx)/.08);overflow:hidden}
+  .node-detail .nd-bar>i{display:block;height:100%;background:rgb(var(--sem-ok));border-radius:4px}
+  .node-detail .nd-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .node-detail .nd-act{border:1px solid rgb(var(--line-strong));background:transparent;color:rgb(var(--tx2));
+    border-radius:9px;padding:5px 11px;font-size:12px;cursor:pointer}
+  .node-detail .nd-act:hover{border-color:rgb(var(--brand));color:rgb(var(--brand))}
+  /* 场景横幅（0.23 场景任务化：目标常驻 + 复盘/退出） */
+  .scene-banner{display:none;flex-direction:column;gap:6px;margin:10px 16px 0;padding:9px 12px;
+    border:1px solid rgb(var(--brand)/.35);background:rgb(var(--brand)/.07);border-radius:12px;font-size:12px}
+  .scene-banner.show{display:flex}
+  .scene-banner .sb-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .scene-banner .sb-tag{flex:none;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;
+    background:rgb(var(--brand)/.16);color:rgb(var(--brand));letter-spacing:.5px}
+  .scene-banner .sb-title{font-weight:700;font-size:13px}
+  .scene-banner .sb-roles{color:rgb(var(--tx3));font-size:11.5px}
+  .scene-banner .sb-recap{margin-left:auto;flex:none;border:0;cursor:pointer;padding:5px 11px;border-radius:9px;
+    font-size:12px;font-weight:600;background:rgb(var(--brand));color:var(--brand-ink)}
+  .scene-banner .sb-recap:hover{filter:brightness(1.08)}
+  .scene-banner .sb-exit{flex:none;border:1px solid rgb(var(--line-strong));background:transparent;cursor:pointer;
+    color:rgb(var(--tx3));border-radius:8px;padding:4px 8px;font-size:12px;line-height:1}
+  .scene-banner .sb-exit:hover{color:rgb(var(--sem-err));border-color:rgb(var(--sem-err)/.5)}
+  .scene-banner .sb-goals{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .scene-banner .sb-glabel{color:rgb(var(--tx3));font-size:11.5px;flex:none}
+  .scene-banner .sb-goal{font-size:11.5px;padding:2px 9px;border-radius:99px;
+    background:rgb(var(--tx)/.06);border:1px dashed rgb(var(--line-strong));color:rgb(var(--tx2))}
+  .scene-banner .sb-seed{color:rgb(var(--tx3));font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* 会话右键菜单（0.24：置顶/分享/重命名/删除，对标 Notion/Linear 紧凑菜单） */
+  .ctx-menu{position:fixed;z-index:300;display:none;min-width:168px;padding:5px;
+    background:rgb(var(--panel2));border:1px solid rgb(var(--line-strong));border-radius:10px;
+    box-shadow:0 12px 32px rgb(0 0 0/.16),0 2px 8px rgb(0 0 0/.1);font-size:12.5px;user-select:none}
+  .ctx-menu.show{display:block}
+  .ctx-it{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:7px;
+    cursor:pointer;color:rgb(var(--tx2));white-space:nowrap}
+  .ctx-it:hover{background:rgb(var(--item));color:rgb(var(--tx))}
+  .ctx-it .ci{width:16px;text-align:center;font-size:12px;flex:none}
+  .ctx-sep{height:1px;margin:4px 8px;background:rgb(var(--line))}
+  .ctx-it.danger{color:rgb(var(--sem-err))}
+  .ctx-it.danger:hover{background:rgb(var(--sem-err)/.1)}
+  .ctx-it.armed{background:rgb(var(--sem-err)/.12);color:rgb(var(--sem-err));font-weight:600}
+  /* 行内重命名（会话项原地变输入框） */
+  .sren{width:100%;font:inherit;font-size:12.5px;padding:4px 6px;border-radius:6px;
+    border:1px solid rgb(var(--brand));background:rgb(var(--input));color:rgb(var(--tx));outline:none}
+  /* 分享降级文本域 */
+  .share-ta{width:100%;min-height:320px;resize:vertical;font-size:12.5px;line-height:1.7;
+    padding:10px 12px;border-radius:10px;border:1px solid rgb(var(--line-strong));
+    background:rgb(var(--input));color:rgb(var(--tx));outline:none}
+  .lv-label{font-size:10px;fill:rgb(var(--tx3));pointer-events:none;letter-spacing:.5px}
+
+  /* ============ 弹窗 ============ */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:100;display:none;
+           align-items:center;justify-content:center;padding:20px}
+  .overlay.show{display:flex}
+  .modal{position:relative;background:rgb(var(--panel2));border:1px solid rgb(var(--line));border-radius:18px;
+         box-shadow:0 20px 60px rgba(0,0,0,.28);display:flex;overflow:hidden;max-width:960px;width:76vw;max-height:82vh}
+  .modal-nav{width:172px;flex-shrink:0;border-right:1px solid rgb(var(--line));padding:18px 12px;overflow-y:auto}
+  .modal-nav h4{font-size:11px;letter-spacing:1.2px;color:rgb(var(--tx3));margin:0 0 10px 8px;font-weight:700}
+  .modal-nav li{list-style:none;padding:8px 11px;border-radius:8px;color:rgb(var(--tx2));cursor:pointer;font-size:13px;margin-bottom:2px}
+  .modal-nav li:hover{background:rgb(var(--item))}
+  .modal-nav li.active{background:rgb(var(--item-active));color:rgb(var(--tx));font-weight:600}
+  .modal-body{flex:1;padding:24px 26px;overflow-y:auto;min-width:0}
+  .modal-body h3{font-size:17px;margin:0 0 14px;font-weight:700}
+  .modal-body p.sub{font-size:12.5px;color:rgb(var(--tx2));margin:0 0 16px;line-height:1.7}
+
+  /* 模型选择器（输入框左侧，0.20 BYOK）+ 供应商管理表单 */
+  .model-pick{flex-shrink:0;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    display:inline-flex;align-items:center;gap:5px;font-family:Consolas,"JetBrains Mono","Courier New",monospace;font-size:11px;
+    color:rgb(var(--tx2));background:rgb(var(--panel));border:1px solid rgb(var(--line));
+    border-radius:8px;padding:6px 9px;cursor:pointer;margin-bottom:2px}
+  .model-pick:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+  .model-pick .dot{width:6px;height:6px;border-radius:50%;background:rgb(var(--sem-ok));flex-shrink:0}
+  .prov-note{font-size:11.5px;color:rgb(var(--tx3));background:rgb(var(--item));border-radius:8px;
+    padding:8px 11px;margin:0 0 14px;line-height:1.6}
+  .prov-note b{color:rgb(var(--tx2))}
+  .prov-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid rgb(var(--line));
+    border-radius:10px;margin-bottom:8px;flex-wrap:wrap}
+  .prov-row .pv-nm{font-weight:600;font-size:13px}
+  .prov-row .pv-md{font-family:Consolas,"JetBrains Mono","Courier New",monospace;font-size:11px;color:rgb(var(--tx2))}
+  .prov-row .pv-key{font-family:Consolas,"JetBrains Mono","Courier New",monospace;font-size:10.5px;color:rgb(var(--tx3))}
+  .prov-row .pv-bdg{font-size:10px;padding:2px 7px;border-radius:6px;background:rgb(var(--item-active));
+    color:rgb(var(--brand));font-weight:700}
+  .prov-row .pv-st{font-size:11px;flex:1;min-width:70px}
+  .prov-row .pv-st.ok{color:rgb(var(--sem-ok))}
+  .prov-row .pv-st.err{color:rgb(var(--sem-err))}
+  .prov-btn{font-size:11.5px;padding:4px 10px;border-radius:7px;border:1px solid rgb(var(--line));
+    background:rgb(var(--panel2));color:rgb(var(--tx2));cursor:pointer;white-space:nowrap}
+  .prov-btn:hover{color:rgb(var(--brand));border-color:rgb(var(--brand))}
+  .prov-btn.danger:hover{color:rgb(var(--sem-err));border-color:rgb(var(--sem-err))}
+  .prov-form{border:1px dashed rgb(var(--line-strong));border-radius:10px;padding:14px;margin-top:14px}
+  .prov-form h5{margin:0 0 10px;font-size:12.5px;color:rgb(var(--tx2))}
+  .prov-form .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .prov-form input{width:100%;box-sizing:border-box;background:rgb(var(--input));border:1px solid rgb(var(--line));
+    border-radius:8px;padding:7px 10px;font-size:12.5px;color:rgb(var(--tx));outline:none;
+    font-family:Consolas,"JetBrains Mono","Courier New",monospace}
+  .prov-form input:focus{border-color:rgb(var(--brand))}
+  .prov-form .fgrid input.wide{grid-column:1 / -1}
+  .prov-form .frow{display:flex;gap:8px;margin-top:10px;align-items:center}
+  .prov-form .hint{font-size:10.5px;color:rgb(var(--tx3));flex:1;padding:0;line-height:1.5}
+  .btn-brand{font-size:12px;padding:6px 14px;border-radius:8px;border:0;cursor:pointer;
+    background:rgb(var(--brand));color:var(--brand-ink);font-weight:600}
+  .btn-brand:hover{filter:brightness(1.08)}
+  .btn-brand:disabled{opacity:.55;cursor:default}
+  .close{position:absolute;top:12px;right:16px;cursor:pointer;color:rgb(var(--tx3));font-size:22px;
+         background:none;border:0;line-height:1;padding:4px}
+  .close:hover{color:rgb(var(--tx))}
+  .modal.small{flex-direction:column;width:min(600px,94vw);max-height:88vh;padding:22px 24px;gap:0}
+  .modal.small h3{font-size:16px;margin:0 0 4px}
+  .theme-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:420px}
+  .theme-swatch{border:2px solid rgb(var(--line));border-radius:12px;padding:12px;cursor:pointer;background:rgb(var(--panel))}
+  .theme-swatch .dot{width:100%;height:36px;border-radius:8px}
+  .theme-swatch .nm{font-size:12.5px;color:rgb(var(--tx2));margin-top:9px;font-weight:600}
+  .theme-swatch.active{border-color:rgb(var(--brand))}
+  .theme-swatch.active .nm{color:rgb(var(--brand))}
+  .theme-grid.styles{grid-template-columns:repeat(3,1fr);max-width:560px}
+  .theme-swatch .cd{font-size:11px;color:rgb(var(--tx3));line-height:1.5;margin-top:4px;font-weight:400}
+  .row2{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:10px;font-size:13px}
+  .kbd{font-family:Consolas,monospace;font-size:12px;background:rgb(var(--item));border:1px solid rgb(var(--line));
+       border-bottom-width:2px;border-radius:6px;padding:3px 9px;color:rgb(var(--tx2));white-space:nowrap}
+  .about-li{font-size:13px;color:rgb(var(--tx2));line-height:2;margin:0;padding-left:18px}
+  .ctypes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 16px}
+  .ctype{border:1px solid rgb(var(--line));border-radius:12px;padding:14px;background:rgb(var(--panel))}
+  .ctype .ar{font-size:24px;color:rgb(var(--brand));font-weight:700}
+  .ctype .ct{font-weight:600;margin:7px 0 4px;font-size:13.5px}
+  .ctype .cd{font-size:12px;color:rgb(var(--tx3));line-height:1.6}
+  .htu h3{font-size:14.5px;margin:14px 0 6px}
+  .htu ul{margin:0 0 4px}
+  .htu li{margin:3px 0 3px 18px;color:rgb(var(--tx2));font-size:12.5px;line-height:1.7}
+  .docfield{width:100%;min-height:150px;background:rgb(var(--input));border:1px solid rgb(var(--line));
+            border-radius:10px;padding:11px;color:rgb(var(--tx));font-family:inherit;font-size:13px;
+            line-height:1.6;resize:vertical;outline:none;margin-top:10px}
+  .docfield:focus{border-color:rgb(var(--brand))}
+  .filebtn{display:inline-block;padding:7px 14px;border-radius:9px;border:1px dashed rgb(var(--line-strong));
+           color:rgb(var(--tx2));font-size:12.5px;cursor:pointer;background:rgb(var(--panel))}
+  .filebtn:hover{border-color:rgb(var(--brand));color:rgb(var(--brand))}
+  .filebtn input{display:none}
+  .charct{font-size:11px;color:rgb(var(--tx3));margin-top:6px}
+  .charct.over{color:rgb(var(--sem-err));font-weight:700}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgb(var(--tx));color:rgb(var(--bg));
+         padding:9px 18px;border-radius:10px;font-size:12.5px;font-weight:600;z-index:200;opacity:0;
+         transition:opacity .25s;pointer-events:none;max-width:80vw}
+  .toast.show{opacity:.95}
+
+  /* ============ 响应式 ============ */
+  @media (max-width:920px){
+    .side{position:fixed;left:0;top:0;bottom:0;z-index:70;width:250px;box-shadow:8px 0 30px rgba(0,0,0,.18)}
+    .side.closed{width:250px;transform:translateX(-105%);border-right:1px solid rgb(var(--line))}
+    .modal{flex-direction:column;width:min(560px,94vw)}
+    .modal-nav{width:auto;border-right:0;border-bottom:1px solid rgb(var(--line));display:flex;overflow-x:auto;padding:10px 14px;gap:2px}
+    .modal-nav h4{display:none}
+    .modal-nav li{margin:0;white-space:nowrap}
+    .ctypes{grid-template-columns:1fr}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.001s !important;transition-duration:.001s !important}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ================= 左：侧栏 ================= -->
+  <aside class="side" id="side">
+    <div class="side-top">
+      <span class="logo">HSK<b>-Coach</b></span>
+      <button class="fold" id="foldBtn" title="折叠侧栏" aria-label="折叠侧栏" data-i18n-title="foldSide" data-i18n-aria="foldSide">‹</button>
+    </div>
+    <div class="side-scroll">
+      <div class="resident" id="resident" title="本地图谱感知助教 · 点击查看怎么用" data-i18n-title="aiTutorTip">
+        <div class="av">AI</div>
+        <div class="mt"><div class="t" data-i18n="aiTutor">AI 助教</div><div class="s" data-i18n="aiTutorSub">本地图谱感知 · 偏误驱动</div></div>
+        <span class="chip">local</span>
+      </div>
+
+      <div class="hd"><span data-i18n="sessions">会话</span><span class="sep"></span><span class="ct" id="sessCount"></span></div>
+      <div id="sessionList"></div>
+      <div class="sbtn add" id="newSess" data-i18n="newSession">＋ 新建会话</div>
+
+      <div class="hd"><span data-i18n="learnPath">学习动线</span><span class="sep"></span></div>
+      <div class="sbtn" id="actMap"><span class="ic">◈</span><span data-i18n="cogMap">认知地图</span><span class="bdg" id="mapBadge"></span></div>
+      <div class="sbtn" id="actReview"><span class="ic">▶</span><span data-i18n="startReview">开始复习</span><span class="bdg" id="rvCount">—</span></div>
+      <div class="sbtn" id="actReport"><span class="ic">◎</span><span data-i18n="aiReport">AI 学习报告</span></div>
+      <a class="sbtn" id="actMetrics" href="metrics.html" target="_blank" rel="noopener" title="效果度量面板（P0.18 续学率/通关率/满意度等）" data-i18n-title="metricsTitle"><span class="ic">📊</span><span data-i18n="metricsEntry">效果度量</span></a>
+      <div class="sbtn" id="actDoc"><span class="ic">▤</span><span data-i18n="readingMat">阅读材料</span><span class="bdg">txt/md</span></div>
+    </div>
+    <div class="side-bot">
+      <div class="status" id="status"><span class="dot"></span><span id="statusText" data-i18n="connecting">连接中…</span></div>
+      <div class="sbtn" id="actSettings"><span class="ic">⚙</span><span data-i18n="settings">设置</span></div>
+      <div class="sbtn" id="actHowto"><span class="ic">?</span><span data-i18n="howto">怎么用</span></div>
+    </div>
+  </aside>
+  <button class="side-open" id="sideOpen" title="展开侧栏" aria-label="展开侧栏" data-i18n-title="expandSide" data-i18n-aria="expandSide">»</button>
+
+  <!-- ================= 主区 ================= -->
+  <main>
+    <section class="left">
+      <div class="cfgbar hidden" id="cfgBar">
+        <span class="cb-ico">🔑</span>
+        <span class="cb-t" data-i18n="cfgTitle">未配置模型密钥</span>
+        <span class="cb-sub" data-i18n="cfgSub">先在「模型密钥」添加一个 OpenAI 兼容的供应商（DeepSeek 已评测），或填写 .env 的 DEEPSEEK_API_KEY 后重启。</span>
+        <button class="cb-go" id="cfgGo" data-i18n="cfgBtn">去配置</button>
+        <button class="cb-x" id="cfgClose" aria-label="关闭" data-i18n-title="cfgClose">✕</button>
+      </div>
+      <div class="scene-banner" id="sceneBanner"></div>
+      <div class="chat" id="chat">
+        <div class="empty" id="emptyState">
+          <h2 data-i18n="startFirst">开始你的第一句</h2>
+          <p data-i18n-html="emptyIntro">直接对话：写一句中文让它找错、问一个语法点、复述刚学的内容检验理解。<br>
+             你的每次偏误都会沉淀到认知地图（侧栏「◈ 认知地图」随时查看），切换会话上下文互不干扰。</p>
+          <div class="chips">
+            <button class="chip" data-ex="我想买苹果很多。">✍ 我想买苹果很多。</button>
+            <button class="chip" data-ex="把字句是什么意思？">📖 把字句是什么意思？</button>
+            <button class="chip" data-ex="我该复习什么了？">🔁 我该复习什么了？</button>
+          </div>
+        </div>
+      </div>
+      <div class="hint mono" data-i18n="inputHint">Enter 换行 · Ctrl+Enter 发送</div>
+      <div class="scenebar">
+        <button class="scene-pick" id="scenePick" title="选择学习场景（0.22 方向2）" data-i18n-title="scenePickTitle"><span id="scenePickName" data-i18n="scenePick">选择场景 ▾</span></button>
+      </div>
+      <div class="inputrow">
+        <div class="inputbox">
+          <button class="model-pick" id="modelPick" title="选择模型（设置 → 模型密钥 可添加供应商）" data-i18n-title="modelPickTitle"><span class="dot"></span><span id="modelPickName">默认模型</span> ▾</button>
+          <textarea id="text" rows="1" placeholder="说一句话、问一个知识点，或复述刚学的内容…" data-i18n-ph="inputPh" aria-label="输入对话内容"></textarea>
+          <button class="send" id="send" title="发送 (Ctrl+Enter)" aria-label="发送" data-i18n-title="sendTitle">↑</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="right">
+      <div class="maptitle">
+        <button class="back-chat" id="backChat" data-i18n="backChat">‹ 返回对话</button>
+        <span data-i18n="mapTitle">认知地图 · 横轴=HSK 等级分区 · 纵轴=掌握度 · 环=掌握进度 · 虚线描边=待复习</span>
+        <span class="maplegend">
+          <span><i style="background:rgb(var(--kp-vocab))"></i><span data-i18n="lgVocab">词汇</span></span>
+          <span><i style="background:rgb(var(--kp-grammar))"></i><span data-i18n="lgGrammar">语法</span></span>
+          <span><i style="background:rgb(var(--kp-pragma))"></i><span data-i18n="lgPragma">语用</span></span>
+          <span><i style="background:rgb(var(--kp-char))"></i><span data-i18n="lgChar">汉字</span></span>
+          <span class="lg-samp"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="none" stroke="rgb(var(--tx)/.15)" stroke-width="2.5"/><circle cx="7" cy="7" r="5" fill="none" stroke="rgb(var(--sem-ok))" stroke-width="2.5" stroke-dasharray="7.85 31.4" stroke-linecap="round" transform="rotate(-90 7 7)"/></svg><span data-i18n="lgMastery">掌握度环</span></span>
+          <span class="lg-samp"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="rgb(var(--tx)/.25)" stroke="rgb(var(--sem-warn))" stroke-width="2" stroke-dasharray="3.4 2.2"/></svg><span data-i18n="lgReview">待复习</span></span>
+          <span id="mapCount"></span>
+        </span>
+      </div>
+      <div class="next-bar" id="nextBar">
+        <span class="nb-glyph">➜</span>
+        <div class="nb-main">
+          <span class="nb-label" data-i18n="nbLabel">下一步</span>
+          <span class="nb-name" id="nbName"></span>
+          <span class="nb-reason" id="nbReason"></span>
+        </div>
+        <button class="nb-btn" id="nbGo" data-i18n="nbGo">去练习</button>
+        <button class="nb-btn ghost" id="nbExplain" data-i18n="nbExplain">看讲解</button>
+      </div>
+      <div class="mapwrap">
+        <svg id="map" role="img" aria-label="知识点认知地图"></svg>
+        <div class="map-empty" id="mapEmpty" style="display:none">
+          <div class="big">◎</div>
+          <div data-i18n="mapEmpty">地图还是空的 —— 回到对话输入第一个句子，地图开始生长</div>
+        </div>
+      </div>
+      <div class="node-detail" id="nodeDetail"></div>
+      <div class="queue"><h4><span data-i18n="queueTitle">复习队列 · priority 降序（点击定位）</span></h4><div id="queue"></div></div>
+    </section>
+
+    <!-- ================= P0.13 独立复习页 ================= -->
+    <div class="reviewwrap" id="reviewWrap">
+      <div class="reviewhead">
+        <button class="back-chat" id="backReview" data-i18n="backChat">‹ 返回对话</button>
+        <h2 data-i18n="reviewTitle">集中复习</h2>
+        <span class="rv-prog" id="rvProg">— / —</span>
+      </div>
+      <div class="rv-body" id="rvBody">
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ================= 设置弹窗 ================= -->
+<div class="overlay" id="settingsOvl">
+  <div class="modal">
+    <button class="close" data-close="settingsOvl" aria-label="关闭">×</button>
+    <ul class="modal-nav" id="settingsNav">
+      <h4 data-i18n="settings">设置</h4>
+      <li data-tab="theme" class="active" data-i18n="tabTheme">界面主题</li>
+      <li data-tab="llm" data-i18n="tabLLM">模型密钥</li>
+      <li data-tab="lang" data-i18n="tabLang">语言</li>
+      <li data-tab="persona" data-i18n="tabPersona">个性化</li>
+      <li data-tab="keys" data-i18n="tabKeys">快捷键</li>
+      <li data-tab="about" data-i18n="tabAbout">关于</li>
+    </ul>
+    <div class="modal-body" id="settingsBody"></div>
+  </div>
+</div>
+
+<!-- ================= 怎么用 ================= -->
+<div class="overlay" id="howtoOvl">
+  <div class="modal">
+    <button class="close" data-close="howtoOvl" aria-label="关闭">×</button>
+    <ul class="modal-nav"><h4 data-i18n="howtoH">怎么用</h4><li class="active">HSK-AI-Coach</li></ul>
+    <div class="modal-body htu">
+      <h3 data-i18n="htu1T">灵动的卡片，锚定你的图谱</h3>
+      <p class="sub" data-i18n-html="htu1S">每张偏误卡右上角（悬停浮现）有分支动作。它们不是任意发散——只指向<b class="a">图谱里已确认的权威边</b>，灰掉的按钮说明图谱里还没有这条边。守住"图谱唯一权威，无自由发散"。</p>
+      <div class="ctypes">
+        <div class="ctype"><div class="ar">↗</div><div class="ct" data-i18n="htuDig">子卡深挖</div><div class="cd" data-i18n="htuDigD">对已确认知识点请 AI 费曼式深入讲解：核心规则、常见用法和易错点。</div></div>
+        <div class="ctype"><div class="ar">→</div><div class="ct" data-i18n="htuAdj">相邻角度</div><div class="cd" data-i18n-html="htuAdjD">沿图谱<b>混淆边</b>切到相邻知识点，讲两者区别与联系（你容易混的）。</div></div>
+        <div class="ctype"><div class="ar">↓</div><div class="ct" data-i18n="htuRv">沿待复习</div><div class="cd" data-i18n="htuRvD">该知识点在复习队列时可用：直接出针对性巩固练习。</div></div>
+      </div>
+      <h3>Smart Annotation</h3>
+      <ul><li data-i18n-html="htu2L">AI 回答里的<b class="a">下划线名词</b>（你图谱里已有的知识点）点一下 → 自动进入认知地图并定位该节点。</li></ul>
+      <h3 data-i18n="htu3T">学习动线（左侧栏）</h3>
+      <ul>
+        <li data-i18n-html="htu3a"><b>▶ 开始复习</b>：拉取复习队列，对最需要复习的知识点出一道针对性练习。</li>
+        <li data-i18n-html="htu3b"><b>◎ AI 学习报告</b>：基于画像（常错点/高频错法）生成数据报告——只读事实，不编造。</li>
+        <li data-i18n-html="htu3c"><b>▤ 阅读材料</b>：粘贴文本或上传 txt/md，让 AI 解析并讲解其中的中文知识点。</li>
+      </ul>
+      <h3 data-i18n="htu4T">会话</h3>
+      <ul>
+        <li data-i18n="htu4a">每个会话独立上下文（互不串扰），切换会话同步到网址（可收藏/回访恢复）。</li>
+        <li data-i18n="htu4b">会话标题自动取自你的第一句话；图谱和画像跨会话共享（这是"你"的长期记忆）。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ================= P0.12 冷启动引导 ================= -->
+<div class="overlay" id="onboardOvl">
+  <div class="modal">
+    <div class="modal-body onb">
+      <h3 data-i18n="onTitle">开始之前，先认识一下你</h3>
+      <div class="onstep" id="onb1">
+        <p class="onp" data-i18n="onL1Q">你的母语是什么？它决定我们会怎样针对性地发现你的中文偏误。</p>
+        <div class="onopts" id="onb1Opts"></div>
+      </div>
+      <div class="onstep" id="onb2" style="display:none">
+        <p class="onp" data-i18n="onLvQ">你目前大致在哪个水平？对话会从这起步（之后随时可调）。</p>
+        <div class="onopts" id="onb2Opts"></div>
+      </div>
+      <div class="onstep" id="onb3" style="display:none">
+        <p class="onp" data-i18n="onQuizQ">可选：随手写 3 句中文，我帮你估个更准的起点。</p>
+        <textarea id="onbTexts" rows="3" data-i18n-ph="onQuizPh"></textarea>
+        <div class="onassess-row">
+          <button id="onbAssess" class="sec" type="button" data-i18n="onAssess">帮我定级（不依赖联网）</button>
+          <span class="onhint" id="onbReason"></span>
+        </div>
+        <div class="onopts" id="onbLvSuggest" style="display:none"></div>
+      </div>
+      <div class="onnav">
+        <button id="onbPrev" class="ghost" type="button" style="display:none" data-i18n="onPrev">上一步</button>
+        <span style="flex:1"></span>
+        <button id="onbSkip" class="ghost" type="button" data-i18n="onSkip">跳过引导</button>
+        <button id="onbNext" class="pri" type="button" data-i18n="onNext">下一步</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 阅读材料 ================= -->
+<div class="overlay" id="docOvl">
+  <div class="modal small">
+    <button class="close" data-close="docOvl" aria-label="关闭">×</button>
+    <h3 data-i18n="docTitleModal">阅读材料 → 抽取中文知识点</h3>
+    <p class="sub" data-i18n-html="docSub">支持<b class="a">粘贴文本 / .txt / .md / 图片 / PDF</b>。图片与 PDF 会先经本地 OCR 转成文本，再作为对话发给 AI 助教解析。</p>
+    <label class="filebtn"><span data-i18n="docFileBtn">选择 .txt / .md 文件</span><input type="file" id="docFile" accept=".txt,.md,.markdown,text/plain,text/markdown"></label>
+    <label class="filebtn"><span data-i18n="docFileOcrBtn">选择图片 / PDF（OCR）</span><input type="file" id="docFileOcr" accept=".pdf,.png,.jpg,.jpeg,.bmp,.webp"></label>
+    <div class="charct" id="ocrStatus" data-i18n="docOcrIdle">可通过"选择图片 / PDF"上传教材截图/扫描件</div>
+    <textarea class="docfield" id="docText" placeholder="粘贴中文 / 英中对照段落、邮件、课文…" data-i18n-ph="docPh"></textarea>
+    <div class="charct" id="charCt">0 / 6000 字</div>
+    <div style="display:flex;gap:10px;margin-top:14px;align-items:center">
+      <button class="kp" id="docParse" style="font-size:13px;padding:7px 16px" data-i18n="docParse">开始解析</button>
+      <span class="charct" data-i18n="docNote">解析结果以"材料解析卡"出现在对话流中</span>
+      </div>
+  </div>
+</div>
+
+<!-- ================= 场景对话（0.22 方向2） ================= -->
+<div class="overlay" id="sceneOvl">
+  <div class="modal">
+    <button class="close" data-close="sceneOvl" aria-label="关闭">×</button>
+    <ul class="modal-nav"><h4 data-i18n="sceneH">场景对话</h4><li class="active" data-i18n="sceneSub">选一个场景，开口练中文</li></ul>
+    <div class="modal-body"><div class="scene-grid" id="sceneBody"></div></div>
+  </div>
+</div>
+
+<!-- ================= 会话右键菜单（0.24：置顶/分享/重命名/删除） ================= -->
+<div class="ctx-menu" id="ctxMenu"></div>
+
+<!-- 分享降级弹层（剪贴板不可用时的手动复制） -->
+<div class="overlay" id="shareOvl">
+  <div class="modal">
+    <button class="close" data-close="shareOvl" aria-label="关闭">×</button>
+    <ul class="modal-nav"><h4 data-i18n="shareH">分享对话</h4><li class="active" data-i18n="shareHint">复制下面的对话转写，粘贴给老师或朋友</li></ul>
+    <div class="modal-body"><textarea class="share-ta" id="shareTa" readonly></textarea></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+ * 前端壳 v2（0.19）· planner 唯一入口 /api/dialog
+ * 数据接缝：dialog 契约 v1（text/used_skills/trace/degraded/graph）
+ *          + GET /api/graph + GET /api/profile + GET /api/conversation
+ * ============================================================ */
+const $=id=>document.getElementById(id);
+const SVGNS='http://www.w3.org/2000/svg';
+const DOC_CHAR_LIMIT=6000;
+
+const state={
+  conversation:'',       // 当前会话 id（M5：服务端按此读写多轮记忆）
+  sessions:[],           // 侧栏会话列表（GET /api/profile）
+  providers:[],          // BYOK 供应商列表（GET /api/providers，0.20）
+  defaultProvider:null,  // 服务端实际生效的默认供应商 id
+  sceneId:'',            // 0.22 场景对话：当前场景 id（空=自由对话）
+  scenes:[],             // 预置场景列表（GET /api/scenarios，0.22）
+  persona:null,          // 0.22 方向3：个性化 persona（GET /api/profile.profile.persona）
+  userLevel:'HSK3',        // 0.25 起点分层：学习者 HSK 等级（GET /api/profile.profile.user_level）
+  providerId:(()=>{try{return localStorage.getItem('hsk-provider')||''}catch(e){return ''}})(),
+  lang:(()=>{try{const l=localStorage.getItem('hsk-lang');return (l==='zh'||l==='en')?l:'en'}catch(e){return 'en'}})(),
+};
+
+/* ============================================================
+ * i18n（0.21 · 界面+讲解英文化）
+ * 语言分层铁律：教学层（界面/讲解/纠错反馈）跟随语言开关；
+ * 内容载体（被检查的中文句、修正句、例句、词汇、知识点名）永远是中文。
+ * ============================================================ */
+const I18N={
+en:{
+  docTitle:'HSK-AI-Coach · Free dialog · Cognitive map',
+  aiTutor:'AI Tutor', aiTutorSub:'Local graph-aware · error-driven', aiTutorTip:'Local graph-aware tutor · click for how-to',
+  sessions:'Sessions', learnPath:'Learn', newSession:'＋ New session',
+  cogMap:'Cognitive map', startReview:'Start review', aiReport:'AI study report', metricsEntry:'Metrics', metricsTitle:'Effect metrics — continuation/clearance/satisfaction', readingMat:'Reading... material',
+  fbAsk:'Rate this reply? (optional)', fbSkip:'Skip', fbDone:'Saved ★{n}', fbLow:'Noted — tell the tutor what tripped you up.', fbFirm:'Was this helpful?',
+  settings:'Settings', howto:'How to use', foldSide:'Collapse sidebar', expandSide:'Expand sidebar',
+  connecting:'Connecting…', disconnected:'Service not connected',
+  startFirst:'Start with your first sentence',
+  emptyIntro:'Talk directly: type a Chinese sentence to have it checked, ask about a grammar point, or retell what you just learned to test your understanding.<br>Every error you make settles onto the cognitive map (open it anytime from the sidebar).',
+  inputHint:'Enter = new line · Ctrl+Enter = send',
+  inputPh:'Type a Chinese sentence, ask about a knowledge point, or retell what you just learned…',
+  sendTitle:'Send (Ctrl+Enter)',
+  scenePick:'Choose a scenario ▾', scenePickTitle:'Practice Chinese in a scenario (场景对话)',
+  scenePickActive:'In scenario:', scenePickClear:'exit',
+  sceneH:'Scenario conversation', sceneSub:'Pick a scenario and start speaking Chinese',
+  sceneGoals:'Goals:', sceneLevel:'HSK', sceneKps:'points', sceneStart:'Start',
+  sceneEmpty:'No scenarios available — the server scenario library is empty.',
+  sceneOpen:'Let’s start the "{title}" scenario. Set the scene and let me speak.',
+  sceneIntro:'Scenario starts: {title}. I will speak first — guide me, don’t correct every sentence.',
+  sbTag:'SCENARIO', sbRoles:'You: {a} · AI: {b}', sbSeed:'Mission:',
+  sbRecap:'End & recap', sbExit:'Exit scenario',
+  sbRecapBadge:'Scenario recap · {title}',
+  sbRecapPrompt:'The "{title}" scenario is wrapping up. Review our conversation and judge each goal — {goals} — one by one: for each goal say ✔ achieved or ✘ not yet, with one line of evidence quoting what I said. Then give a short overall summary and one thing to practice next.',
+  ctxPin:'Pin to top', ctxUnpin:'Unpin', ctxShare:'Share', ctxRename:'Rename',
+  ctxDelete:'Delete this conversation', ctxDeleteConfirm:'Confirm delete?',
+  pinnedToast:'Pinned to top', unpinnedToast:'Unpinned', renamedToast:'Renamed',
+  deletedToast:'Conversation deleted', opFailed:'Operation failed, please retry',
+  shareH:'Share conversation', shareHint:'Copy the transcript below and paste it to your teacher or friends',
+  shareYou:'Me', shareAI:'Coach', shareByline:'HSK-AI-Coach conversation',
+  shareCopied:'Transcript copied — paste it anywhere to share',
+  shareEmpty:'This conversation has no messages yet',
+  modelPickTitle:'Choose model (add providers in Settings → Model keys)',
+  defaultModel:'Default model',
+  backChat:'‹ Back to chat',
+  mapTitle:'Cognitive map · X = HSK level zones · Y = mastery · ring = mastery progress · dashed stroke = in review queue',
+  lgVocab:'Vocab', lgGrammar:'Grammar', lgPragma:'Pragmatics', lgChar:'Characters',
+  lgMastery:'Mastery ring', lgReview:'In review queue',
+  nbLabel:'Next up', nbGo:'Practice', nbExplain:'Explain',
+  nbReasonDue:'top review priority ({p})', nbReasonWeak:'lowest mastery ({m})',
+  ndMastery:'Mastery', ndErrors:'Errors', ndTimes:'×',
+  ndDig:'Deep dive', ndAdj:'Related ({n})', ndRv:'Practice', ndOff:'not in queue',
+  mapEmpty:'The map is empty — go back to chat and type your first sentence; the map starts growing from it',
+  queueTitle:'Review queue · by priority (click to locate)',
+  nodes:'nodes', node:'node', mastered:'Mastered', toConsolidate:'To consolidate',
+  tipLevel:'Level', tipMastery:'Mastery', tipErrors:'Errors', tipPrio:'Review priority', tipTimes:'×',
+  pend0:'Thinking…', pend1:'Analyzing the sentence…', pend2:'Fetching the explanation…', pend3:'Wrapping up the reply…',
+  lblIdentify:'Error identified', errTag:'Error', graphQ:'Graph', conf:'conf',
+  cleanTitle:'No high-confidence errors found in this sentence',
+  cleanSub:'Keep typing to practice', cleanSubUc:'; {n} low-confidence candidate(s) queued as tentative',
+  ucStrip:'{n} low-confidence candidate(s) (tentative, not written to the graph): ',
+  degradedIdentify:'Recognition degraded: ',
+  lblExplain:'Feynman explanation', explainFail:'Explanation failed: ', explainDegraded:'Explanation engine degraded: content may be incomplete',
+  lblVerify:'Retell check', vPass:'Pass ✓', vPartial:'Partial', vFail:'Not covered ✗',
+  vCov:'Points covered', vRatio:'coverage', evidenceAt:'Shown in: ',
+  vHollow:'⚠ Fluent but hollow: the retelling flows but does not land on the key points',
+  vDegraded:'⚠ Verify engine degraded: conservative verdict this round (not point-by-point LLM)',
+  aRetry:'AI suggests re-explaining this from a simpler angle',
+  aTeacher:'Same point missed {n} times in a row — consider asking a real teacher',
+  lblLookup:'Knowledge points', lookupErr:'Knowledge point lookup: ', unnamed:'(unnamed)',
+  lblReview:'Review plan', noReview:'Nothing in your review queue', items:'items',
+  genFail:'Generation failed', genNA:'Generation unit unavailable', diagnostics:'Diagnostics · {n} attempt(s)',
+  lblPractice:'Practice', lblUnit:'Feynman unit', unitKps:'Key points (target knowledge)',
+  taskKind:'Task type', qCount:'questions', forbidden:'Will not appear this round (guardrails)',
+  duration:'Suggested time', moreBlocks:'… {n} more block(s)',
+  lblSources:'Sources · {n} (click to expand)', noTitle:'(no title)',
+  lblCorpus:'Corpus · {n} (click to expand)', srcKp:'Knowledge-point list', srcLex:'HSK lexicon', srcGraph:'Your graph', inGraph:' · your weak spot',
+  lblParsed:'Parsed material · {n} block(s) (click to expand)',
+  digTitle:'Deep dive: ask the AI to explain this knowledge point in depth', digOff:'No such node in the graph (unconfirmed — cannot dig)',
+  digPrompt:'Please give a Feynman-style deep explanation of 「{name}」: core rules, common uses, and common pitfalls.',
+  digBadge:'↗ Deep dive · ',
+  adjTitle:'Adjacent angle: follow a confusion edge in the graph', adjOff:'No related edge (unconfirmed in the graph — cannot branch)',
+  poNeighbors:'Pick an adjacent knowledge point (confusion edge)',
+  adjPrompt:'I often confuse 「{a}」 and 「{b}」. Please explain their difference and connection.',
+  adjBadge:'→ Adjacent · ',
+  rvTitle:'In review queue: generate targeted practice', rvOff:'This knowledge point is not in the review queue',
+  rvPrompt:'Please give me one targeted practice item for 「{name}」 (a practice unit) and start it.',
+  rvBadge:'↓ Review · ',
+  delTitle:'Remove this card (graph unaffected)', delToast:'Card removed (graph unaffected)',
+  nSessions:'{n}', newSessPending:'New session · not started', nMsgs:'{n} msgs',
+  restored:'Session restored ({n} messages) · result cards are not persisted; this is the text log',
+  newSessionToast:'New session created',
+  reviewPrompt:'What should I review now? Pull my review queue and give me one targeted practice item for the point that most needs review.',
+  reviewBadge:'▶ Start review',
+  reviewTitle:'Focused review',
+  reviewLoading:'Loading review questions',
+  reviewEmpty:'Nothing to review yet — nothing is due. Talk to the coach first or come back later.',
+  rvSubmit:'Check',
+  rvNext:'Next',
+  rvOk:'Correct',
+  rvBad:'Expected:',
+  rvAgain:'Review again',
+  rvDone:'Review finished',
+  rvRecallQ:'Do you still remember this point?',
+  rvRecallYes:'Remembered',
+  rvRecallNo:'Forgot',
+  rvRecalledNo:'Noted — this point will come back sooner.',
+  onTitle:'Before we start, let us get to know you',
+  onL1Q:'What is your native language? It shapes how we spot your Chinese errors.',
+  onLvQ:'About where is your level? Conversation starts here (adjustable anytime).',
+  onQuizQ:'Optional: write 3 short Chinese sentences and I will suggest a starting level.',
+  onQuizPh:'e.g. 我喜欢吃苹果。我不会说中文。我想学很多。',
+  onAssess:'Suggest a level (no network needed)',
+  onQuizzing:'Assessing…',
+  onQuizEmpty:'Type at least one sentence first.',
+  onQuizFail:'Assessment failed: ',
+  onPrev:'Back',
+  onNext:'Next',
+  onFinish:'Done',
+  onSkip:'Skip tutorial',
+  onNeedL1:'Please pick your native language (or you can Skip).',
+  onOther:'Other',
+  onDone:'Tutorial complete — happy learning!',
+  reportFail:'Report failed to load: ',
+  repTitle:'AI study report', repGraph:'Graph', repNodes:'nodes', repReview:'Review', repItems:'items', repEdges:'Confusion edges', repOffenders:'Recurring', repWarn:'⚠ Recurring points: {list} — prioritize these today',
+  repOff:'Recurred ×{n}', repRep:'Met {n}×', repEmpty:'No profile data yet — chat a bit more, write a few sentences, and your errors will settle into this report automatically.',
+  repStored:'(Historical snapshot: nothing in the current review queue)',
+  repSrc:'Data source: error graph × event ledger × long-term memory (read-only, not LLM-generated)',
+  repLatest:'Latest evidence: ',
+  docTitleModal:'Reading material → extract Chinese knowledge points',
+  docSub:'Supports <b class="a">pasted text / .txt / .md / image / PDF</b>. Images and PDFs are first turned into text by local OCR, then sent to the AI tutor as a message for parsing.',
+  docFileBtn:'Choose a .txt / .md file', docPh:'Paste a Chinese / EN–ZH paragraph, email, textbook text…',
+  docFileOcrBtn:'Choose image / PDF (OCR)', docOcrIdle:'Upload a textbook screenshot / scan via "Choose image / PDF"', docOcrBusy:'OCR in progress…', docOcrDone:'OCR done: {n} files, {ms}ms, {chars} chars → pasted below', docOcrEmpty:'No text recognized (OCR installed). The image/PDF may be a scan of a blank area.',
+  charCt:'{n} / 6000 chars', charOver:' (excess will be truncated)', docParse:'Parse now',
+  docNote:'The parsed result appears in the chat as a "material parsed" card',
+  docToastLoaded:'Loaded {name}', docToastFail:'Failed to read the file', docToastEmpty:'Paste text or choose a file first',
+  docPrompt:'Please parse this material, find the Chinese knowledge points in it and explain them:\n\n',
+  docBadge:'▤ Reading material',
+  mmTitle:'Model', mmPick:'Choose model', mmNone:'No provider yet → open "Model keys"', mmFollow:'Follow server default', mmCur:' · current',
+  mmToastSet:'Model → {name}', mmToastDefault:'Model → server default',
+  errConn:'Cannot reach the service — is python -m engine.serve running?',
+  errReq:'Request failed: ',
+  errLLMBody:'Free dialog needs an LLM API key.',
+  errLlmHint:'Two ways: ① Settings → Model keys, add a provider (OpenAI-compatible, takes effect immediately); ② copy .env.example to .env, fill in DEEPSEEK_API_KEY, restart the service',
+  cfgTitle:'No model key configured',
+  cfgSub:'Add an OpenAI-compatible provider first under “Model keys” (DeepSeek is the evaluated default), or fill in DEEPSEEK_API_KEY in .env and restart.',
+  cfgBtn:'Configure', cfgClose:'Close', cfgToast:'Please configure a model key first (Settings → Model keys)',
+  errUnknownBody:'Unknown model provider (it may have been deleted). Pick the model again at the input box top-left.',
+  errUnknownHint:'This provider may have been deleted — pick the model again',
+  errQuotaHint:'Today’s free visitor quota is used up. Add your own API key to talk unlimited — it resets at 00:00 UTC.',
+  errGraph:'Failed to load the graph: ',
+  annotateTitle:'Click to locate this knowledge point on the map',
+  whyBtn:'Why?', whyL1:'Possible L1 influence:',
+  tabTheme:'Theme', tabLLM:'Model keys', tabKeys:'Shortcuts', tabAbout:'About', tabLang:'Language', tabPersona:'Personalize',
+  psH:'Personalize your coach',
+  psSub:'Reply style, address, identity and custom instructions — saved to your learner profile and applied on every turn (interrupt cap is enforced deterministically by the server, not left to the model).',
+  psStyle:'Reply style',
+  psStyle_default:'Default', psStyle_rigorous:'Rigorous', psStyle_friendly:'Friendly', psStyle_pragmatic:'Pragmatic', psStyle_creative:'Creative', psStyle_socratic:'Socratic',
+  psStyleDesc_default:'Follows the language-policy default', psStyleDesc_rigorous:'Precise, structured, no small talk',
+  psStyleDesc_friendly:'Warm, encourages before correcting', psStyleDesc_pragmatic:'Shortest usable Chinese, minimal theory',
+  psStyleDesc_creative:'Vivid analogies, humor welcome', psStyleDesc_socratic:'Questions instead of answers',
+  psAddressPh:'How to address you (e.g. Ling)', psIdentityPh:'Coach identity (e.g. my Chinese practice buddy)',
+  psInstrPh:'Custom instructions (e.g. focus on one error at a time)',
+  psCap:'Interruption cap (per conversation)',
+  psCapHint:'Silent while you are fluent; steps in only when you ask for help, get stuck, or repeat errors. After the cap it just records silently.',
+  psSave:'Save', psSaving:'Saving…', psSaved:'Saved — applies from your next message', psSaveFail:'Save failed: ',
+  psLoadingPersona:'Loading…',
+  lsH:'Learner HSK level',
+  lsSub:'Your level drives error detection, beyond-level flagging and explanation difficulty. Change it anytime — it applies from your next message.',
+  lsSave:'Save level', lsSaved:'Level saved', lsSaveFail:'Save failed: ',
+  themeH:'Interface theme', themeSub:'Two themes (same lightness, different accent). Switching only swaps tokens; semantic colors (graph types / error green-red) stay.',
+  themeMemphis:'Memphis', themeWarm:'Warm orange', theme_midnight:'Midnight', theme_memphis:'Memphis', theme_warm:'Warm orange', themeToast:'Theme → {name}',
+  langH:'Language / 语言',
+  langSub:'Interface & explanations language. The teaching layer follows this choice; Chinese sentences, examples and vocabulary always stay Chinese — they are what you learn.',
+  langEn:'English', langZh:'中文', langToast:'Language → {name}',
+  llmH:'Model keys (BYOK)',
+  llmNote:'Unified <b>OpenAI-compatible protocol</b>: DeepSeek / Qwen / GLM / Kimi / local Ollama all work. Takes <b>effect immediately</b> after adding — no restart needed. Keys are stored locally in <b>data/llm_providers.json</b> (gitignored, never uploaded). <b>DeepSeek is calibrated by the M6 evaluation (80% pass); other models are unevaluated</b> — protocol adherence may vary.',
+  llmLoading:'Loading…', llmAdd:'＋ Add provider', llmName:'Name (e.g. GLM-4)', llmModel:'Model name (e.g. glm-4-plus)',
+  llmUrl:'Base URL (e.g. https://open.bigmodel.cn/api/paas/v4)', llmKey:'API Key (stored locally only)',
+  llmBtnAdd:'Add', llmBtnTest:'Test first', llmHint:'Type the model name manually (see each provider\u2019s docs); use "Test first" to verify before saving.',
+  keysSend:'Send', keysNewline:'New line', keysCards:'Card branch actions (hover a card\u2019s top-right; anchored to authoritative graph edges)',
+  keysAnno:'Smart annotation → locate the knowledge point on the map', keysUrl:'URL parameter carries the current session (bookmarkable / restorable)',
+  aboutLi1:'HSK-AI-Coach · frontend shell v2 (0.19)',
+  aboutLi2:'Architecture: planner free ReAct as the single dialog entry (dialog contract v1)',
+  aboutLi3:'Data: error graph as the single authority · two-phase write-back · server-side multi-turn memory (per session)',
+  aboutLi4:'Zero third-party dependencies: Python stdlib + vanilla JS/SVG, single-file offline',
+  aboutLi5:'Cards grow along authoritative graph edges (↗ deep dive → adjacent ↓ review), no free branching',
+  provEmpty:'No providers yet — no key in .env and none added in the UI. Add one below to start chatting (DeepSeek is the evaluated default choice).',
+  provDefault:'Default', provTest:'Test', provSetDef:'Set default', provUnsetDef:'Unset default', provDel:'Delete',
+  provTesting:'Testing…', provOkMs:'✓ {n}ms', provFail:'✕ Failed', provToastFail:'Test failed: ',
+  provToastEnv:'Fell back to the .env default', provToastDef:'Default provider switched', provToastOpFail:'Operation failed: ',
+  provConfirmDel:'Delete this provider? Sessions using it fall back to the default model.',
+  provToastDeleted:'Deleted', provToastDelFail:'Delete failed: ',
+  provTestOk:'Connected ({n}ms)', provTestFail:'Connection failed: ', provUnknownErr:'unknown error',
+  provAllRequired:'All four fields are required', provAdding:'Adding…', provToastAdded:'Provider added (effective immediately; switch at the input box top-left)',
+  provToastAddFail:'Add failed: ',
+  statusFmt:'{id} · {n} nodes · {c}',
+  howtoH:'How to use', htuMain:'HSK-AI-Coach',
+  htu1T:'Lively cards, anchored to your graph',
+  htu1S:'Each error card has branch actions at its top-right (on hover). They are not free branching — they point only along <b class="a">authoritative edges already confirmed in the graph</b>; grayed-out buttons mean that edge does not exist yet. This keeps "the graph is the single authority, no free branching."',
+  htuDig:'Deep dive', htuDigD:'Ask the AI for a Feynman-style deep explanation of a confirmed knowledge point: core rules, common uses, pitfalls.',
+  htuAdj:'Adjacent angle', htuAdjD:'Follow a <b>confusion edge</b> in the graph to a neighboring point; explains the difference and connection (the ones you mix up).',
+  htuRv:'Along review', htuRvD:'Available when the point is in the review queue: get targeted consolidation practice.',
+  htu2T:'Smart Annotation', htu2L:'Click an <b class="a">underlined term</b> in an AI reply (a knowledge point already in your graph) → jumps into the cognitive map and locates that node.',
+  htu3T:'Study flows (left sidebar)',
+  htu3a:'<b>▶ Start review</b>: pulls the review queue and gives one targeted practice item for the point that needs it most.',
+  htu3b:'<b>◎ AI study report</b>: a data report built from your profile (common errors / high-frequency patterns) — read-only facts, no fabrication.',
+  htu3c:'<b>▤ Reading material</b>: paste text or upload txt/md and let the AI parse and explain the Chinese knowledge points in it.',
+  htu4T:'Sessions',
+  htu4a:'Each session has its own context (no cross-talk); switching a session syncs to the URL (bookmarkable / restorable).',
+  htu4b:'Session titles are taken from your first message; the graph and profile are shared across sessions — this is "your" long-term memory.',
+},
+zh:{
+  docTitle:'HSK-AI-Coach · 自由对话 · 认知地图',
+  aiTutor:'AI 助教', aiTutorSub:'本地图谱感知 · 偏误驱动', aiTutorTip:'本地图谱感知助教 · 点击查看怎么用',
+  sessions:'会话', learnPath:'学习动线', newSession:'＋ 新建会话',
+  cogMap:'认知地图', startReview:'开始复习', aiReport:'AI 学习报告', metricsEntry:'效果度量', metricsTitle:'效果度量面板（续学率/通关率/答疑满意度等）', readingMat:'阅读材料',
+  settings:'设置', howto:'怎么用', foldSide:'折叠侧栏', expandSide:'展开侧栏',
+  connecting:'连接中…', disconnected:'服务未连接',
+  startFirst:'开始你的第一句',
+  emptyIntro:'直接对话：写一句中文让它找错、问一个语法点、复述刚学的内容检验理解。<br>你的每次偏误都会沉淀到认知地图（侧栏「◈ 认知地图」随时查看）。',
+  inputHint:'Enter 换行 · Ctrl+Enter 发送',
+  inputPh:'说一句话、问一个知识点，或复述刚学的内容…',
+  sendTitle:'发送 (Ctrl+Enter)',
+  scenePick:'选择场景 ▾', scenePickTitle:'在场景里开口练中文（场景对话）',
+  scenePickActive:'场景中:', scenePickClear:'退出',
+  sceneH:'场景对话', sceneSub:'选一个场景，开口练中文',
+  sceneGoals:'目标:', sceneLevel:'HSK', sceneKps:'知识点', sceneStart:'开始',
+  sceneEmpty:'暂无可用场景 —— 服务端场景库为空。',
+  sceneOpen:'我们开始「{title}」场景吧。设定好场景，让我先开口。',
+  sceneIntro:'场景已开启：{title}。让我先开口，你引导我——不要逐句纠错。',
+  sbTag:'场景', sbRoles:'你：{a} · AI：{b}', sbSeed:'任务：',
+  sbRecap:'结束并复盘', sbExit:'退出场景',
+  sbRecapBadge:'场景复盘 · {title}',
+  sbRecapPrompt:'「{title}」场景要收尾了。请回顾我们的对话，逐条判断这些目标——{goals}——是否达成：每条给出 ✔ 已达成 / ✘ 未达成，并引用一句我的原话作为证据。最后给一个简短总结，以及下一步建议练什么。',
+  ctxPin:'置顶', ctxUnpin:'取消置顶', ctxShare:'分享', ctxRename:'重命名',
+  ctxDelete:'删除此对话', ctxDeleteConfirm:'确认删除？',
+  pinnedToast:'已置顶', unpinnedToast:'已取消置顶', renamedToast:'已重命名',
+  deletedToast:'对话已删除', opFailed:'操作失败，请重试',
+  shareH:'分享对话', shareHint:'复制下面的对话转写，粘贴给老师或朋友',
+  shareYou:'我', shareAI:'助教', shareByline:'HSK-AI-Coach 对话',
+  shareCopied:'转写已复制，粘贴即可分享',
+  shareEmpty:'这个对话还没有消息',
+  modelPickTitle:'选择模型（设置 → 模型密钥 可添加供应商）',
+  defaultModel:'默认模型',
+  backChat:'‹ 返回对话',
+  mapTitle:'认知地图 · 横轴=HSK 等级分区 · 纵轴=掌握度 · 环=掌握进度 · 虚线描边=待复习',
+  lgVocab:'词汇', lgGrammar:'语法', lgPragma:'语用', lgChar:'汉字',
+  lgMastery:'掌握度环', lgReview:'待复习',
+  nbLabel:'下一步', nbGo:'去练习', nbExplain:'看讲解',
+  nbReasonDue:'复习优先级最高（{p}）', nbReasonWeak:'掌握度最低（{m}）',
+  ndMastery:'掌握度', ndErrors:'错误', ndTimes:'次',
+  ndDig:'深挖', ndAdj:'相邻（{n}）', ndRv:'练习', ndOff:'不在队列',
+  mapEmpty:'地图还是空的 —— 回到对话输入第一个句子，地图开始生长',
+  queueTitle:'复习队列 · priority 降序（点击定位）',
+  nodes:'节点', node:'节点', mastered:'已掌握', toConsolidate:'待巩固',
+  tipLevel:'等级', tipMastery:'掌握度', tipErrors:'错误', tipPrio:'复习优先级', tipTimes:'次',
+  pend0:'正在思考…', pend1:'正在分析句子…', pend2:'正在调取讲解…', pend3:'正在整理回复…',
+  lblIdentify:'偏误识别', errTag:'偏误', graphQ:'图谱', conf:'置信',
+  cleanTitle:'这句话没有发现高置信偏误',
+  cleanSub:'继续输入保持练习', cleanSubUc:'；{n} 处低置信候选已进入待确认队列',
+  ucStrip:'另有 {n} 处低置信候选（待确认，不直接写入图谱）：',
+  degradedIdentify:'识别降级：',
+  lblExplain:'费曼讲解', explainFail:'讲解失败：', explainDegraded:'讲解引擎降级：内容可能不完整',
+  lblVerify:'复述验证', vPass:'通过 ✓', vPartial:'部分覆盖', vFail:'未覆盖 ✗',
+  vCov:'要点覆盖', vRatio:'覆盖率', evidenceAt:'落实于：',
+  vHollow:'⚠ 流利但空洞：复述顺，但没有落实到具体要点',
+  vDegraded:'⚠ 验证引擎降级：本次为保守判定（非逐点 LLM 判定）',
+  aRetry:'AI 建议换更简单的讲法重新讲一遍',
+  aTeacher:'同一要点连续未通过 {n} 次，建议找真人老师答疑',
+  lblLookup:'知识点', lookupErr:'知识点查询：', unnamed:'（未命名）',
+  lblReview:'复习安排', noReview:'暂无在复习队列的项', items:'项',
+  genFail:'生成失败', genNA:'生成单元不可用', diagnostics:'诊断 · {n} 次尝试（稳定 code）',
+  lblPractice:'巩固练习', lblUnit:'费曼讲解单元', unitKps:'要点（正向知识）',
+  taskKind:'任务类型', qCount:'题量', forbidden:'本回合不会犯（护栏）',
+  duration:'建议时长', moreBlocks:'… 其余 {n} 块略',
+  lblSources:'参考来源 · {n} 条（点击展开）', noTitle:'（无标题）',
+  lblCorpus:'语料检索 · {n} 条（点击展开）', srcKp:'知识点清单', srcLex:'HSK词表', srcGraph:'该生图谱', inGraph:' · 该生常错',
+  lblParsed:'已解析材料 · {n} 块（点击展开）',
+  digTitle:'子卡深挖：请 AI 深入讲解该知识点', digOff:'图谱中无此节点（未确认，不可深挖）',
+  digPrompt:'请用费曼式讲解深入讲一下「{name}」：核心规则、常见用法和易错点。',
+  digBadge:'↗ 深挖 · ',
+  adjTitle:'相邻角度：沿图谱混淆边展开', adjOff:'无关联边（图谱未确认，不可发散）',
+  poNeighbors:'沿混淆边选择相邻知识点',
+  adjPrompt:'我容易混淆「{a}」和「{b}」，请讲讲它们的区别和联系。',
+  adjBadge:'→ 相邻 · ',
+  rvTitle:'沿待复习：出针对性巩固练习', rvOff:'该知识点不在复习队列',
+  rvPrompt:'请针对「{name}」出一道巩固练习（practice 单元）并开始。',
+  rvBadge:'↓ 待复习 · ',
+  delTitle:'删除本卡片（不影响图谱）', delToast:'已移除卡片（不影响图谱）',
+  nSessions:'{n}', newSessPending:'新会话 · 未开始', nMsgs:'{n} 条',
+  restored:'已恢复会话（{n} 条消息）· 成果卡不随会话持久，此处为文本记录',
+  newSessionToast:'已新建会话',
+  reviewPrompt:'我该复习什么了？请拉取我的复习队列，并对最需要复习的知识点给我一道针对性练习。',
+  reviewBadge:'▶ 开始复习',
+  reviewTitle:'集中复习',
+  reviewLoading:'正在加载复习题',
+  reviewEmpty:'暂无待复习内容 —— 当前没有到期知识点。先跟助教练几句，或稍后再来复习。',
+  rvSubmit:'判分',
+  rvNext:'下一题',
+  rvOk:'答对了',
+  rvBad:'应填：',
+  rvAgain:'再复习一轮',
+  rvDone:'本轮复习完成',
+  rvRecallQ:'你还记得这个知识点吗？',
+  rvRecallYes:'记住了',
+  rvRecallNo:'没记住',
+  rvRecalledNo:'已记录 —— 该点会更快回到你的复习队列。',
+  onTitle:'开始之前，先认识一下你',
+  onL1Q:'你的母语是什么？它决定我们会怎样针对性地发现你的中文偏误。',
+  onLvQ:'你目前大致在哪个水平？对话会从这起步（之后随时可调）。',
+  onQuizQ:'可选：随手写 3 句中文，我帮你估个更准的起点。',
+  onQuizPh:'例如：我喜欢吃苹果。我不会说中文。我想学很多。',
+  onAssess:'帮我定级（不依赖联网）',
+  onQuizzing:'评估中…',
+  onQuizEmpty:'请至少先写一句话。',
+  onQuizFail:'定级失败：',
+  onPrev:'上一步',
+  onNext:'下一步',
+  onFinish:'完成',
+  onSkip:'跳过引导',
+  onNeedL1:'请选择你的母语（或可直接"跳过引导"）。',
+  onOther:'其他',
+  onDone:'引导完成 —— 开始愉快学习吧！',
+  reportFail:'报告加载失败：',
+  repTitle:'AI 学习报告', repGraph:'图谱', repNodes:'节点', repReview:'待复习', repItems:'项', repEdges:'混淆边', repOffenders:'重现', repWarn:'⚠ 重现知识点：{list} —— 建议今日优先巩固',
+  repOff:'重现 ×{n}', repRep:'遇到 {n} 次', repEmpty:'暂无画像数据 —— 先和助教多聊几句、写几个句子，你的偏误会自动沉淀成报告。',
+  repStored:'（历史快照：当前复习队列无待复习项）',
+  repSrc:'数据来源：偏误图谱 × 事件账本 × 长期记忆（只读，非 LLM 生成）',
+  repLatest:'最近证据：',
+  docTitleModal:'阅读材料 → 抽取中文知识点',
+  docSub:'支持<b class="a">粘贴文本 / .txt / .md / 图片 / PDF</b>。图片与 PDF 会先在本地 OCR 转成文本，再作为对话发给 AI 助教解析。',
+  docFileBtn:'选择 .txt / .md 文件', docPh:'粘贴中文 / 英中对照段落、邮件、课文…',
+  docFileOcrBtn:'选择图片 / PDF（OCR）', docOcrIdle:'可上传教材截图/扫描件，先在本地转成文本', docOcrBusy:'OCR 识别中…', docOcrDone:'OCR 完成：{n} 个文件，{ms}ms，共 {chars} 字，已粘贴到下方', docOcrEmpty:'未识别到文字（OCR 已可用）。可能是空白区域扫描件，请直接粘贴文本。',
+  charCt:'{n} / 6000 字', charOver:'（超出将截断）', docParse:'开始解析',
+  docNote:'解析结果以"材料解析卡"出现在对话流中',
+  docToastLoaded:'已载入 {name}', docToastFail:'文件读取失败', docToastEmpty:'先粘贴文本或选择文件',
+  docPrompt:'请解析这份材料，找出其中的中文知识点并讲解：\n\n',
+  docBadge:'▤ 阅读材料',
+  mmTitle:'模型', mmPick:'选择模型', mmNone:'尚未配置供应商 → 前往「模型密钥」', mmFollow:'跟随默认（服务端）', mmCur:' ·当前',
+  mmToastSet:'模型 → {name}', mmToastDefault:'模型 → 跟随服务端默认',
+  errConn:'无法连接服务（python -m engine.serve 是否在运行？）',
+  errReq:'请求失败：',
+  errLLMBody:'自由对话需要配置 LLM API Key。',
+  errLlmHint:'两种方法：① 设置 → 模型密钥，添加供应商（OpenAI 兼容，即时生效）；② 复制 .env.example 为 .env，填入 DEEPSEEK_API_KEY 后重启服务',
+  cfgTitle:'未配置模型密钥',
+  cfgSub:'先在「模型密钥」添加一个 OpenAI 兼容的供应商（DeepSeek 已评测），或填写 .env 的 DEEPSEEK_API_KEY 后重启。',
+  cfgBtn:'去配置', cfgClose:'关闭', cfgToast:'请先配置模型密钥（设置 → 模型密钥）',
+  errUnknownBody:'未知模型供应商（可能已被删除），请在输入框左上角重新选择',
+  errUnknownHint:'该供应商可能已被删除，请重新选择模型',
+  errQuotaHint:'今日游客免费额度已用尽，配置自己的 API Key 可无限使用；额度将于 UTC 00:00 重置。',
+  errGraph:'无法加载图谱：',
+  annotateTitle:'点击在地图定位',
+  whyBtn:'为什么？', whyL1:'可能是母语习惯影响：',
+  tabTheme:'界面主题', tabLLM:'模型密钥', tabKeys:'快捷键', tabAbout:'关于', tabLang:'语言', tabPersona:'个性化',
+  psH:'个性化你的学习伙伴',
+  psSub:'回复风格、称呼、身份与自定义指令——存入学习档案，每轮对话即时生效（打断上限由服务端确定性执行，不依赖模型自觉）。',
+  psStyle:'回复风格',
+  psStyle_default:'默认', psStyle_rigorous:'专业严谨', psStyle_friendly:'亲和友善', psStyle_pragmatic:'高效务实', psStyle_creative:'天马行空', psStyle_socratic:'启发引导',
+  psStyleDesc_default:'跟随语言策略默认，不加额外约束', psStyleDesc_rigorous:'术语准确、条理清晰，不寒暄',
+  psStyleDesc_friendly:'先肯定再纠错，语气温暖鼓励', psStyleDesc_pragmatic:'直给能用的说法，少讲理论',
+  psStyleDesc_creative:'生动类比、有趣例子，允许幽默', psStyleDesc_socratic:'引而不答，多提问带你自己发现',
+  psAddressPh:'怎么称呼你（如：小玲）', psIdentityPh:'AI 身份（如：我的中文陪练友）',
+  psInstrPh:'自定义指令（如：一次只聚焦一个错）',
+  psCap:'打断上限（次/场）',
+  psCapHint:'流利时静默；仅在求助、卡壳或连续出错时介入，达上限后只记录不打断。',
+  psSave:'保存', psSaving:'保存中…', psSaved:'已保存，下一轮对话生效', psSaveFail:'保存失败：',
+  psLoadingPersona:'读取中…',
+  lsH:'学习者 HSK 等级',
+  lsSub:'你的等级会驱动偏误识别、超纲判定与讲解难度。随时可改，下一轮对话即生效。',
+  lsSave:'保存等级', lsSaved:'等级已保存', lsSaveFail:'保存失败：',
+  themeH:'界面主题', themeSub:'两套主题（深浅相同、强调色不同），切换只换 token，语义色（图谱类型/偏误红绿）保持不变。',
+  themeMemphis:'孟菲斯', themeWarm:'暖橙', theme_midnight:'暗夜', theme_memphis:'孟菲斯', theme_warm:'暖橙', themeToast:'主题 → {name}',
+  langH:'语言 / Language',
+  langSub:'界面与讲解语言。教学层跟随此选择；中文句子、例句、词汇永远保持中文——那才是你要学的内容。',
+  langEn:'English', langZh:'中文', langToast:'语言 → {name}',
+  llmH:'模型密钥（BYOK）',
+  llmNote:'统一 <b>OpenAI 兼容协议</b>：DeepSeek / Qwen / GLM / Kimi / 本地 Ollama 均可。添加后<b>即时生效</b>，无需重启服务；Key 存于本机 <b>data/llm_providers.json</b>（已 gitignore，不会上传）。<b>DeepSeek 已按 M6 评测校准（80% 达标），其他模型未评测</b>——协议遵循度可能下降。',
+  llmLoading:'加载中…', llmAdd:'＋ 添加供应商', llmName:'名称（如 GLM-4）', llmModel:'模型名（如 glm-4-plus）',
+  llmUrl:'Base URL（如 https://open.bigmodel.cn/api/paas/v4）', llmKey:'API Key（仅存本机）',
+  llmBtnAdd:'添加', llmBtnTest:'先测试连通', llmHint:'模型名手动填写，请参考各供应商官方文档；「先测试连通」验证后再保存。',
+  keysSend:'发送', keysNewline:'换行', keysCards:'卡片分支动作（悬停卡片右上角，锚定图谱权威边）',
+  keysAnno:'Smart Annotation → 地图定位知识点', keysUrl:'网址参数携带当前会话（可收藏/回访恢复）',
+  aboutLi1:'HSK-AI-Coach · 前端壳 v2（0.19）',
+  aboutLi2:'架构：planner 自由 ReAct 唯一对话入口（dialog 契约 v1）',
+  aboutLi3:'数据：偏误图谱唯一权威 · 两段式写回 · 服务端多轮记忆（按会话）',
+  aboutLi4:'零第三方依赖：Python 标准库 + 原生 JS/SVG，单文件可离线',
+  aboutLi5:'卡片沿图谱权威边生长（↗深挖 →相邻 ↓待复习），无自由发散',
+  provEmpty:'还没有任何供应商 —— .env 未配置 Key，也未在界面添加。在下方表单添加即可开始对话（DeepSeek 为已评测默认选择）。',
+  provDefault:'默认', provTest:'测试', provSetDef:'设为默认', provUnsetDef:'取消默认', provDel:'删除',
+  provTesting:'测试中…', provOkMs:'✓ {n}ms', provFail:'✕ 连通失败', provToastFail:'测试失败：',
+  provToastEnv:'已回落 .env 默认', provToastDef:'默认供应商已切换', provToastOpFail:'操作失败：',
+  provConfirmDel:'确认删除该供应商？已选它的会话将回落默认模型。',
+  provToastDeleted:'已删除', provToastDelFail:'删除失败：',
+  provTestOk:'连通成功（{n}ms）', provTestFail:'连通失败：', provUnknownErr:'未知错误',
+  provAllRequired:'四个字段都必填', provAdding:'添加中…', provToastAdded:'已添加供应商（即时生效，输入框左上角可切换）',
+  provToastAddFail:'添加失败：',
+  statusFmt:'{id} · {n} 节点 · {c}',
+  howtoH:'怎么用', htuMain:'HSK-AI-Coach',
+  htu1T:'灵动的卡片，锚定你的图谱',
+  htu1S:'每张偏误卡右上角（悬停浮现）有分支动作。它们不是任意发散——只指向<b class="a">图谱里已确认的权威边</b>，灰掉的按钮说明图谱里还没有这条边。守住"图谱唯一权威，无自由发散"。',
+  htuDig:'子卡深挖', htuDigD:'对已确认知识点请 AI 费曼式深入讲解：核心规则、常见用法和易错点。',
+  htuAdj:'相邻角度', htuAdjD:'沿图谱<b>混淆边</b>切到相邻知识点，讲两者区别与联系（你容易混的）。',
+  htuRv:'沿待复习', htuRvD:'该知识点在复习队列时可用：直接出针对性巩固练习。',
+  htu2T:'Smart Annotation', htu2L:'AI 回答里的<b class="a">下划线名词</b>（你图谱里已有的知识点）点一下 → 自动进入认知地图并定位该节点。',
+  htu3T:'学习动线（左侧栏）',
+  htu3a:'<b>▶ 开始复习</b>：拉取复习队列，对最需要复习的知识点出一道针对性练习。',
+  htu3b:'<b>◎ AI 学习报告</b>：基于画像（常错点/高频错法）生成数据报告——只读事实，不编造。',
+  htu3c:'<b>▤ 阅读材料</b>：粘贴文本或上传 txt/md，让 AI 解析并讲解其中的中文知识点。',
+  htu4T:'会话',
+  htu4a:'每个会话独立上下文（互不串扰），切换会话同步到网址（可收藏/回访恢复）。',
+  htu4b:'会话标题自动取自你的第一句话；图谱和画像跨会话共享（这是"你"的长期记忆）。',
+  fbAsk:'给这条回复打个分？（可选）',
+  fbSkip:'跳过',
+  fbDone:'已记录 ★{n}',
+  fbLow:'已记下 —— 在这句话之后跟助教说说哪里卡住了。',
+  fbFirm:'这位助教对你帮助大吗？'
+}
+};
+let LANG=state.lang;
+function t(k){const d=I18N[LANG]||I18N.en;return (k in d)?d[k]:(I18N.en[k]||k);}
+function tf(k,map){return t(k).replace(/\{(\w+)\}/g,(m,n)=>(map&&n in map)?map[n]:m);}
+function applyLang(){
+  document.documentElement.lang=LANG;
+  document.title=t('docTitle');
+  document.querySelectorAll('[data-i18n]').forEach(e=>{e.textContent=t(e.dataset.i18n);});
+  document.querySelectorAll('[data-i18n-html]').forEach(e=>{e.innerHTML=t(e.dataset.i18nHtml);});
+  document.querySelectorAll('[data-i18n-ph]').forEach(e=>{e.placeholder=t(e.dataset.i18nPh);});
+  document.querySelectorAll('[data-i18n-title]').forEach(e=>{e.title=t(e.dataset.i18nTitle);});
+  document.querySelectorAll('[data-i18n-aria]').forEach(e=>{e.setAttribute('aria-label',t(e.dataset.i18nAria));});
+  renderSessions();renderMap();renderQueue();renderModelPick();renderScenePick();renderSceneBanner();
+  if(typeof updateCharCt==='function')updateCharCt();
+  if($('settingsOvl').classList.contains('show')&&curTab)renderSettingsTab(curTab);
+}
+function setLang(l){
+  LANG=(l==='zh')?'zh':'en';
+  state.lang=LANG;
+  try{localStorage.setItem('hsk-lang',LANG);}catch(e){}
+  applyLang();
+}
+let graph=null;
+let selectedNode=null;
+let bornIds=new Set();
+let kpVocab=[];          // Smart Annotation 词表：[{id,name}]（来自图谱节点名）
+let curTab='theme';      // 设置弹窗当前 tab（applyLang 翻开时需重渲染）
+const chat=$('chat');
+
+// ============ 通用 ============
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function escRe(s){return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function scrollChat(){chat.scrollTop=chat.scrollHeight;}
+function el(html){const t=document.createElement('template');t.innerHTML=html.trim();return t.content.firstChild;}
+function addMsg(node){chat.appendChild(node);scrollChat();return node;}
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1800);}
+function timeShort(ts){const d=new Date(ts*1000);const p=n=>String(n).padStart(2,'0');return `${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;}
+
+async function api(url,body){
+  let r;
+  try{ r=await fetch(url,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:undefined); }
+  catch(e){ throw new Error(t('errConn')); }
+  let data=null;
+  try{ data=await r.json(); }catch(e){ /* 保持 null */ }
+  if(!r.ok){ const err=new Error((data&&data.error)?data.error:('HTTP '+r.status)); err.code=data&&data.code; throw err; }
+  return data;
+}
+
+function typeClass(t){t=t||'';if(t.includes('词汇'))return 'vocab';if(t.includes('语法'))return 'grammar';if(t.includes('语用'))return 'pragma';if(t.includes('汉字'))return 'char';return 'grammar';}
+function typeColor(t){t=t||'';if(t.includes('词汇'))return 'rgb(var(--kp-vocab))';if(t.includes('语法'))return 'rgb(var(--kp-grammar))';if(t.includes('语用'))return 'rgb(var(--kp-pragma))';if(t.includes('汉字'))return 'rgb(var(--kp-char))';return 'rgb(var(--kp-grammar))';}
+function nodeColor(types){return typeColor(Object.keys(types||{}).join(''));}
+
+// ============ 气泡 / pending / 提示 ============
+function addUserMsg(text,badge){
+  if(badge) addMsg(el(`<div class="branch-tag">${esc(badge)}</div>`));
+  return addMsg(el(`<div class="msg-user">${esc(text)}</div>`));
+}
+const PENDING_KEYS=['pend0','pend1','pend2','pend3'];
+function addPending(){
+  const p=el(`<div class="pending"><span class="ti"></span><span class="ti"></span><span class="ti"></span><span>${t(PENDING_KEYS[0])}</span></div>`);
+  let i=0;
+  p._iv=setInterval(()=>{i=(i+1)%PENDING_KEYS.length;p.lastChild.textContent=t(PENDING_KEYS[i]);},2400);
+  return addMsg(p);
+}
+function addNote(txt,cls,hint){
+  return addMsg(el(`<div class="note ${cls||'plain'}">${esc(txt)}${hint?`<span class="hint">${esc(hint)}</span>`:''}</div>`));
+}
+function addAiText(text){
+  if(!text) return;
+  addMsg(el(`<div class="ai-text">${annotate(esc(text))}</div>`));
+}
+// ============ P0.18 对话结束评分卡片（1–5 星可选提交） ============
+// 每轮对话回复尾部渲染一行 1–5 星 + 跳过；评分 POST /api/feedback → feedback_<learner>.json。
+// 动态内容一律 textContent。评分后可转收藏：低分(=1)触发仅本地提示，不阻断。
+function renderFeedbackCard(){
+  // P0.19 fix：评分卡改低频——同一会话（conversation_id）只弹出一次，避免每轮都打扰。
+  // 用 sessionStorage 记忆会话维度的"已问过"，刷新页面不重复，切会话才会再问。
+  const key='askedFeedback:'+state.conversation;
+  if(sessionStorage.getItem(key)) return;
+  sessionStorage.setItem(key,'1');
+  const wrap=el('<div class="fb-card"></div>');
+  const ask=document.createElement('span');
+  ask.className='fb-ask'; ask.textContent=t('fbAsk')+'  '+t('fbFirm');
+  const row=el('<div class="fb-row"></div>');
+  row.appendChild(ask);
+  const convId=state.conversation;
+  for(let s=1;s<=5;s++){
+    const b=el(`<button class="fb-star" type="button" data-s="${s}" title="${s}★" aria-label="${s}★">★</button>`);
+    b.onclick=async ()=>{
+      try{
+        b.disabled=true;
+        await api('/api/feedback',{conversation_id:convId,score:s});
+        wrap.innerHTML='';
+        const done=document.createElement('span');
+        done.className='fb-done'; done.textContent=tf('fbDone',{n:'★'.repeat(s)});
+        wrap.appendChild(done); wrap.classList.add('fb-submitted');
+        if(s===1) toast(t('fbLow'));
+      }catch(err){ b.disabled=false; toast(err.message); }
+    };
+    row.appendChild(b);
+  }
+  const skip=el(`<button class="fb-skip" type="button">${esc(t('fbSkip'))}</button>`);
+  skip.onclick=()=>{ wrap.innerHTML=''; wrap.classList.add('fb-submitted'); };
+  row.appendChild(skip);
+  wrap.appendChild(row);
+  return addMsg(wrap);
+}
+
+// ============ 0.26 隐性"为什么"原理（默认折叠，点击展开） ============
+// items: [{fragment, correction, reason, l1?}]；渲染成助教回复尾部的折叠块。
+// 动态内容一律 textContent 注入（防 XSS）；无 items → 不渲染。
+function renderWhy(items){
+  if(!items||!items.length) return;
+  const wrap=el('<div class="why-block"></div>');
+  const btn=el(`<button class="why-toggle" type="button"><span class="chev">▾</span><span>${esc(t('whyBtn'))}</span></button>`);
+  const body=el('<div class="why-body" hidden></div>');
+  items.forEach(it=>{
+    const item=el('<div class="why-item"></div>');
+    const q=el('<div class="why-q"></div>');
+    const f=document.createElement('span');f.textContent=(it.fragment||'');
+    const ar=el('<span class="why-ar">→</span>');
+    const c=document.createElement('span');c.textContent=(it.correction||'');
+    q.appendChild(f);q.appendChild(ar);q.appendChild(c);
+    item.appendChild(q);
+    if(it.reason){const p=el('<div class="why-p"></div>');p.textContent=it.reason;item.appendChild(p);}
+    if(it.l1){const p=el('<div class="why-l1"></div>');p.textContent=t('whyL1')+it.l1;item.appendChild(p);}
+    // 0.29：无条件挂↗/→/↓分支动作；无 kp_id（未锚定/未确认）→ 全灰，
+    // 即"图谱里还没有这条边，不可发散"。守住图谱唯一权威，无自由发散。
+    item.appendChild(branchTools(it.kp_id||'', 'why-tools'));
+    body.appendChild(item);
+  });
+  btn.addEventListener('click',()=>{
+    const next=body.hidden;body.hidden=!next;btn.classList.toggle('open',next);
+  });
+  wrap.appendChild(btn);wrap.appendChild(body);
+  addMsg(wrap);
+}
+
+// ============ 0.27 成果卡随会话持久：恢复会话重建 ============
+// 与实时 runDialog 顺序一致（先 renderTrace 卡，再文本，最后 why 折叠块）。
+function applyHistory(msgs){
+  (msgs||[]).forEach(m=>{
+    if(m.role==='user'){ addUserMsg(m.content); return; }
+    if(Array.isArray(m.cards)&&m.cards.length) renderTrace(m.cards);
+    addAiText(m.content);
+    if(Array.isArray(m.why)&&m.why.length) renderWhy(m.why);
+  });
+}
+
+// ============ Smart Annotation（词表=图谱节点名；点击→地图定位） ============
+function rebuildVocab(){
+  kpVocab=Object.entries((graph&&graph.nodes)||{})
+    .map(([id,n])=>({id,name:String((n&&n.knowledge_point)||id)}))
+    .filter(v=>v.name&&v.name.length>=2)
+    .sort((a,b)=>b.name.length-a.name.length);
+}
+function annotate(escaped){
+  if(!kpVocab.length) return escaped;
+  const re=new RegExp('('+kpVocab.map(v=>escRe(v.name)).join('|')+')','g');
+  return escaped.replace(re,m=>{
+    const v=kpVocab.find(x=>x.name===m);
+    return v?`<span class="note-c" data-kp="${esc(v.id)}" title="${esc(t('annotateTitle'))}">${m}</span>`:m;
+  });
+}
+chat.addEventListener('click',e=>{
+  const n=e.target.closest('.note-c');
+  if(n){e.stopPropagation();locateKp(n.dataset.kp);}
+});
+
+/* ============================================================
+ * 学习成果卡（A1：内部工具轨迹隐藏，只渲染转译后的成果卡）
+ * 数据源 = /api/dialog 返回的 trace[]；tr.ok===false 跳过（无成果不渲染）
+ * ============================================================ */
+function renderTrace(trace){
+  (trace||[]).forEach(tr=>{
+    if(tr.ok===false) return;
+    const r=tr.result||{};
+    switch(tr.name){
+      case 'identify_errors':  renderIdentify(r); break;
+      case 'explain_error':    renderExplain(r); break;
+      case 'verify_retell':    renderVerify(r); break;
+      case 'lookup_knowledge_point': renderLookup(r); break;
+      case 'get_review_queue': renderReview(r); break;
+      case 'generate_unit':    renderUnit(r); break;
+      case 'web_search':       renderSearch(r); break;
+      case 'parse_document':   renderParse(r); break;
+      case 'retrieve_corpus':  renderRetrieve(r); break;
+      default: break;  // 未知技能 → 不渲染（隐藏内部实现）
+    }
+  });
+}
+const COLON=()=>LANG==='zh'?'：':': ';
+
+// ---- 偏误识别：偏误卡（含分支工具栏）/ 正确卡 + 低置信条 ----
+function renderIdentify(res){
+  const errors=Array.isArray(res.errors)?res.errors:[];
+  const uncertain=Array.isArray(res.uncertain)?res.uncertain:[];
+  errors.forEach(err=>{
+    const gw=err.graph_write||{};
+    const kpId=err.knowledge_point_id||'';
+    const c=el(`<div class="card"></div>`);
+    c.innerHTML=`
+      <div class="cardlabel">${t('lblIdentify')}</div>
+      <div class="head">
+        <span class="tag ${typeClass(err.type)}">${esc(err.type||t('errTag'))}</span>
+        <span class="frag">${esc(err.fragment||'')}</span>
+        <span class="corr">→ ${esc(err.correction||'')}</span>
+      </div>
+      <div class="meta-row">
+        <span>${t('graphQ')}${COLON()}${esc(gw.status||'?')}${gw.kp_id?' · '+esc(gw.kp_id):''}</span>
+        <span>${t('conf')} ${err.confidence!=null?Number(err.confidence).toFixed(2):'?'}</span>
+      </div>
+      ${kpId&&graph&&graph.nodes[kpId]?`<div class="kp-row"><span class="kp" data-kp="${esc(kpId)}">· ${esc((graph.nodes[kpId]&&graph.nodes[kpId].knowledge_point)||kpId)}</span></div>`:''}`;
+    if(kpId) c.appendChild(cardTools(kpId));
+    addMsg(c);
+    const chip=c.querySelector('.kp[data-kp]');
+    if(chip) chip.addEventListener('click',()=>locateKp(chip.dataset.kp));
+  });
+  if(!errors.length){
+    const c=el(`<div class="card clean"></div>`);
+    c.innerHTML=`
+      <div class="clean-title"><span>✓</span><span>${t('cleanTitle')}</span></div>
+      <div class="clean-sub">${t('cleanSub')}${uncertain.length?tf('cleanSubUc',{n:uncertain.length}):''}。</div>`;
+    addMsg(c);
+  }else if(uncertain.length){
+    addMsg(el(`<div class="uc-strip">${tf('ucStrip',{n:uncertain.length})}${uncertain.map(u=>esc(u.fragment||'')).join('、')}</div>`));
+  }
+  (Array.isArray(res.degraded)?res.degraded:[]).forEach(d=>addNote(t('degradedIdentify')+String(d),'warn'));
+}
+
+// ---- 费曼讲解卡 ----
+function renderExplain(res){
+  const kps=Array.isArray(res.key_points)?res.key_points:[];
+  if(!res.explanation&&!kps.length){ if(res._error) addNote(t('explainFail')+res._error,'warn'); return; }
+  const c=el(`<div class="card"></div>`);
+  c.innerHTML=`
+    <div class="cardlabel">${t('lblExplain')}</div>
+    <div class="expl-text">${annotate(esc(res.explanation||''))}</div>
+    ${kps.length?`<div class="kp-row">${kps.map(k=>`<span class="kp-plain">${esc(typeof k==='string'?k:(k.text||''))}</span>`).join('')}</div>`:''}
+    ${res._degraded?`<div class="note warn" style="margin-top:8px">${t('explainDegraded')}</div>`:''}`;
+  addMsg(c);
+}
+
+// ---- 复述验证卡 ----
+function renderVerify(v){
+  v=v||{};
+  const verdict=v.verdict||'partial';
+  const pts=Array.isArray(v.point_judgements)?v.point_judgements:[];
+  const total=v.total_points!=null?v.total_points:pts.length;
+  const covered=v.covered_points!=null?v.covered_points:pts.filter(p=>p.is_covered).length;
+  const ratio=v.coverage_ratio!=null?Number(v.coverage_ratio):0;
+  const c=el(`<div class="card verify v-${verdict}"></div>`);
+  c.innerHTML=`
+    <div class="cardlabel">${t('lblVerify')}</div>
+    <div class="v-head">
+      <span class="v-badge ${verdict}">${verdict==='pass'?t('vPass'):verdict==='partial'?t('vPartial'):t('vFail')}</span>
+      <span class="v-cov">${t('vCov')} ${covered}/${total} · ${t('vRatio')} ${(ratio*100).toFixed(0)}%</span>
+    </div>
+    <div class="v-bar"><div style="width:${Math.min(ratio*100,100)}%"></div></div>
+    ${pts.length?`<div class="v-points">${pts.map(p=>`
+      <div class="v-point ${p.is_covered?'hit':'miss'}">
+        <span class="mk">${p.is_covered?'✓':'✗'}</span>
+        <span>${esc(p.text||'')}
+          ${p.is_covered&&p.evidence?`<div class="ev">${t('evidenceAt')}${esc(p.evidence)}</div>`:''}
+        </span>
+      </div>`).join('')}</div>`:''}
+    ${v.flowery_but_empty?`<div class="v-hollow">${t('vHollow')}</div>`:''}
+    ${v.degraded?`<div class="v-hollow">${t('vDegraded')}</div>`:''}
+    ${v.feedback?`<div class="v-feedback">${esc(v.feedback)}</div>`:''}
+    ${v.action==='retry_simpler'?`<div class="v-action a-retry">${t('aRetry')}</div>`:''}
+    ${v.action==='suggest_teacher'?`<div class="v-action a-teacher">${tf('aTeacher',{n:v.consecutive_fail||'?'})}</div>`:''}`;
+  addMsg(c);
+}
+
+// ---- 知识点卡 ----
+function renderLookup(res){
+  const results=Array.isArray(res.results)?res.results:[];
+  if(!results.length){ if(res._error) addNote(t('lookupErr')+res._error,'plain'); return; }
+  const c=el(`<div class="card"></div>`);
+  c.innerHTML=`
+    <div class="cardlabel">${t('lblLookup')} · ${results.length}</div>
+    ${results.map(r=>{
+      const nm=r.knowledge_point||r.title||r.name||r.kp_id||r.id||t('unnamed');
+      const sm=r.summary||r.description||r.definition||r.explanation||r.point||'';
+      return `<div class="kp-li">
+        <span class="nm">${esc(nm)}</span>
+        ${r.level?`<span class="lv">${esc(r.level)}</span>`:''}
+        ${sm?`<div class="sm">${esc(String(sm).slice(0,160))}</div>`:''}
+      </div>`;}).join('')}`;
+  addMsg(c);
+}
+
+// ---- 复习卡（点击行 → 地图定位） ----
+function renderReview(res){
+  const items=Array.isArray(res.items)?res.items:[];
+  const c=el(`<div class="card"></div>`);
+  c.innerHTML=`
+    <div class="cardlabel">${t('lblReview')} · ${res.count!=null?res.count:items.length} ${t('items')}</div>
+    ${items.length?`<div>${items.slice(0,8).map(it=>{
+      const n=it.node||{};
+      return `<div class="rv-li" data-kp="${esc(it.kp_id||'')}">
+        <span style="min-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.knowledge_point||it.kp_id||'')}</span>
+        <div class="bar"><div style="width:${Math.min((it.priority||0)*10,100)}%"></div></div>
+        <span class="rv-prio">${(it.priority||0).toFixed(1)}</span>
+      </div>`;}).join('')}</div>`:`<div class="clean-sub">${t('noReview')}</div>`}`;
+  addMsg(c);
+  c.querySelectorAll('.rv-li').forEach(row=>row.addEventListener('click',()=>locateKp(row.dataset.kp)));
+}
+
+// ---- 生成单元卡（费曼讲解单元 / 巩固练习） ----
+function renderUnit(out,label){
+  const c=el(`<div class="card unit"></div>`);
+  if(!out||out.ok!==true||!out.unit){
+    const diags=Array.isArray(out&&out.diagnostics)?out.diagnostics:[];
+    let html=`<div class="cardlabel" style="color:rgb(var(--sem-err))">${t('genFail')}${label?' · '+esc(label):''}</div>
+      <div class="note err">${esc((out&&out.message)||t('genNA'))}</div>`;
+    if(diags.length){
+      html+=`<div class="unit-sec">${tf('diagnostics',{n:(out&&out.attempts)||0})}</div>
+        <ul class="unit-li">${diags.map(d=>`<li>${esc(d.code)} · ${esc(d.subject)}${LANG==='zh'?'：':': '}${esc(d.message)}</li>`).join('')}</ul>`;
+    }
+    c.innerHTML=html;
+    return addMsg(c);
+  }
+  const u=out.unit;
+  const kps=Array.isArray(u.keyPoints)?u.keyPoints:[];
+  const forb=Array.isArray(u.forbidden_errors)?u.forbidden_errors:[];
+  c.innerHTML=`
+    <div class="cardlabel">${esc(label||(u.type==='practice'?t('lblPractice'):t('lblUnit')))}</div>
+    <div class="unit-title">${esc(u.title||'')}</div>
+    ${kps.length?`<div class="unit-th">${t('unitKps')}</div><div class="unit-kp">${kps.map(k=>`<span class="kp-plain">${esc(k)}</span>`).join('')}</div>`:''}
+    ${u.task_kind?`<div class="unit-sec">${t('taskKind')}${LANG==='zh'?'：':': '}${esc(u.task_kind)} · ${t('qCount')} ${u.questionCount!=null?esc(u.questionCount):'?'}</div>`:''}
+    ${forb.length?`<div class="unit-th" style="color:rgb(var(--sem-warn));margin-top:10px">${t('forbidden')}</div>
+      <ul class="unit-forbid">${forb.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}
+    ${u.estimatedDuration?`<div class="unit-sec">${t('duration')} ${esc(u.estimatedDuration)}s</div>`:''}`;
+  return addMsg(c);
+}
+
+// ---- 参考来源卡（折叠证据层） ----
+function safeUrl(u){
+  const s=String(u||'').trim();
+  return /^https?:\/\//i.test(s)?s:'#';   // 仅放行 http(s)，防 javascript: 等注入
+}
+function renderSearch(res){
+  const results=Array.isArray(res.results)?res.results:[];
+  if(!results.length) return;
+  const d=el(`<details class="src"></details>`);
+  d.innerHTML=`
+    <summary>${tf('lblSources',{n:results.length})}</summary>
+    <div class="src-list">${results.map(r=>`
+      <div class="src-item">
+        <a href="${esc(safeUrl(r.link||r.url))}" target="_blank" rel="noopener noreferrer">${esc(r.title||r.link||r.url||t('noTitle'))}</a>
+        ${r.snippet?`<span class="sn">${esc(String(r.snippet).slice(0,200))}</span>`:''}
+      </div>`).join('')}</div>`;
+  addMsg(d);
+}
+
+// ---- 语料检索卡（折叠：知识点清单 / HSK 词表 / 该生图谱） ----
+function renderRetrieve(res){
+  const results=Array.isArray(res.results)?res.results:[];
+  if(!results.length) return;
+  const srcLabel=()=>({knowledge_point:t('srcKp'),lexicon:t('srcLex'),graph:t('srcGraph')});
+  const d=el(`<details class="src"></details>`);
+  d.innerHTML=`
+    <summary>${tf('lblCorpus',{n:results.length})}</summary>
+    <div class="src-list">${results.map(r=>`
+      <div class="src-item">
+        <span>${esc(r.knowledge_point||r.chunk_id||'')} · ${esc(srcLabel()[r.source]||r.source||'')}${r.in_graph?t('inGraph'):''}</span>
+        ${r.text?`<span class="sn">${esc(String(r.text).slice(0,200))}</span>`:''}
+      </div>`).join('')}</div>`;
+  addMsg(d);
+}
+
+// ---- 材料解析卡（折叠） ----
+function renderParse(res){
+  const blocks=Array.isArray(res.blocks)?res.blocks:[];
+  if(!blocks.length) return;
+  const d=el(`<details class="src"></details>`);
+  d.innerHTML=`
+    <summary>${tf('lblParsed',{n:blocks.length})}</summary>
+    ${blocks.slice(0,3).map(b=>`<div class="blk-pre">[${esc(b.type||'text')}] ${esc(String(b.text||'').slice(0,200))}</div>`).join('')}
+    ${blocks.length>3?`<div class="unit-sec">${tf('moreBlocks',{n:blocks.length-3})}</div>`:''}`;
+  addMsg(d);
+}
+
+/* ============================================================
+ * 卡片分支动作（0.19 核心：锚定图谱权威边，无方向置灰）
+ *   ↗ 深挖：节点已确认 → 请 AI 费曼讲解
+ *   → 相邻：图谱混淆边存在 → 选相邻 KP 讲区别
+ *   ↓ 待复习：节点在复习队列 → 出针对性练习
+ * 0.29：branchTools 抽取复用 —— 偏误识别卡与「为什么」错误行共用，
+ *       图谱唯一权威：灰掉的按钮=图谱里还没有这条边，不可发散。
+ * ============================================================ */
+function neighborsOf(kpId){
+  const out=[];
+  (graph&&graph.edges||[]).forEach(e=>{
+    if(e.from_node_id===kpId) out.push(e.to_node_id);
+    else if(e.to_node_id===kpId) out.push(e.from_node_id);
+  });
+  return [...new Set(out)].filter(id=>graph&&graph.nodes&&graph.nodes[id]);
+}
+function inQueue(kpId){return (graph&&graph.queue||[]).some(q=>q.kp_id===kpId);}
+function nodeName(kpId){const n=graph&&graph.nodes&&graph.nodes[kpId];return (n&&n.knowledge_point)||kpId;}
+
+// 地图节点标签用短名：优先取括号外的核心词（"量词（个/本/张/件…）"→"量词"，
+// "介词（在/从/给/向…）"→"介词"），再截到 max 字，完整名靠 title tooltip 呈现。
+function shortKpName(raw,max){
+  const s=String(raw||'');
+  const cut=s.split(/（|\(/)[0].trim();
+  const base=cut||s;
+  const chars=[...base];
+  return chars.length>max?chars.slice(0,max-1).join('')+'…':base;
+}
+
+// 三个分支动作（↗→↓），cls=容器类名（card-tools 卡片右上 / why-tools 错误行右上）
+function branchTools(kpId,cls){
+  cls=cls||'card-tools';
+  const bar=el(`<div class="${cls}"></div>`);
+  const hasNode=!!(graph&&graph.nodes&&graph.nodes[kpId]);
+  const nbs=neighborsOf(kpId);
+  const queued=inQueue(kpId);
+  const mk=(glyph,title,on,fn)=>{
+    const b=el(`<button class="tool ${on?'':'off'}" title="${esc(title)}">${glyph}</button>`);
+    if(on&&fn) b.addEventListener('click',ev=>{ev.stopPropagation();fn(b);});
+    bar.appendChild(b);
+    return b;
+  };
+  mk('↗',hasNode?t('digTitle'):t('digOff'),hasNode,()=>{
+    const nm=nodeName(kpId);
+    sendPrompt(tf('digPrompt',{name:nm}),tf('digBadge')+nm);
+  });
+  mk('→',nbs.length?t('adjTitle'):t('adjOff'),nbs.length>0,btn=>{
+    showNeighborMenu(btn,kpId);
+  });
+  mk('↓',queued?t('rvTitle'):t('rvOff'),queued,()=>{
+    const nm=nodeName(kpId);
+    sendPrompt(tf('rvPrompt',{name:nm}),tf('rvBadge')+nm);
+  });
+  return bar;
+}
+
+function cardTools(kpId){
+  const bar=branchTools(kpId);
+  const del=el(`<button class="tool del" title="${esc(t('delTitle'))}">✕</button>`);
+  del.addEventListener('click',ev=>{ev.stopPropagation();bar.closest('.card').remove();toast(t('delToast'));});
+  bar.appendChild(del);
+  return bar;
+}
+
+function showNeighborMenu(btn,kpId){
+  closePopovers();
+  const nbs=neighborsOf(kpId);
+  const r=btn.getBoundingClientRect();
+  const p=el(`<div class="popover"></div>`);
+  p.innerHTML=`<div class="po-t">${t('poNeighbors')}</div>`+nbs.slice(0,8).map(id=>{
+    const n=graph.nodes[id]||{};
+    return `<div class="pop-item" data-kp="${esc(id)}"><span>${esc(nodeName(id))}</span><span class="pl">${esc(n.level||'')}</span></div>`;
+  }).join('');
+  document.body.appendChild(p);
+  const pw=p.getBoundingClientRect();
+  p.style.left=Math.min(r.left,window.innerWidth-pw.width-10)+'px';
+  p.style.top=Math.max(8,Math.min(r.bottom+6,window.innerHeight-pw.height-8))+'px';
+  p.querySelectorAll('.pop-item').forEach(it=>it.addEventListener('click',()=>{
+    const other=it.dataset.kp;
+    const a=nodeName(kpId),b=nodeName(other);
+    closePopovers();
+    sendPrompt(tf('adjPrompt',{a,b}),tf('adjBadge')+a+' × '+b);
+  }));
+}
+function closePopovers(){document.querySelectorAll('.popover').forEach(p=>p.remove());}
+document.addEventListener('click',e=>{if(!e.target.closest('.popover')&&!e.target.closest('.tool'))closePopovers();});
+
+// ============ 认知地图（原生 SVG） ============
+function levelNum(lv){const m=String(lv||'').match(/\d+/);return m?parseInt(m[0],10):3;}
+function layoutNodes(){
+  const nodes=graph&&graph.nodes?graph.nodes:{};
+  const svg=$('map');
+  const W=svg.clientWidth||800, H=svg.clientHeight||520;
+  const headTop=14, top=56, bottom=H-58;   // headTop：HSK 等级分区头 pill 区
+  const lvSet=new Set([1,2,3,4]);
+  Object.values(nodes).forEach(n=>{const v=levelNum(n.level);if(v>=1&&v<=6)lvSet.add(v);});
+  const maxLv=Math.max(...lvSet);
+  const colW=Math.max((W-90)/maxLv,70);
+  const xOf=lv=>45+(levelNum(lv)-.5)*colW;
+  const cols={};
+  Object.entries(nodes).forEach(([id,n])=>{
+    const k=levelNum(n.level);(cols[k]=cols[k]||[]).push([id,n]);
+  });
+  const pos={};
+  Object.values(cols).forEach(list=>{
+    list.sort((a,b)=>(a[1].mastery||0)-(b[1].mastery||0));
+    const n=list.length;
+    list.forEach(([id,node],i)=>{
+      const span=bottom-top;
+      const y=n===1?(top+span*(1-(node.mastery||0))):top+span*(i/(n-1));
+      pos[id]={x:xOf(node.level),y:Math.max(top,Math.min(bottom,y))};
+    });
+  });
+  return {pos,W,H,headTop,top,bottom,maxLv,colW,xOf,cols};
+}
+
+// 下一步推荐：复习队列优先级最高项；无队列时取错误数>0 中掌握度最低项
+function pickRecommendation(){
+  const q=(graph&&graph.queue||[]).slice().sort((a,b)=>(b.priority||0)-(a.priority||0));
+  if(q.length&&graph&&graph.nodes&&graph.nodes[q[0].kp_id])
+    return {id:q[0].kp_id,mode:'due',p:q[0].priority||0};
+  const cand=Object.entries((graph&&graph.nodes)||{})
+    .filter(([,n])=>(n.error_count||0)>0)
+    .sort((a,b)=>(a[1].mastery||0)-(b[1].mastery||0));
+  if(cand.length)return {id:cand[0][0],mode:'weak',m:cand[0][1].mastery||0};
+  return null;
+}
+let nextRec=null;
+function renderNextBar(){
+  nextRec=pickRecommendation();
+  const bar=$('nextBar');
+  if(!nextRec||!(graph&&graph.nodes&&graph.nodes[nextRec.id])){bar.classList.remove('show');return;}
+  const n=graph.nodes[nextRec.id];
+  $('nbName').textContent=n.knowledge_point||nextRec.id;
+  $('nbReason').textContent=nextRec.mode==='due'
+    ?tf('nbReasonDue',{p:(nextRec.p||0).toFixed(1)})
+    :tf('nbReasonWeak',{m:(nextRec.m||0).toFixed(2)});
+  bar.classList.add('show');
+}
+
+function renderMap(){
+  const svg=$('map');
+  while(svg.firstChild)svg.removeChild(svg.firstChild);
+  const nodes=graph&&graph.nodes?graph.nodes:{};
+  const ids=Object.keys(nodes);
+  const L=layoutNodes();
+  renderNextBar();
+  $('mapCount').textContent=ids.length+' '+t(ids.length===1?'node':'nodes');
+  $('mapBadge').textContent=ids.length?ids.length+' '+t('nodes'):'';
+  $('mapEmpty').style.display=ids.length?'none':'flex';
+  if(!ids.length){renderNodeDetail(null);return;}
+  const g=document.createElementNS(SVGNS,'g');
+  g.setAttribute('id','gRoot');
+  for(let lv=1;lv<=L.maxLv;lv++){
+    const band=document.createElementNS(SVGNS,'rect');
+    band.setAttribute('x',45+(lv-1)*L.colW+3);band.setAttribute('y',L.headTop);
+    band.setAttribute('width',L.colW-6);band.setAttribute('height',L.bottom-L.headTop+10);
+    band.setAttribute('rx',10);
+    band.setAttribute('class','lv-band');if(lv%2===0)band.setAttribute('fill','transparent');
+    g.appendChild(band);
+    const cnt=(L.cols[lv]||[]).length;
+    const chipW=Math.min(L.colW-14,96);
+    const pill=document.createElementNS(SVGNS,'rect');
+    pill.setAttribute('x',L.xOf('HSK'+lv)-chipW/2);pill.setAttribute('y',L.headTop+8);
+    pill.setAttribute('width',chipW);pill.setAttribute('height',20);pill.setAttribute('rx',10);
+    pill.setAttribute('class','lv-chip-bg');
+    g.appendChild(pill);
+    const tp=document.createElementNS(SVGNS,'text');
+    tp.setAttribute('x',L.xOf('HSK'+lv));tp.setAttribute('y',L.headTop+22);
+    tp.setAttribute('class','lv-chip');
+    tp.textContent='HSK '+lv+(cnt?` · ${cnt}`:'');
+    g.appendChild(tp);
+  }
+  const ax=document.createElementNS(SVGNS,'text');
+  ax.setAttribute('x',12);ax.setAttribute('y',L.top);ax.setAttribute('class','lv-label');
+  ax.textContent=t('mastered');g.appendChild(ax);
+  const ax2=document.createElementNS(SVGNS,'text');
+  ax2.setAttribute('x',12);ax2.setAttribute('y',L.bottom+4);ax2.setAttribute('class','lv-label');
+  ax2.textContent=t('toConsolidate');g.appendChild(ax2);
+
+  const prioOf=id=>{const q=(graph&&graph.queue||[]).find(x=>x.kp_id===id);return q?q.priority:0;};
+  const edges=(graph&&graph.edges||[]).filter(e=>nodes[e.from_node_id]&&nodes[e.to_node_id]);
+  edges.forEach(e=>{
+    const a=L.pos[e.from_node_id],b=L.pos[e.to_node_id];
+    const line=document.createElementNS(SVGNS,'line');
+    line.setAttribute('x1',a.x);line.setAttribute('y1',a.y);
+    line.setAttribute('x2',b.x);line.setAttribute('y2',b.y);
+    line.setAttribute('class','edge');
+    line.setAttribute('stroke-width',1+Math.min((e.edge_weight||1),3));
+    line.dataset.from=e.from_node_id;line.dataset.to=e.to_node_id;
+    g.appendChild(line);
+  });
+  ids.forEach(id=>{
+    const n=nodes[id],p=L.pos[id];
+    const prio=prioOf(id);
+    const grp=document.createElementNS(SVGNS,'g');
+    grp.setAttribute('class','node');
+    if(bornIds.has(id))grp.classList.add('born');
+    if(nextRec&&nextRec.id===id)grp.classList.add('rec');
+    // 视觉编码三分：填充=知识类别 · 半径=错误频次(封顶) · 环=掌握度 · 虚线描边=待复习
+    const r=8+Math.min(Math.sqrt(n.error_count||0)*3,6);   // 8..14，节点紧凑，避免过大重叠
+    const rr=r+5, C=2*Math.PI*rr;
+    const bg=document.createElementNS(SVGNS,'circle');
+    bg.setAttribute('cx',p.x);bg.setAttribute('cy',p.y);bg.setAttribute('r',rr);
+    bg.setAttribute('class','mastery-ring-bg');
+    grp.appendChild(bg);
+    const m=Math.max(0,Math.min(1,n.mastery||0));
+    const arc=document.createElementNS(SVGNS,'circle');
+    arc.setAttribute('cx',p.x);arc.setAttribute('cy',p.y);arc.setAttribute('r',rr);
+    arc.setAttribute('class','mastery-ring');
+    arc.setAttribute('stroke-dasharray',`${(C*m).toFixed(2)} ${C.toFixed(2)}`);
+    arc.setAttribute('transform',`rotate(-90 ${p.x} ${p.y})`);
+    grp.appendChild(arc);
+    const c=document.createElementNS(SVGNS,'circle');
+    c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);c.setAttribute('r',r);
+    c.setAttribute('class','core');
+    c.setAttribute('fill',nodeColor(n.error_types));c.setAttribute('opacity',.9);
+    if(prio>0)c.classList.add('rv');
+    grp.appendChild(c);
+    const tip=document.createElementNS(SVGNS,'title');
+    tip.textContent=`${n.knowledge_point||id}\n${t('tipLevel')} ${n.level||'?'} · ${t('tipMastery')} ${(n.mastery||0).toFixed(2)}\n${t('tipErrors')} ${n.error_count||0} ${t('tipTimes')} · ${t('tipPrio')} ${prio.toFixed(2)}`;
+    grp.appendChild(tip);
+    const label=document.createElementNS(SVGNS,'text');
+    label.setAttribute('x',p.x);label.setAttribute('y',p.y+r+13);
+    label.setAttribute('text-anchor','middle');label.setAttribute('class','node-label');
+    label.textContent=shortKpName(n.knowledge_point||id,14);
+    grp.appendChild(label);
+    grp.dataset.id=id;
+    grp.addEventListener('mouseenter',()=>hoverNode(id,true));
+    grp.addEventListener('mouseleave',()=>hoverNode(id,false));
+    grp.addEventListener('click',ev=>{ev.stopPropagation();selectNode(id);});
+    g.appendChild(grp);
+  });
+  svg.appendChild(g);
+  svg.onclick=()=>selectNode(null);
+  if(selectedNode){applySelection();renderNodeDetail(selectedNode);}
+}
+
+function hoverNode(id,on){
+  const root=$('gRoot');if(!root)return;
+  root.querySelectorAll('.edge').forEach(line=>{
+    const lit=on&&(line.dataset.from===id||line.dataset.to===id);
+    line.classList.toggle('lit',lit);
+  });
+}
+function selectNode(id){
+  selectedNode=(selectedNode===id)?null:id;
+  applySelection();
+  renderNodeDetail(selectedNode);
+  document.querySelectorAll('.qitem').forEach(q=>q.style.background=(q.dataset.kp===selectedNode)?'rgb(var(--item))':'');
+}
+// 点击聚焦详情面板：节点档案 + 沿权威边的三个动作
+function renderNodeDetail(id){
+  const box=$('nodeDetail');
+  const n=id&&graph&&graph.nodes&&graph.nodes[id];
+  if(!n){box.classList.remove('show');box.innerHTML='';return;}
+  const prio=((graph&&graph.queue||[]).find(x=>x.kp_id===id)||{}).priority||0;
+  const nbs=neighborsOf(id);
+  const mastery=Math.max(0,Math.min(1,n.mastery||0));
+  box.innerHTML=`
+    <div class="nd-head">
+      <span class="nd-dot" style="background:${nodeColor(n.error_types)}"></span>
+      <span class="nd-name">${esc(n.knowledge_point||id)}</span>
+      <span class="nd-chip">${esc(n.level||'')}</span>
+      <button class="nd-close" title="×" aria-label="close">×</button>
+    </div>
+    <div class="nd-stats">
+      <span>${t('ndMastery')} <b>${mastery.toFixed(2)}</b></span>
+      <div class="nd-bar"><i style="width:${(mastery*100).toFixed(0)}%"></i></div>
+      <span>${t('ndErrors')} <b>${n.error_count||0}</b> ${t('ndTimes')}${prio>0?` · ${t('tipPrio')} <b>${prio.toFixed(1)}</b>`:''}</span>
+    </div>
+    <div class="nd-actions">
+      <button class="nd-act nd-dig">↗ ${t('ndDig')}</button>
+      <button class="nd-act nd-adj ${nbs.length?'':'off'}">→ ${tf('ndAdj',{n:nbs.length})}</button>
+      <button class="nd-act nd-rv ${prio>0?'':'off'}">↓ ${prio>0?t('ndRv'):t('ndOff')}</button>
+    </div>`;
+  box.classList.add('show');
+  box.querySelector('.nd-close').addEventListener('click',()=>selectNode(null));
+  box.querySelector('.nd-dig').addEventListener('click',()=>{
+    setView('chat');const nm=nodeName(id);
+    sendPrompt(tf('digPrompt',{name:nm}),tf('digBadge')+nm);
+  });
+  const adj=box.querySelector('.nd-adj');
+  if(nbs.length)adj.addEventListener('click',()=>showNeighborMenu(adj,id));
+  const rv=box.querySelector('.nd-rv');
+  if(prio>0)rv.addEventListener('click',()=>{
+    setView('chat');const nm=nodeName(id);
+    sendPrompt(tf('rvPrompt',{name:nm}),tf('rvBadge')+nm);
+  });
+}
+function applySelection(){
+  const root=$('gRoot');if(!root)return;
+  if(!selectedNode){
+    root.querySelectorAll('.node').forEach(n=>n.classList.remove('dim','selected','hot'));
+    root.querySelectorAll('.node-label').forEach(t=>t.classList.remove('dim'));
+    root.querySelectorAll('.edge').forEach(e=>e.classList.remove('dim','lit'));
+    return;
+  }
+  const nb=new Set();(graph&&graph.edges||[]).forEach(e=>{
+    if(e.from_node_id===selectedNode)nb.add(e.to_node_id);
+    if(e.to_node_id===selectedNode)nb.add(e.from_node_id);});
+  root.querySelectorAll('.node').forEach(n=>{
+    const id=n.dataset.id;
+    n.classList.toggle('selected',id===selectedNode);
+    n.classList.toggle('dim',id!==selectedNode&&!nb.has(id));
+    n.classList.toggle('hot',nb.has(id));
+    const lbl=n.querySelector('.node-label');
+    if(lbl)lbl.classList.toggle('dim',id!==selectedNode&&!nb.has(id));
+  });
+  root.querySelectorAll('.edge').forEach(line=>{
+    const touching=line.dataset.from===selectedNode||line.dataset.to===selectedNode;
+    line.classList.toggle('lit',touching);
+    line.classList.toggle('dim',!touching);
+  });
+}
+
+function renderQueue(){
+  const q=graph&&graph.queue||[];
+  const box=$('queue');
+  box.innerHTML='';
+  if(!q.length){box.innerHTML=`<div class="clean-sub" style="padding:6px 2px">${t('noReview')}</div>`;return;}
+  q.slice(0,10).forEach(item=>{
+    const n=item.node||{};
+    const row=el(`<div class="qitem" data-kp="${esc(item.kp_id||'')}">
+      <span style="min-width:132px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.knowledge_point||item.kp_id||'')}</span>
+      <div class="bar"><div style="width:${Math.min((item.priority||0)*10,100)}%"></div></div>
+      <span class="q-prio">${(item.priority||0).toFixed(1)}</span>
+    </div>`);
+    row.addEventListener('click',()=>selectNode(item.kp_id));
+    box.appendChild(row);
+  });
+}
+
+function applyGraph(g){
+  if(!g)return;
+  graph=g;
+  rebuildVocab();
+  renderMap();renderQueue();
+  const q=g.queue||[];
+  $('rvCount').textContent=q.length?q.length+' '+t('items'):'—';
+  setStatus(true,tf('statusFmt',{id:g.learner_id||'demo',n:Object.keys(g.nodes||{}).length,c:state.conversation}));
+}
+function setStatus(on,text){
+  const s=$('status');s.className='status '+(on?'on':'off');
+  $('statusText').textContent=text;
+}
+
+/* ============================================================
+ * 会话（M5：conversation_id + URL 深链 ?conversation=<id>）
+ * ============================================================ */
+function setUrlConversation(id){
+  const u=new URL(location);
+  if(id)u.searchParams.set('conversation',id);else u.searchParams.delete('conversation');
+  history.replaceState(null,'',u);
+}
+async function loadSessions(){
+  try{
+    // P0.12 多用户隔离：?learner=<id> 选择独立用户（画像/引导按用户分开）
+    if(!state.learner){
+      try{state.learner=(new URL(location)).searchParams.get('learner')||'';}catch(e){state.learner='';}
+    }
+    const src='/api/profile'+(state.learner?('?learner='+encodeURIComponent(state.learner)):'');
+    const p=await api(src);
+    state.sessions=p.sessions||[];
+    renderSessions();
+    checkOnboarding(p);   // P0.12 冷启动引导：仅全新用户触发
+  }catch(e){ /* 侧栏列表失败不打断对话 */ }
+}
+function renderSessions(){
+  const L=$('sessionList');
+  L.innerHTML='';
+  const cur=state.conversation;
+  const list=[...state.sessions];
+  if(cur&&!list.some(s=>s.id===cur)){
+    list.unshift({id:cur,title:'',message_count:0,_pending:true});
+  }
+  $('sessCount').textContent=state.sessions.length?tf('nSessions',{n:state.sessions.length}):'';
+  list.slice(0,30).forEach(s=>{
+    const isCur=s.id===cur;
+    const d=el(`<div class="sbtn ${isCur?'cur':''}" data-id="${esc(s.id)}">
+      <span class="ic">${s.pinned?'📌':(isCur?'●':'○')}</span>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${esc(s.title||(s._pending?t('newSessPending'):s.id))}</span>
+      <span class="srow-sub">${s._pending?'':esc(tf('nMsgs',{n:s.message_count||0}))}</span>
+    </div>`);
+    d.title=(s.title||s.id)+(s.updated_at?` · ${timeShort(s.updated_at)}`:'');
+    d.addEventListener('click',()=>switchSession(s.id));
+    d.addEventListener('contextmenu',ev=>openCtxMenu(ev,s));   // 0.24 右键菜单
+    L.appendChild(d);
+  });
+}
+async function switchSession(id,forceNew){
+  if(id===state.conversation&&!forceNew) return;
+  if(mapView)setView('chat');   // 地图视图下点会话 → 自动回对话视图
+  state.conversation=id;
+  setUrlConversation(id);
+  // 0.24 review：场景按会话绑定 → 切会话时同步场景横幅/作用域
+  // （hsk-scene 存 {cid,scene}，仅目标会话是已绑定的场景会话时才恢复横幅）
+  state.sceneId=boundSceneFor(id);
+  renderScenePick();renderSceneBanner();
+  clearChat();
+  try{
+    const c=await api('/api/conversation?id='+encodeURIComponent(id));
+    const msgs=(c&&c.messages)||[];
+    if(msgs.length){
+      addMsg(el(`<div class="note plain">${tf('restored',{n:msgs.length})}</div>`));
+      applyHistory(msgs);
+    }
+  }catch(e){ /* 恢复失败不阻塞新对话 */ }
+  loadSessions();
+  $('text').focus();
+}
+function newSession(){
+  const id='s-'+Date.now().toString(36);
+  switchSession(id,true);
+  toast(t('newSessionToast'));
+}
+
+/* ============================================================
+ * 会话右键菜单（0.24）：置顶 / 分享 / 重命名 / 删除
+ * 设计对标任务列表栏右键菜单：图标+文字紧凑列表，删除=危险色+二段确认
+ * ============================================================ */
+function openCtxMenu(e,s){
+  if(s._pending)return;                 // 未落盘的占位会话不出菜单
+  e.preventDefault();e.stopPropagation();
+  const m=$('ctxMenu');
+  m.innerHTML=`
+    <div class="ctx-it" data-act="pin"><span class="ci">📌</span>${s.pinned?t('ctxUnpin'):t('ctxPin')}</div>
+    <div class="ctx-it" data-act="share"><span class="ci">🔗</span>${t('ctxShare')}</div>
+    <div class="ctx-it" data-act="rename"><span class="ci">✏️</span>${t('ctxRename')}</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-it danger" data-act="delete"><span class="ci">🗑</span>${t('ctxDelete')}</div>`;
+  m.classList.add('show');
+  const mw=m.offsetWidth,mh=m.offsetHeight;   // 先显示后测量
+  let x=e.clientX,y=e.clientY;
+  if(x+mw>innerWidth-8)x=Math.max(8,innerWidth-mw-8);    // 右缘翻转
+  if(y+mh>innerHeight-8)y=Math.max(8,innerHeight-mh-8);  // 底缘翻转
+  m.style.left=x+'px';m.style.top=y+'px';
+  m.querySelectorAll('.ctx-it').forEach(it=>
+    it.addEventListener('click',()=>ctxAction(it,s)));
+}
+function closeCtxMenu(){
+  const m=$('ctxMenu');if(!m)return;
+  m.classList.remove('show');m.innerHTML='';m.style.left='';m.style.top='';
+}
+async function ctxAction(it,s){
+  const act=it.dataset.act;
+  if(act==='pin'){
+    try{await api('/api/session/update',{conversation_id:s.id,pinned:!s.pinned});}
+    catch(e){closeCtxMenu();toast(t('opFailed'));return;}
+    closeCtxMenu();await loadSessions();
+    toast(!s.pinned?t('pinnedToast'):t('unpinnedToast'));
+    return;
+  }
+  if(act==='share'){closeCtxMenu();await shareSession(s);return;}
+  if(act==='rename'){closeCtxMenu();startRename(s);return;}
+  if(act==='delete'){
+    if(!it.classList.contains('armed')){          // 二段确认：原地变红防误触
+      it.classList.add('armed');
+      it.innerHTML=`<span class="ci">🗑</span>${t('ctxDeleteConfirm')}`;
+      return;
+    }
+    try{await api('/api/session/delete',{conversation_id:s.id});}
+    catch(e){
+      closeCtxMenu();
+      if(e.code==='session_not_found'){await loadSessions();toast(t('deletedToast'));}
+      else toast(t('opFailed'));
+      return;
+    }
+    closeCtxMenu();
+    if(s.id===state.conversation)newSession();    // 删的是当前会话 → 开新空会话
+    else await loadSessions();
+    toast(t('deletedToast'));
+  }
+}
+// 行内重命名：会话项原地变输入框，Enter 保存 / Esc 取消 / 失焦保存
+function startRename(s){
+  const row=document.querySelector('.sbtn[data-id="'+esc(s.id)+'"]');
+  if(!row)return;
+  const old=row.innerHTML;
+  row.innerHTML=`<input class="sren" maxlength="60" value="${esc(s.title||'')}">`;
+  const inp=row.querySelector('input');
+  inp.focus();inp.select();
+  let done=false;
+  const finish=async(save)=>{
+    if(done)return;done=true;
+    const v=inp.value.trim();
+    row.innerHTML=old;
+    if(!save||!v||v===(s.title||''))return;
+    try{
+      await api('/api/session/update',{conversation_id:s.id,title:v});
+      await loadSessions();toast(t('renamedToast'));
+    }catch(e){toast(t('opFailed'));}
+  };
+  inp.addEventListener('keydown',ev=>{
+    ev.stopPropagation();
+    if(ev.key==='Enter')finish(true);
+    else if(ev.key==='Escape')finish(false);
+  });
+  inp.addEventListener('click',ev=>ev.stopPropagation());
+  inp.addEventListener('blur',()=>finish(true));
+}
+// 分享：拉取会话历史 → Markdown 转写 → 剪贴板（失败降级弹层手动复制）
+async function shareSession(s){
+  let msgs=[];
+  try{const c=await api('/api/conversation?id='+encodeURIComponent(s.id));msgs=(c&&c.messages)||[];}
+  catch(e){toast(t('opFailed'));return;}
+  if(!msgs.length){toast(t('shareEmpty'));return;}
+  const lines=[`# ${s.title||s.id}`,'',`_${t('shareByline')} · ${new Date().toLocaleDateString()}_`,''];
+  msgs.forEach(m=>{
+    lines.push(`**${m.role==='user'?t('shareYou'):t('shareAI')}**`,'',m.content,'');
+  });
+  const md=lines.join('\n');
+  try{
+    await navigator.clipboard.writeText(md);
+    toast(t('shareCopied'));
+  }catch(e){
+    const ta=$('shareTa');ta.value=md;openOverlay('shareOvl');
+    ta.focus();ta.select();      // 非安全上下文（剪贴板 API 不可用）→ 手动复制
+  }
+}
+// 菜单全局关闭：外点 / Esc / 滚动 / 缩放（菜单内点击由 ctxAction 自管）
+document.addEventListener('mousedown',ev=>{
+  const m=$('ctxMenu');
+  if(m&&m.classList.contains('show')&&!m.contains(ev.target))closeCtxMenu();
+},true);
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeCtxMenu();},true);
+addEventListener('scroll',closeCtxMenu,true);
+addEventListener('resize',closeCtxMenu);
+function clearChat(){
+  chat.innerHTML='';
+  const e=el(`<div class="empty" id="emptyState">
+    <h2 data-i18n="startFirst">${t('startFirst')}</h2>
+    <p data-i18n-html="emptyIntro">${t('emptyIntro')}</p>
+    <div class="chips">
+      <button class="chip" data-ex="我想买苹果很多。">✍ 我想买苹果很多。</button>
+      <button class="chip" data-ex="把字句是什么意思？">📖 把字句是什么意思？</button>
+      <button class="chip" data-ex="我该复习什么了？">🔁 我该复习什么了？</button>
+    </div>
+  </div>`);
+  chat.appendChild(e);
+  bindChips(e);
+}
+function bindChips(root){
+  (root||document).querySelectorAll('.chip[data-ex]').forEach(ch=>{
+    if(ch._bound)return;ch._bound=true;
+    ch.addEventListener('click',()=>{$('text').value=ch.dataset.ex;submit();});
+  });
+}
+
+/* ============================================================
+ * P0.12 冷启动引导（仅全新用户触发，母语→等级→可选摸底→完成/跳过）
+ * ============================================================ */
+const ONB_L1=[
+  {v:'en',L:'English'},{v:'ko',L:'한국어'},{v:'ja',L:'日本語'},
+  {v:'zh',L:'中文（母语）'},{v:'other',L:'其他 / Other'},
+];
+const LEVEL_CN={1:'入门',2:'基础',3:'初级',4:'中级',5:'中高级',6:'高级'};
+let onb={l1:null,level:null,step:1};
+function checkOnboarding(p){
+  if(p&&p.onboarding_needed&&!state.onboardShown){
+    state.onboardShown=true;
+    renderOnbOpts();
+    showOnbStep(1);
+    openOverlay('onboardOvl');
+  }
+}
+function renderOnbOpts(){
+  const cur=getStateProfile();
+  const l1box=$('onb1Opts'); l1box.innerHTML='';
+  ONB_L1.forEach(o=>{
+    const b=el(`<button type="button" class="onopt" data-v="${o.v}">${esc(o.L)}</button>`);
+    if(cur.l1===o.v){b.classList.add('sel');onb.l1=o.v;}
+    b.addEventListener('click',()=>{onb.l1=o.v;selectOnb(l1box,b);
+      api('/api/profile',{learner_l1:o.v}).catch(()=>{});});
+    l1box.appendChild(b);
+  });
+  const lvbox=$('onb2Opts'); lvbox.innerHTML='';
+  [1,2,3,4,5,6].forEach(n=>{
+    const b=el(`<button type="button" class="onopt" data-v="HSK${n}">HSK${n} · ${esc(LEVEL_CN[n]||'')}</button>`);
+    if(cur.level==='HSK'+n){b.classList.add('sel');onb.level='HSK'+n;}
+    b.addEventListener('click',()=>{onb.level='HSK'+n;selectOnb(lvbox,b);
+      api('/api/profile',{user_level:'HSK'+n}).catch(()=>{});});
+    lvbox.appendChild(b);
+  });
+}
+function getStateProfile(){
+  const s=localStorage.getItem('hsk-prof');
+  let o={}; try{o=s?JSON.parse(s):{}}catch(e){o={};}
+  return o;
+}
+function saveStateProfile(prof){try{localStorage.setItem('hsk-prof',JSON.stringify(prof||{}));}catch(e){}}
+function selectOnb(container,btn){
+  container.querySelectorAll('.onopt').forEach(x=>x.classList.remove('sel'));
+  btn.classList.add('sel');
+}
+function showOnbStep(n){
+  onb.step=n;
+  [1,2,3].forEach(i=>{$( 'onb'+i ).style.display=(i===n)?'':'none';});
+  $('onbPrev').style.display=n>1?'':'none';
+  $('onbNext').textContent= t(n===3?'onFinish':'onNext');
+}
+function onbValid(step){
+  if(step===1&&!onb.l1){toast(t('onNeedL1'));return false;}
+  if(step===2&&!onb.level){onb.level='HSK3';}   // 未选默认 HSK3，不打断
+  return true;
+}
+async function completeOnboarding(){
+  const prof={onboarding_done:true};
+  if(onb.l1)prof.learner_l1=onb.l1;
+  if(onb.level)prof.user_level=onb.level;
+  saveStateProfile(prof);
+  try{await api('/api/profile',prof);}catch(e){}
+  closePopovers();toast(t('onDone'));
+}
+function hideOnboarding(){document.querySelector('#onboardOvl').classList.remove('show');}
+$('onbSkip').addEventListener('click',completeOnboarding);
+$('onbNext').addEventListener('click',()=>{
+  if(!onbValid(onb.step))return;
+  if(onb.step<3){showOnbStep(onb.step+1);}
+  else completeOnboarding();
+});
+$('onbPrev').addEventListener('click',()=>{if(onb.step>1)showOnbStep(onb.step-1);});
+$('onbAssess').addEventListener('click',async()=>{
+  const raw=$('onbTexts').value;
+  const texts=(raw||'').split(/[\n；;]+/).map(s=>s.trim()).filter(Boolean).slice(0,4);
+  const btn=$('onbAssess'),reason=$('onbReason');
+  if(!texts.length){reason.textContent=t('onQuizEmpty');return;}
+  btn.disabled=true;reason.textContent=t('onQuizzing');btn.textContent=t('onQuizzing');
+  try{
+    const r=await api('/api/onboard/assess',{texts});
+    onb.level=r.suggested_level;
+    reason.textContent='';btn.textContent=t('onAssess');
+    const box=$('onbLvSuggest');box.style.display='';box.innerHTML='';
+    [1,2,3,4,5,6].forEach(n=>{
+      const b=el(`<button type="button" class="onopt ${r.suggested_level==='HSK'+n?'sel':''}" data-v="HSK${n}">HSK${n}</button>`);
+      b.addEventListener('click',()=>{onb.level='HSK'+n;selectOnb(box,b);});
+      box.appendChild(b);
+    });
+    const note=el(`<p class="onhint">${esc(r.reason||'')}</p>`);box.appendChild(note);
+  }catch(e){reason.textContent=t('onQuizFail')+e.message;}
+  finally{btn.disabled=false;}
+});
+
+/* ============================================================
+ * 学习动线（侧栏）
+ * ============================================================ */
+// ---- P0.13 独立复习页：拉队列 → 集中做题 → 逐题回写 ----
+let rvItems=[];          // 本次复习的题目（{question, ...}）
+let rvQueue=[];          // 后端返回的队列 kp（含 kp_id / knowledge_point）
+let rvStates=[];         // {correct:0|1|undefined}，与 rvItems 对齐
+let rvIdx=0;             // 当前题下标
+function beginReview(){
+  setView('review');
+  loadReview();          // rvBody 为空时 setView 已触发；此处兜底启动
+  $('actReview').classList.add('cur');
+}
+async function loadReview(){
+  const body=$('rvBody');
+  body.innerHTML=`<div class="rv-empty">${esc(t('reviewLoading'))}…</div>`;
+  rvItems=[];rvQueue=[];rvStates=[];rvIdx=0;updateRvProg();
+  try{
+    const data=await api('/api/quiz?limit=10');
+    rvQueue=data.queue||[];
+    rvItems=data.questions||[];
+    if(!rvItems.length){ body.innerHTML=`<div class="rv-empty">${esc(t('reviewEmpty'))}</div>`;updateRvProg();return; }
+    rvStates=rvItems.map(()=>undefined);
+    renderRvCard();
+  }catch(e){
+    body.innerHTML=`<div class="rv-empty">${esc(t('reportFail'))}${esc(e.message)}</div>`;
+  }
+}
+function updateRvProg(){
+  const done=rvStates.filter(s=>s===0||s===1).length;
+  $('rvProg').textContent=`${rvItems.length?done+' / '+rvItems.length:'— / —'}`;
+  $('rvCount').textContent=rvQueue.length||'—';
+}
+function renderRvCard(){
+  if(rvIdx>=rvItems.length){ renderRvFinish();return; }
+  const body=$('rvBody');body.innerHTML='';
+  const q=rvItems[rvIdx];
+  // 该题所属 kp 在队列里的名字（后端可能无，则回退 knowledge_point）
+  const qst=rvQueue.find(r=>r.kp_id===q.kp_id);
+  const kpName=(qst&&(qst.knowledge_point||qst.id))||q.knowledge_point||q.kp_id;
+  const tagLevel=q.level||(qst&&(qst.node&&qst.node.level))||'';
+  let card;
+  if(q.type==='recall'){
+    // P0.19 fe2：recall 卡不再只丢一句"你还记得吗"——展示 kp 定义 note + 关键词，
+    // 让记忆自检有"可回忆的具体内容"，而不是空口提问。
+    const note=(q.note||'').trim();
+    const kws=(q.keywords||[]).filter(Boolean);
+    card=el(`<div class="rv-card">
+      <div class="rv-meta">${tagLevel?`<span class="rv-tag">${esc(tagLevel)}</span>`:''}<span class="rv-tag">${esc(kpName)}</span></div>
+      ${note?`<div class="rv-note">${esc(note)}</div>`:''}
+      ${kws.length?`<div class="rv-kws">${kws.map(k=>`<span class="rv-kw">${esc(k)}</span>`).join('')}</div>`:''}
+      <div class="rv-sent">${esc(t('rvRecallQ'))}</div>
+      <div class="rv-ans rv-btns"><button class="rv-btn ok" id="rvOK" type="button">${esc(t('rvRecallYes'))}</button><button class="rv-btn bad" id="rvNo" type="button">${esc(t('rvRecallNo'))}</button></div>
+      <div class="rv-fb" id="rvFb"></div>
+      <div class="rv-nav"><button id="rvNext" type="button" style="display:none">${esc(t('rvNext'))}</button></div>
+    </div>`);
+    body.appendChild(card);
+    const choose=(correct)=>{
+      if(card.dataset.done)return;
+      card.dataset.done=1;
+      rvStates[rvIdx]=correct?1:0;updateRvProg();
+      const fb=card.querySelector('#rvFb');
+      fb.className='rv-fb '+(correct?'ok':'bad');
+      fb.textContent = correct? t('rvOk') : t('rvRecalledNo');
+      card.querySelectorAll('.rv-btn').forEach(b=>b.disabled=true);
+      card.querySelector('#rvNext').style.display='';
+      writeback(q,correct);
+    };
+    card.querySelector('#rvOK').addEventListener('click',()=>choose(true));
+    card.querySelector('#rvNo').addEventListener('click',()=>choose(false));
+    card.querySelector('#rvNext').addEventListener('click',()=>{rvIdx++;renderRvCard();});
+    return;
+  }
+  card=el(`<div class="rv-card">
+    <div class="rv-meta"><span class="rv-tag">${esc(q.grammar?q.grammar:'')}</span>${tagLevel?`<span class="rv-tag">${esc(tagLevel)}</span>`:''}<span class="rv-tag">${esc(kpName)}</span></div>
+    <div class="rv-sent">${esc(q.sentence)}</div>
+    <div class="rv-ans"><input type="text" id="rvInput" autocomplete="off"><button id="rvGo" type="button">${esc(t('rvSubmit'))}</button></div>
+    <div class="rv-fb" id="rvFb"></div>
+    <div class="rv-nav"><button id="rvNext" type="button" style="display:none">${esc(t('rvNext'))}</button></div>
+  </div>`);
+  body.appendChild(card);
+  const inp=card.querySelector('#rvInput');inp.focus();
+  const submitAns=()=>{
+    if(card.dataset.done)return;                    // 已判分锁卡
+    const ans=inp.value.trim();if(!ans){inp.focus();return;}
+    const correct = (ans===q.answer)||(ans===q.target_word);
+    card.dataset.done=1;
+    rvStates[rvIdx]=correct?1:0;updateRvProg();
+    const fb=card.querySelector('#rvFb');
+    fb.className='rv-fb '+(correct?'ok':'bad');
+    fb.textContent = correct? t('rvOk') : (t('rvBad')+' '+q.answer);
+    const go=card.querySelector('#rvGo');go.disabled=true;inp.disabled=true;
+    card.querySelector('#rvNext').style.display='';
+    inp.blur();
+    writeback(q,correct);
+  };
+  const go=card.querySelector('#rvGo');go.addEventListener('click',submitAns);
+  inp.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();submitAns();}});
+  card.querySelector('#rvNext').addEventListener('click',()=>{rvIdx++;renderRvCard();});
+}
+function writeback(q,correct){
+  api('/api/quiz/answer',{answers:[{kp_id:q.kp_id,correct:correct,event_key:q.event_key||''}]})
+    .catch(()=>{});                                 // 回写失利不阻断做题
+}
+function renderRvFinish(){
+  const body=$('rvBody');
+  const ok=rvStates.filter(s=>s===1).length,bad=rvStates.length-ok;
+  body.innerHTML=`<div class="rv-fini"><div class="tick">✓</div>
+    <h3>${esc(t('rvDone'))}</h3>
+    <div class="stat">${esc(t('rvOk'))} ${ok} · ${esc(t('rvBad'))} ${bad}</div>
+    <div class="rv-nav" style="justify-content:center">
+      <button id="rvAgain" type="button">${esc(t('rvAgain'))}</button>
+      <button id="rvBackC" type="button">${esc(t('backChat'))}</button>
+    </div></div>`;
+  body.querySelector('#rvAgain').addEventListener('click',loadReview);
+  body.querySelector('#rvBackC').addEventListener('click',()=>setView('chat'));
+}
+async function showReport(){
+  const pend=addPending();
+  try{
+    const p=await api('/api/profile');
+    renderReport(p);
+  }catch(e){
+    addNote(t('reportFail')+e.message,'err');
+  }finally{
+    clearInterval(pend._iv);pend.remove();
+  }
+}
+function renderReport(p){
+  const st=p.stats||{};
+  const facts=p.common_errors&&p.common_errors.length?p.common_errors:
+              ((p.profile&&p.profile.common_errors)||[]);
+  const isStored=!(p.common_errors&&p.common_errors.length)&&facts.length;
+  const offenders=(st.repeat_offenders||[]);
+  const c=el(`<div class="card report"></div>`);
+  let rows='';
+  if(facts.length){
+    rows=facts.slice(0,8).map(f=>`
+      <div class="rf-row" data-kp="${esc(f.kp_id||'')}">
+        <span class="nm">${esc(f.knowledge_point||f.kp_id||'')}</span>
+        ${f.level?`<span class="lv">${esc(f.level)}</span>`:''}
+        ${f.repeat_offender?`<span class="rf-off">${tf('repOff',{n:f.repeated})}</span>`:`<span class="rf-rep">${tf('repRep',{n:f.repeated||0})}</span>`}
+        <div class="bar" style="min-width:60px;max-width:120px"><div style="width:${Math.min((f.priority||0)*10,100)}%"></div></div>
+        <span class="rv-prio">${(f.priority||0).toFixed(1)}</span>
+        ${f.latest_evidence?`<div class="rf-ev">${t('repLatest')}「${esc(String(f.latest_evidence).slice(0,60))}」</div>`:''}
+      </div>`).join('');
+  }
+  c.innerHTML=`
+    <div class="cardlabel">${t('repTitle')} · ${new Date().toLocaleString(LANG==='zh'?'zh-CN':'en-US',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+    <div class="rep-stats">
+      <span>${t('repGraph')} <b>${st.graph_nodes!=null?st.graph_nodes:'?'}</b> ${t('repNodes')}</span>
+      <span>${t('repReview')} <b>${st.review_count!=null?st.review_count:'?'}</b> ${t('repItems')}</span>
+      <span>${t('repEdges')} <b>${st.graph_edges!=null?st.graph_edges:'?'}</b></span>
+      <span>${t('repOffenders')} <b style="color:${offenders.length?'rgb(var(--sem-err))':'inherit'}">${offenders.length}</b></span>
+    </div>
+    ${offenders.length?`<div class="uc-strip">${tf('repWarn',{list:offenders.map(o=>esc(o)).join('、')})}</div>`:''}
+    ${facts.length?rows:`<div class="clean-sub">${t('repEmpty')}</div>`}
+    ${isStored?`<div class="meta-row"><span>${t('repStored')}</span></div>`:''}
+    <div class="meta-row"><span>${t('repSrc')}</span></div>`;
+  addMsg(c);
+  c.querySelectorAll('.rf-row[data-kp]').forEach(r=>r.addEventListener('click',()=>locateKp(r.dataset.kp)));
+}
+
+// ============ 阅读材料（轻量：粘贴 / .txt / .md） ============
+function openDoc(){$('docOvl').classList.add('show');updateCharCt();}
+function updateCharCt(){
+  const n=$('docText').value.length;
+  const ct=$('charCt');
+  ct.textContent=tf('charCt',{n})+(n>DOC_CHAR_LIMIT?t('charOver'):'');
+  ct.classList.toggle('over',n>DOC_CHAR_LIMIT);
+}
+$('docText').addEventListener('input',updateCharCt);
+$('docFile').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0];
+  if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{$('docText').value=String(rd.result||'');updateCharCt();toast(tf('docToastLoaded',{name:f.name}));};
+  rd.onerror=()=>toast(t('docToastFail'));
+  rd.readAsText(f,'utf-8');
+});
+/* P0.7 OCR：图片/PDF → 本地识别 → 回填文本域 */
+$('docFileOcr').addEventListener('change',async e=>{
+  const fs=Array.prototype.slice.call(e.target.files||[]).filter(Boolean);
+  if(!fs.length)return;
+  const st=$('ocrStatus'); const set=txt=>{st.textContent=txt;st.style.color='';
+    st.removeAttribute('data-i18n');};
+  set(t('docOcrBusy'));
+  const t0=Date.now();
+  try{
+    const items=[];
+    for(const f of fs){
+      const b64=await new Promise((res,rej)=>{const rd=new FileReader();
+        rd.onload=()=>{const s=String(rd.result||'');res(s.slice(s.indexOf(',')+1));};
+        rd.onerror=rej;rd.readAsDataURL(f);});
+      items.push({name:f.name,data:b64});
+    }
+    const d=await api('/api/ocr',{list:items});
+    const nxt=String(d&&d.text||'').trim();
+    if(!nxt){set(t('docOcrEmpty'));return;}
+    const cur=$('docText').value.trim();
+    $('docText').value=(cur?cur+'\n\n':'')+nxt.slice(0,DOC_CHAR_LIMIT);
+    updateCharCt();
+    set(tf('docOcrDone',{n:d.files,ms:(Date.now()-t0),chars:d.chars}));
+  }catch(err){
+    set(t('docToastFail')); const m=err&&err.message?err.message:String(err);
+    if(!/not supported|ocr_unavailable/i.test(m))toast(m); else toast(t('docToastEmpty'));
+  }finally{ e.target.value=''; }
+});
+$('docParse').addEventListener('click',()=>{
+  let tx=$('docText').value.trim();
+  if(!tx){toast(t('docToastEmpty'));return;}
+  if(tx.length>DOC_CHAR_LIMIT)tx=tx.slice(0,DOC_CHAR_LIMIT);
+  $('docOvl').classList.remove('show');
+  $('docText').value='';updateCharCt();
+  sendPrompt(t('docPrompt')+tx,t('docBadge'));
+});
+
+/* ============================================================
+ * BYOK 模型密钥（0.20）：供应商列表 / 输入框模型选择器 / 设置 tab
+ * 全部 OpenAI 兼容协议；Key 存服务端 data/llm_providers.json（掩码返回）
+ * ============================================================ */
+async function loadProviders(){
+  try{
+    const d=await api('/api/providers');
+    state.providers=(d&&d.providers)||[];
+    state.defaultProvider=(d&&d.default_id)||null;
+    renderModelPick();
+  }catch(e){ /* 服务未起/端点缺失：选择器保持"默认模型" */ }
+  renderConfigBar();
+}
+function renderConfigBar(){
+  const bar=$('cfgBar');if(!bar)return;
+  bar.classList.toggle('hidden',!!state.providers.length);
+}
+function showConfigBar(){
+  const bar=$('cfgBar');if(bar)bar.classList.remove('hidden');
+}
+const cfgGo=$('cfgGo'),cfgClose=$('cfgClose');
+if(cfgGo)cfgGo.addEventListener('click',()=>{openOverlay('settingsOvl');renderSettingsTab('llm');});
+if(cfgClose)cfgClose.addEventListener('click',()=>{const b=$('cfgBar');if(b)b.classList.add('hidden');});
+function currentProvider(){
+  return state.providers.find(p=>p.id===state.providerId)
+      || state.providers.find(p=>p.id===state.defaultProvider)
+      || null;
+}
+function renderModelPick(){
+  const p=currentProvider();
+  $('modelPickName').textContent=p?p.model:t('defaultModel');
+  $('modelPick').querySelector('.dot').style.background=
+    p?'rgb(var(--sem-ok))':'rgb(var(--tx3))';
+}
+function showModelMenu(btn){
+  closePopovers();
+  const r=btn.getBoundingClientRect();
+  const p=el(`<div class="popover"></div>`);
+  if(!state.providers.length){
+    p.innerHTML=`<div class="po-t">${t('mmTitle')}</div><div class="pop-item" data-open="llm"><span>${t('mmNone')}</span></div>`;
+  }else{
+    p.innerHTML=`<div class="po-t">${t('mmPick')}</div>`+state.providers.map(pr=>{
+      const cur=(pr.id===state.providerId)||( !state.providerId && pr.id===state.defaultProvider);
+      return `<div class="pop-item" data-pv="${esc(pr.id)}"><span>${esc(pr.name)}</span><span class="pl">${esc(pr.model)}${cur?t('mmCur'):''}</span></div>`;
+    }).join('')+(state.defaultProvider?`<div class="pop-item" data-pv=""><span>${t('mmFollow')}</span></div>`:'');
+  }
+  document.body.appendChild(p);
+  const pw=p.getBoundingClientRect();
+  p.style.left=Math.min(r.left,window.innerWidth-pw.width-10)+'px';
+  p.style.top=Math.max(8,Math.min(r.bottom+6,window.innerHeight-pw.height-8))+'px';
+  p.querySelectorAll('.pop-item[data-pv]').forEach(it=>it.addEventListener('click',()=>{
+    state.providerId=it.dataset.pv;
+    try{localStorage.setItem('hsk-provider',state.providerId);}catch(e){}
+    renderModelPick();closePopovers();
+    const pr=currentProvider();toast(pr?tf('mmToastSet',{name:pr.model}):t('mmToastDefault'));
+  }));
+  const openLlm=p.querySelector('[data-open="llm"]');
+  if(openLlm)openLlm.addEventListener('click',()=>{
+    closePopovers();openOverlay('settingsOvl');renderSettingsTab('llm');
+  });
+}
+$('modelPick').addEventListener('click',()=>showModelMenu($('modelPick')));
+
+/* ============================================================
+ * 场景对话（0.22 方向2）：选择场景 → dialog 带 scene_id
+ * 服务端把 [Scene] brief 注入主链，让学习者开口习得、不逐句纠错。
+ * ============================================================ */
+function sceneTitleInline(sc){return (LANG==='zh'?sc.title_zh:sc.title)||sc.title;}
+function renderScenePick(){
+  const btn=$('scenePick'),name=$('scenePickName');
+  if(!btn||!name)return;
+  if(state.sceneId){
+    const sc=state.scenes.find(s=>s.scene_id===state.sceneId);
+    btn.classList.add('active');
+    name.textContent=t('scenePickActive')+' '+(sc?sceneTitleInline(sc):state.sceneId);
+  }else{
+    btn.classList.remove('active');
+    name.textContent=t('scenePick');
+  }
+  btn.title=t('scenePickTitle');
+}
+// 场景横幅：目标常驻 + 结束复盘 + 退出（0.23 场景任务化）
+function renderSceneBanner(){
+  const box=$('sceneBanner');if(!box)return;
+  const sc=state.scenes.find(s=>s.scene_id===state.sceneId);
+  if(!state.sceneId||!sc){box.classList.remove('show');box.innerHTML='';return;}
+  const r=sc.roles||{},re=sc.roles_en||{};
+  const a=(LANG==='zh'?(r.learner||''):(re.learner||r.learner||''));
+  const b=(LANG==='zh'?(r.agent||''):(re.agent||r.agent||''));
+  box.innerHTML=`
+    <div class="sb-head">
+      <span class="sb-tag">${t('sbTag')}</span>
+      <span class="sb-title">${esc(sceneTitleInline(sc))}</span>
+      <span class="sb-roles">${a||b?esc(tf('sbRoles',{a,b})):''}</span>
+      <button class="sb-recap">🏁 ${t('sbRecap')}</button>
+      <button class="sb-exit" title="${t('sbExit')}" aria-label="${t('sbExit')}">✕</button>
+    </div>
+    ${(sc.goals||[]).length?`<div class="sb-goals"><span class="sb-glabel">${t('sceneGoals')}</span>${sc.goals.map(g=>`<span class="sb-goal">${esc(g)}</span>`).join('')}</div>`:''}
+    ${sc.seed?`<div class="sb-seed" title="${esc(sc.seed)}">${t('sbSeed')} ${esc(sc.seed)}</div>`:''}`;
+  box.classList.add('show');
+  box.querySelector('.sb-exit').addEventListener('click',()=>endScene(false));
+  box.querySelector('.sb-recap').addEventListener('click',()=>endScene(true));
+}
+// 结束场景：recap=true 先发复盘请求（场景 brief 仍在，判定质量更好）再摘除；false 直接退出
+async function endScene(recap){
+  const sc=state.scenes.find(s=>s.scene_id===state.sceneId);
+  if(!sc)return;
+  const title=sceneTitleInline(sc);
+  if(recap){
+    const goals=(sc.goals||[]).join('、');
+    await sendPrompt(tf('sbRecapPrompt',{title,goals}),tf('sbRecapBadge',{title}));
+  }
+  state.sceneId='';saveSceneState();
+  renderScenePick();renderSceneBanner();
+}
+// 场景与会话绑定持久化（刷新/深链恢复后横幅仍在，不发裸自由对话）
+function saveSceneState(){
+  try{
+    if(state.sceneId)localStorage.setItem('hsk-scene',JSON.stringify({cid:state.conversation,scene:state.sceneId}));
+    else localStorage.removeItem('hsk-scene');
+  }catch(e){}
+}
+// 取目标会话绑定的场景 id（0.24 review：空/未绑定/场景已失效 → ''，切会话时正确隐藏横幅）
+function boundSceneFor(cid){
+  try{
+    const raw=localStorage.getItem('hsk-scene');if(!raw)return '';
+    const o=JSON.parse(raw);
+    if(o&&o.cid===cid&&o.scene&&
+       (!state.scenes.length||state.scenes.some(s=>s.scene_id===o.scene)))
+      return o.scene;
+  }catch(e){}
+  return '';
+}
+function restoreScene(){
+  state.sceneId=boundSceneFor(state.conversation);
+}
+async function loadScenes(){
+  let list=[];
+  try{const d=await api('/api/scenarios');list=(d&&d.scenes)||[];}catch(e){list=[];}
+  state.scenes=list;
+  renderScenePick();renderSceneBanner();
+  const body=$('sceneBody');if(!body)return;
+  if(!list.length){body.innerHTML=`<div class="charct" style="grid-column:1/-1">${t('sceneEmpty')}</div>`;return;}
+  body.innerHTML=list.map(sc=>`
+    <div class="scene-card" data-s="${esc(sc.scene_id)}">
+      <b>${esc(sc.title)}</b>
+      <div class="sc-zh">${esc(sc.title_zh||'')}</div>
+      <div class="sc-goals">${t('sceneGoals')} ${(sc.goals||[]).map(esc).join(' · ')}</div>
+      <div class="sc-meta">
+        <span class="sc-tag">${t('sceneLevel')} ${(sc.level||[]).join('-')}</span>
+        <span class="sc-tag">${esc(sc.kp_count||0)} ${t('sceneKps')}</span>
+      </div>
+    </div>`).join('');
+  body.querySelectorAll('.scene-card').forEach(c=>c.addEventListener('click',()=>{
+    const id=c.dataset.s;
+    newSession();                       // 场景任务 = 独立新会话，不污染旧上下文
+    state.sceneId=id;saveSceneState();
+    renderScenePick();renderSceneBanner();
+    $('sceneOvl').classList.remove('show');
+    const sc=state.scenes.find(x=>x.scene_id===id);
+    sendPrompt(tf('sceneOpen',{title:sc?sceneTitleInline(sc):id}));
+  }));
+}
+$('scenePick').addEventListener('click',()=>{openOverlay('sceneOvl');loadScenes();});
+
+/* ============================================================
+ * 主流程：单一输入框 → /api/dialog（planner 唯一对话入口）
+ * 会话内多轮上下文由服务端按 conversation_id 持久化（M5 权威源）
+ * ============================================================ */
+async function runDialog(text){
+  const before=new Set(Object.keys((graph&&graph.nodes)||{}));
+  const body={text,conversation_id:state.conversation,
+              provider_id:state.providerId,
+              native_lang:LANG};
+  if(state.sceneId) body.scene_id=state.sceneId;   // 0.22 场景对话
+  const res=await api('/api/dialog',body);
+  bornIds=new Set(Object.keys((res.graph&&res.graph.nodes)||{}).filter(id=>!before.has(id)));
+  applyGraph(res.graph);
+  renderTrace(res.trace);
+  addAiText(res.text);
+  renderWhy(res.why);
+  renderFeedbackCard();
+  (res.degraded||[]).forEach(d=>addNote(`⚠ ${d.stage}：${d.reason||''}`,'warn'));
+  loadSessions();   // 刷新侧栏标题/计数（首条消息后服务端自动命名）
+  return res;
+}
+async function sendPrompt(text,badge){
+  if(!state.providers.length){
+    showConfigBar();
+    toast(t('cfgToast'));
+    const bar=$('cfgBar');if(bar)bar.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+  const emptyEl=$('emptyState');if(emptyEl)emptyEl.remove();
+  addUserMsg(text,badge);
+  const pend=addPending();
+  try{
+    await runDialog(text);
+  }catch(e){
+    dialogError(e);
+  }finally{
+    clearInterval(pend._iv);pend.remove();
+    $('text').focus();
+  }
+}
+function dialogError(e){
+  if(e.code==='llm_not_configured'){
+    addNote(t('errLLMBody')+e.message,'err',t('errLlmHint'));
+  }else if(e.code==='unknown_provider'){
+    addNote(e.message,'err',t('errUnknownHint'));
+    loadProviders();
+  }else if(e.code==='visitor_quota_exceeded'){
+    addNote(e.message,'warn',t('errQuotaHint'));
+    showConfigBar();   // P0.10 满额 → 引导配置自有 Key 无限使用
+  }else{
+    addNote(t('errReq')+e.message,'err');
+  }
+}
+async function submit(){
+  const input=$('text'),btn=$('send');
+  const text=input.value.trim();
+  if(!text)return;
+  btn.disabled=true;input.value='';input.style.height='auto';
+  await sendPrompt(text);
+  btn.disabled=false;
+}
+
+// ============ 弹窗 / 主题 / 侧栏 ============
+const THEMES=[
+  {id:'memphis',name:'孟菲斯',brand:'#df6b8c',bg:'#faf8f3'},
+  {id:'warm',name:'暖橙',brand:'#f45f28',bg:'#f2eadb'},
+  {id:'midnight',name:'暗夜',brand:'#d4a054',bg:'#241f1c'},
+];
+const PS_STYLES=['default','rigorous','friendly','pragmatic','creative','socratic'];
+function setTheme(id){
+  document.documentElement.dataset.theme=id;
+  try{localStorage.setItem('hsk-theme',id);}catch(e){}
+  renderSettingsTab('theme');
+}
+const settingsTabs={
+  theme:()=>`
+    <h3>${t('themeH')}</h3>
+    <p class="sub">${t('themeSub')}</p>
+    <div class="theme-grid">${THEMES.map(th=>`
+      <div class="theme-swatch ${document.documentElement.dataset.theme===th.id?'active':''}" data-th="${th.id}">
+        <div class="dot" style="background:${th.bg};outline:3px solid ${th.brand};outline-offset:-3px"></div>
+        <div class="nm">${t('theme_'+th.id)}</div>
+      </div>`).join('')}</div>`,
+  lang:()=>`
+    <h3>${t('langH')}</h3>
+    <p class="sub">${t('langSub')}</p>
+    <div class="theme-grid" style="grid-template-columns:1fr;max-width:360px">
+      <div class="theme-swatch ${LANG==='en'?'active':''}" data-lang="en">
+        <div class="nm">English</div>
+      </div>
+      <div class="theme-swatch ${LANG==='zh'?'active':''}" data-lang="zh">
+        <div class="nm">中文</div>
+      </div>
+    </div>`,
+  persona:()=>{
+    const p=state.persona||{};
+    const cur=p.reply_style||'default';
+    const cap=(p.interrupt_cap!=null)?p.interrupt_cap:3;
+    const curLevel=state.userLevel||'HSK3';
+    return `
+    <div class="prov-form" style="margin-bottom:14px">
+      <h5>${t('lsH')}</h5>
+      <p class="sub">${t('lsSub')}</p>
+      <div class="frow">
+        <select id="lsLevel" style="width:auto;flex:none;padding:6px 10px">${[1,2,3,4].map(n=>{
+          const v='HSK'+n;return `<option value="${v}" ${v===curLevel?'selected':''}>${v}</option>`;}).join('')}</select>
+        <button class="btn-brand" id="lsSave">${t('lsSave')}</button>
+        <span class="hint" id="lsStatus"></span>
+      </div>
+    </div>
+    <h3>${t('psH')}</h3>
+    <p class="sub">${t('psSub')}</p>
+    <div class="prov-form">
+      <h5>${t('psStyle')}</h5>
+      <div class="theme-grid styles">${PS_STYLES.map(s=>`
+        <div class="theme-swatch ${cur===s?'active':''}" data-style="${s}">
+          <div class="nm">${t('psStyle_'+s)}</div>
+          <div class="cd">${t('psStyleDesc_'+s)}</div>
+        </div>`).join('')}</div>
+      <div class="fgrid" style="margin-top:12px">
+        <input id="psAddress" placeholder="${t('psAddressPh')}" maxlength="50" value="${esc(p.address||'')}">
+        <input id="psIdentity" placeholder="${t('psIdentityPh')}" maxlength="200" value="${esc(p.identity||'')}">
+        <input id="psInstr" class="wide" placeholder="${t('psInstrPh')}" maxlength="500" value="${esc(p.custom_instructions||'')}">
+      </div>
+      <div class="frow">
+        <label class="hint" for="psCap" style="flex:none;white-space:nowrap">${t('psCap')}</label>
+        <input id="psCap" type="number" min="0" max="10" value="${cap}" style="width:70px;flex:none">
+        <span class="hint">${t('psCapHint')}</span>
+      </div>
+      <div class="frow">
+        <button class="btn-brand" id="psSave">${t('psSave')}</button>
+        <span class="hint" id="psStatus">${state.persona?'':t('psLoadingPersona')}</span>
+      </div>
+    </div>`;},
+  llm:()=>`
+    <h3>${t('llmH')}</h3>
+    <div class="prov-note">${t('llmNote')}</div>
+    <div id="provList">${t('llmLoading')}</div>
+    <div class="prov-form">
+      <h5>${t('llmAdd')}</h5>
+      <div class="fgrid">
+        <input id="pvName" placeholder="${t('llmName')}">
+        <input id="pvModel" placeholder="${t('llmModel')}">
+        <input id="pvUrl" class="wide" placeholder="${t('llmUrl')}">
+        <input id="pvKey" class="wide" placeholder="${t('llmKey')}" type="password">
+      </div>
+      <div class="frow">
+        <button class="btn-brand" id="pvAdd">${t('llmBtnAdd')}</button>
+        <button class="prov-btn" id="pvTestNew">${t('llmBtnTest')}</button>
+        <span class="hint">${t('llmHint')}</span>
+      </div>
+    </div>`,
+  keys:()=>`
+    <h3>${t('tabKeys')}</h3>
+    <div class="row2"><span class="kbd">Ctrl+Enter</span><span>${t('keysSend')}</span></div>
+    <div class="row2"><span class="kbd">Enter</span><span>${t('keysNewline')}</span></div>
+    <div class="row2"><span class="kbd">↗ → ↓ ✕</span><span>${t('keysCards')}</span></div>
+    <div class="row2"><span class="kbd">✍</span><span>${t('keysAnno')}</span></div>
+    <div class="row2"><span class="kbd">?conversation=</span><span>${t('keysUrl')}</span></div>`,
+  about:()=>`
+    <h3>${t('tabAbout')}</h3>
+    <ul class="about-li">
+      <li>${t('aboutLi1')}</li>
+      <li>${t('aboutLi2')}</li>
+      <li>${t('aboutLi3')}</li>
+      <li>${t('aboutLi4')}</li>
+      <li>${t('aboutLi5')}</li>
+    </ul>`,
+};
+function renderSettingsTab(k){
+  curTab=k;
+  document.querySelectorAll('#settingsNav li').forEach(li=>li.classList.toggle('active',li.dataset.tab===k));
+  $('settingsBody').innerHTML=settingsTabs[k]();
+  if(k==='theme'){
+    $('settingsBody').querySelectorAll('.theme-swatch').forEach(sw=>
+      sw.addEventListener('click',()=>{setTheme(sw.dataset.th);toast(tf('themeToast',{name:t(sw.dataset.th==='memphis'?'themeMemphis':'themeWarm')}));}));
+  }
+  if(k==='lang'){
+    $('settingsBody').querySelectorAll('.theme-swatch[data-lang]').forEach(sw=>
+      sw.addEventListener('click',()=>{
+        setLang(sw.dataset.lang);
+        toast(tf('langToast',{name:sw.dataset.lang==='zh'?'中文':'English'}));
+      }));
+  }
+  if(k==='llm')bindProvidersTab();
+  if(k==='persona')bindPersonaTab();
+}
+
+// ---- 个性化 tab（0.22 方向3）：persona 编辑/保存（POST /api/profile） ----
+async function loadPersona(){
+  const r=await api('/api/profile');
+  const p=(r&&r.profile&&r.profile.persona)||null;
+  state.persona=p||{};
+  state.userLevel=(r&&r.profile&&r.profile.user_level)||'HSK3';   // 0.25
+  return p;
+}
+function bindPersonaTab(){
+  const body=$('settingsBody');
+  // 风格六卡单选
+  body.querySelectorAll('.theme-swatch[data-style]').forEach(sw=>
+    sw.addEventListener('click',()=>{
+      body.querySelectorAll('.theme-swatch[data-style]').forEach(x=>x.classList.remove('active'));
+      sw.classList.add('active');
+    }));
+  const fill=(p)=>{
+    if(!p)return;
+    if(p.reply_style)body.querySelectorAll('.theme-swatch[data-style]').forEach(x=>
+      x.classList.toggle('active',x.dataset.style===p.reply_style));
+    $('psAddress').value=p.address||'';
+    $('psIdentity').value=p.identity||'';
+    $('psInstr').value=p.custom_instructions||'';
+    if(p.interrupt_cap!=null)$('psCap').value=p.interrupt_cap;
+    const st=$('psStatus');if(st)st.textContent='';
+    const lsel=$('lsLevel');if(lsel&&state.userLevel)lsel.value=state.userLevel;
+  };
+  // 打开 tab 时拉一次现值（服务端 profile.persona 为权威；空 = 全默认）
+  loadPersona().then(fill).catch(()=>{
+    const st=$('psStatus');if(st)st.textContent='';
+  });
+  // 0.25 起点分层：独立保存学习者 HSK 等级（profile.user_level）
+  const lSave=$('lsSave');
+  if(lSave)lSave.addEventListener('click',async()=>{
+    const sel=$('lsLevel');if(!sel)return;
+    const v=sel.value;
+    const b=lSave;b.disabled=true;b.textContent=t('psSaving');
+    try{
+      const r=await api('/api/profile',{user_level:v});
+      state.userLevel=(r&&r.user_level)||v;
+      const st2=$('lsStatus');if(st2)st2.textContent='';
+      toast(t('lsSaved'));
+    }catch(e){toast(t('lsSaveFail')+e.message);}
+    b.disabled=false;b.textContent=t('lsSave');
+  });
+  $('psSave').addEventListener('click',async()=>{
+    const active=body.querySelector('.theme-swatch[data-style].active');
+    const persona={
+      reply_style:active?active.dataset.style:'default',
+      address:$('psAddress').value.trim(),
+      identity:$('psIdentity').value.trim(),
+      custom_instructions:$('psInstr').value.trim(),
+      interrupt_cap:parseInt($('psCap').value,10),
+    };
+    const b=$('psSave');b.disabled=true;const old=b.textContent;b.textContent=t('psSaving');
+    try{
+      const r=await api('/api/profile',{persona});
+      state.persona=(r&&r.persona)||persona;
+      fill(state.persona);
+      toast(t('psSaved'));
+    }catch(e){toast(t('psSaveFail')+e.message);}
+    b.disabled=false;b.textContent=old;
+  });
+}
+
+// ---- 模型密钥 tab（0.20 BYOK）：列表渲染 + 增删/测试/设默认 ----
+function renderProvList(){
+  const box=$('provList');if(!box)return;
+  if(!state.providers.length){
+    box.innerHTML=`<div class="clean-sub">${t('provEmpty')}</div>`;
+    return;
+  }
+  box.innerHTML=state.providers.map(p=>{
+    const isDef=p.id===state.defaultProvider;
+    return `<div class="prov-row" data-pv="${esc(p.id)}">
+      <div style="min-width:0;flex:1">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="pv-nm">${esc(p.name)}</span>
+          <span class="pv-md">${esc(p.model)}</span>
+          ${isDef?`<span class="pv-bdg">${t('provDefault')}</span>`:''}
+        </div>
+        <div class="pv-key">${esc(p.api_key_masked)} · ${esc(p.base_url)}</div>
+      </div>
+      <span class="pv-st" data-st="${esc(p.id)}"></span>
+      <button class="prov-btn" data-act="test">${t('provTest')}</button>
+      ${p.source==='env'?'':`<button class="prov-btn" data-act="def">${isDef?t('provUnsetDef'):t('provSetDef')}</button>`}
+      ${p.source==='env'?'':`<button class="prov-btn danger" data-act="del">${t('provDel')}</button>`}
+    </div>`;
+  }).join('');
+  box.querySelectorAll('.prov-row').forEach(row=>{
+    const pid=row.dataset.pv;
+    row.querySelectorAll('.prov-btn').forEach(b=>b.addEventListener('click',()=>provAction(b.dataset.act,pid,b)));
+  });
+}
+async function provAction(act,pid,btn){
+  if(act==='test'){
+    const st=$('provList').querySelector(`[data-st="${CSS.escape(pid)}"]`)||btn;
+    st.textContent=t('provTesting');btn.disabled=true;
+    try{
+      const r=await api('/api/providers/test',{id:pid});
+      if(st.classList)st.classList.remove('ok','err');
+      if(r&&r.ok){st.textContent=tf('provOkMs',{n:r.latency_ms});st.classList.add('ok');}
+      else{st.textContent=t('provFail');st.classList.add('err');
+        toast(t('provToastFail')+((r&&r.error)||t('provUnknownErr')).slice(0,120));}
+    }catch(e){st.textContent=t('provFail');st.classList.add('err');toast(t('provToastFail')+e.message);}
+    btn.disabled=false;
+    return;
+  }
+  if(act==='def'){
+    const target=(state.defaultProvider===pid)?'env':'p';
+    try{
+      await api('/api/providers/default',{id:(target==='env'?'env':pid)});
+      toast(target==='env'?t('provToastEnv'):t('provToastDef'));
+      await loadProviders();renderProvList();
+    }catch(e){toast(t('provToastOpFail')+e.message);}
+    return;
+  }
+  if(act==='del'){
+    if(!confirm(t('provConfirmDel')))return;
+    try{
+      const r=await fetch('/api/providers?id='+encodeURIComponent(pid),{method:'DELETE'});
+      if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||('HTTP '+r.status));}
+      if(state.providerId===pid){state.providerId='';try{localStorage.setItem('hsk-provider','');}catch(e){}}
+      await loadProviders();renderProvList();toast(t('provToastDeleted'));
+    }catch(e){toast(t('provToastDelFail')+e.message);}
+  }
+}
+function bindProvidersTab(){
+  renderProvList();
+  loadProviders().then(renderProvList);   // 打开 tab 时刷新一次（可能别处已变更）
+  $('pvTestNew').addEventListener('click',async()=>{
+    const b=$('pvTestNew');b.disabled=true;const old=b.textContent;b.textContent=t('provTesting');
+    try{
+      const r=await api('/api/providers/test',{
+        base_url:$('pvUrl').value.trim(),api_key:$('pvKey').value.trim(),model:$('pvModel').value.trim()});
+      toast(r&&r.ok?tf('provTestOk',{n:r.latency_ms}):(t('provTestFail')+((r&&r.error)||'').slice(0,120)));
+    }catch(e){toast(t('provToastFail')+e.message);}
+    b.disabled=false;b.textContent=old;
+  });
+  $('pvAdd').addEventListener('click',async()=>{
+    const name=$('pvName').value.trim(),model=$('pvModel').value.trim(),
+          base_url=$('pvUrl').value.trim(),api_key=$('pvKey').value.trim();
+    if(!(name&&model&&base_url&&api_key)){toast(t('provAllRequired'));return;}
+    const b=$('pvAdd');b.disabled=true;const old=b.textContent;b.textContent=t('provAdding');
+    try{
+      await api('/api/providers',{name,model,base_url,api_key});
+      ['pvName','pvModel','pvUrl','pvKey'].forEach(i=>$(i).value='');
+      await loadProviders();renderProvList();
+      toast(t('provToastAdded'));
+    }catch(e){toast(t('provToastAddFail')+e.message);}
+    b.disabled=false;b.textContent=old;
+  });
+}
+document.querySelectorAll('#settingsNav li').forEach(li=>
+  li.addEventListener('click',()=>renderSettingsTab(li.dataset.tab)));
+
+function openOverlay(id){$(id).classList.add('show');}
+document.querySelectorAll('[data-close]').forEach(x=>
+  x.addEventListener('click',()=>$(x.dataset.close).classList.remove('show')));
+document.querySelectorAll('.overlay').forEach(o=>
+  o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show');}));
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){document.querySelectorAll('.overlay.show').forEach(o=>o.classList.remove('show'));closePopovers();}
+});
+
+$('actSettings').addEventListener('click',()=>{openOverlay('settingsOvl');renderSettingsTab('theme');});
+$('actHowto').addEventListener('click',()=>openOverlay('howtoOvl'));
+$('resident').addEventListener('click',()=>openOverlay('howtoOvl'));
+$('actReport').addEventListener('click',showReport);
+$('actDoc').addEventListener('click',openDoc);
+$('newSess').addEventListener('click',newSession);
+
+// ---- 主区独立视图切换：对话 / 地图 / 复习三类互斥 ----
+let mapView=false;
+let reviewView=false;
+function setView(mode){   // 'chat' | 'map' | 'review'
+  mapView = (mode==='map');
+  reviewView = (mode==='review');
+  const m=document.querySelector('main');
+  m.classList.toggle('mapview',mapView);
+  m.classList.toggle('reviewview',reviewView);
+  $('actMap').classList.toggle('cur',mapView);
+  $('actReview').classList.toggle('cur',reviewView);
+  if(mapView)requestAnimationFrame(()=>{renderMap();renderQueue();});
+  if(reviewView)requestAnimationFrame(()=>{if($('rvBody').children.length===0)beginReview();});
+}
+$('actMap').addEventListener('click',()=>setView(mapView?'chat':'map'));
+$('actReview').addEventListener('click',beginReview);
+$('backChat').addEventListener('click',()=>setView('chat'));
+$('backReview').addEventListener('click',()=>setView('chat'));
+// 地图/复习的返回按钮沿用 maptitle 内 backChat；复习视图下左栏隐藏但也可经 actReview 再进
+// 下一步推荐条：动作回对话主链（先切回对话视图再发）
+$('nbGo').addEventListener('click',()=>{
+  if(!nextRec||!(graph&&graph.nodes&&graph.nodes[nextRec.id]))return;
+  setView('chat');const nm=nodeName(nextRec.id);
+  sendPrompt(tf('rvPrompt',{name:nm}),tf('rvBadge')+nm);
+});
+$('nbExplain').addEventListener('click',()=>{
+  if(!nextRec||!(graph&&graph.nodes&&graph.nodes[nextRec.id]))return;
+  setView('chat');const nm=nodeName(nextRec.id);
+  sendPrompt(tf('digPrompt',{name:nm}),tf('digBadge')+nm);
+});
+
+// 地图不常驻后：对话流内点知识点 → 自动切到地图视图并定位
+function locateKp(id){
+  if(!mapView)setView('map');
+  selectedNode=null;
+  selectNode(id);
+}
+
+// 容器尺寸变化（视图切换/窗口缩放）后重排地图布局
+let _rzT=null;
+window.addEventListener('resize',()=>{
+  clearTimeout(_rzT);
+  _rzT=setTimeout(()=>{if(graph&&graph.nodes)renderMap();},200);
+});
+
+function foldSide(on){
+  $('side').classList.toggle('closed',on);
+  $('sideOpen').classList.toggle('show',on);
+}
+$('foldBtn').addEventListener('click',()=>foldSide(true));
+$('sideOpen').addEventListener('click',()=>foldSide(false));
+
+$('send').addEventListener('click',submit);
+$('text').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();submit();}
+});
+$('text').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px';});
+
+// ============ 启动 ============
+(async function init(){
+  // 主题（localStorage 持久化，默认孟菲斯）
+  let th='memphis';
+  try{th=localStorage.getItem('hsk-theme')||'memphis';}catch(e){}
+  if(!THEMES.some(t=>t.id===th))th='memphis';
+  document.documentElement.dataset.theme=th;
+  applyLang();   // 0.21 语言（localStorage hsk-lang，默认 en）——首帧即应用
+
+  // 会话：URL 深链 ?conversation=<id>（OpenMAIC 式查询参数驱动）
+  const u=new URL(location);
+  const fromUrl=u.searchParams.get('conversation');
+  state.conversation=fromUrl||('s-'+Date.now().toString(36));
+  setUrlConversation(state.conversation);
+
+  try{
+    graph=await api('/api/graph');
+    applyGraph(graph);
+  }catch(e){
+    setStatus(false,t('disconnected'));
+    addNote(t('errGraph')+e.message,'err');
+  }
+  bindChips(document);
+  await loadSessions();
+  loadProviders();   // 0.20 BYOK：模型选择器数据（失败静默，选择器显示"默认模型"）
+  restoreScene();    // 0.23 场景持久化：深链/刷新后恢复当前会话绑定的场景横幅
+  loadScenes();
+  // 深链恢复：URL 带会话参数时拉取历史（新生成的 id 无历史 → 空态）
+  if(fromUrl){
+    try{
+      const c=await api('/api/conversation?id='+encodeURIComponent(fromUrl));
+      const msgs=(c&&c.messages)||[];
+      if(msgs.length){
+        const emptyEl=$('emptyState');if(emptyEl)emptyEl.remove();
+        addMsg(el(`<div class="note plain">${tf('restored',{n:msgs.length})}</div>`));
+        applyHistory(msgs);
+      }
+    }catch(e){ /* 恢复失败不阻塞新对话 */ }
+  }
+  window.addEventListener('resize',()=>{renderMap();});
+})();
+</script>
+</body>
+</html>

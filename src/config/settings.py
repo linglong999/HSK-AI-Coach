@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     # 是否打印调试日志
     DEBUG: bool = True
 
+    # ---------------- 邀请制内测（B7 S5） ----------------
+    # 逗号分隔的 open_id 白名单；空 = 邀请闸门关闭（默认，不拦截任何请求）。
+    # 非空 = 0→1 邀请制开启：未带有效 open_id 的请求只出邀请页、不公开页面/数据。
+    INVITE_ALLOWLIST: str = ""
+
     @field_validator("CONFIDENCE_THRESHOLD", mode="before")
     @classmethod
     def _fallback_conf(cls, v):
@@ -63,6 +68,7 @@ QWEN_BASE_URL = settings.QWEN_BASE_URL
 QWEN_MODEL = settings.QWEN_MODEL
 CONFIDENCE_THRESHOLD = settings.CONFIDENCE_THRESHOLD
 DEBUG = settings.DEBUG
+INVITE_ALLOWLIST = settings.INVITE_ALLOWLIST
 
 
 def get_llm_config():

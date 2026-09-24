@@ -3,3 +3,10 @@ __pycache__/
 *.pyc
 __dbg_meta/
 datasets/eval/reports/
+# B7 S4：React 壳构建产物（serve 优先 dist、无则回退 web/；产物由 CI 前端 build step 生成）
+web/dist/
+web/node_modules/
+web/*.log
+web/*.tsbuildinfo
+web/vite.config.js
+web/vite.config.d.ts

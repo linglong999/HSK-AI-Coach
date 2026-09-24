@@ -113,15 +113,9 @@ def _get(port, path):
 
 
 def _post(port, path, body_bytes):
-    c = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
-    c.request("POST", path, body_bytes, {"Content-Type": "application/json"})
-    r = c.getresponse()
-    raw = r.read()
-    c.close()
-    try:
-        return r.status, json.loads(raw.decode())
-    except Exception:
-        return r.status, None
+    from ._serve_common import handle_response, parse_body
+    st, raw, _hs = handle_response(port, "POST", path, body_bytes)
+    return st, parse_body(path, raw.decode())
 
 
 # ==================== A. 场景库数据完整性 ====================

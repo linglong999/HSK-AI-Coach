@@ -69,11 +69,17 @@ class FakeRouter:
 
 
 class FakeGate:
+    """B7 S3 能量闸门接口替身：check_start(vid, session_id) → (allowed, tier, state)。"""
     def __init__(self, ok):
         self.ok = ok
 
-    def check_and_consume(self, vid):
-        return self.ok, 0, "次日 UTC 00:00 重置"
+    def check_start(self, vid, session_id=None):
+        st = {"energy_left": 0.0 if not self.ok else 100.0,
+              "daily_total": 100.0, "est_cost": 2.0,
+              "round_count": 0, "reset_at": "次日 UTC 00:00 重置"}
+        if self.ok:
+            return True, None, st
+        return False, "exhaust", st
 
 
 class DialogSmokeBase(unittest.TestCase):
@@ -104,8 +110,9 @@ class VisitorQuotaTest(DialogSmokeBase):
                             memory_root=self.tmp, gate=FakeGate(ok=False))
         status, out = svc.dialog({"text": "你好"}, vid="v-test")
         self.assertEqual(status, 429)
-        self.assertEqual(out["code"], "visitor_quota_exceeded")
+        self.assertEqual(out["code"], "visitor_energy_exhausted")
         self.assertEqual(out["remaining"], 0)
+        self.assertEqual(out["intercept"]["tier"], "exhaust")
         self.assertEqual(self.calls, [])   # 满额直接拒，LLM 不触达
 
 

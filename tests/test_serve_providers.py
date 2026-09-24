@@ -18,6 +18,7 @@ import unittest
 from unittest import mock
 
 import requests
+import httpx
 
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -53,18 +54,20 @@ def _start_server(router, dialog_llm=None):
 
 
 def _req(port, method, path, body=None):
-    c = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
-    headers = {"Content-Type": "application/json"} if body is not None else {}
-    c.request(method, path,
-              body.encode() if isinstance(body, str) else
-              (json.dumps(body).encode() if body else None), headers)
-    r = c.getresponse()
-    raw = r.read()
-    c.close()
-    try:
-        return r.status, json.loads(raw.decode())
-    except Exception:  # noqa: BLE001
-        return r.status, None
+    # B7 S1：200 对话响应为 SSE，_serve_common.parse_body 按 Content-Type 分派重汇编回 JSON
+    from ._serve_common import handle_response, parse_body
+    keep = path == "/api/dialog"
+    body_bytes = (body.encode() if isinstance(body, str) else
+                  (json.dumps(body).encode("utf-8") if body is not None else None))
+    st, raw, _hs = handle_response(port, method, path, body_bytes,
+                                   headers={"Content-Type": "application/json"}
+                                   if body is not None else None)
+    if not keep:
+        try:
+            return st, json.loads(raw.decode())
+        except Exception:  # noqa: BLE001
+            return st, None
+    return st, parse_body(path, raw.decode())
 
 
 def _fake_chat_factory(captured):
@@ -319,84 +322,66 @@ class EnvCompatTest(unittest.TestCase):
 
 # ---------------- 单元：LLMClient json_mode 400 兜底 ----------------
 
-class _FakeResponse:
-    """requests.Response 替身：status_code/json()/text（供传输层消费）。"""
-
-    def __init__(self, body: dict, status_code: int = 200):
-        self._body = body
-        self.status_code = status_code
-
-    def json(self):
-        return self._body
-
-    @property
-    def text(self):
-        return json.dumps(self._body)
+def _cc_ok(content="ok"):
+    """构造合法 ChatCompletion JSON（含 usage，供 openai SDK 解析透出）。"""
+    return {"id": "chatcmpl-p", "object": "chat.completion",
+            "created": 0, "model": "m",
+            "choices": [{"index": 0,
+                         "message": {"role": "assistant", "content": content},
+                         "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 2, "completion_tokens": 1,
+                      "total_tokens": 3}}
 
 
-class _FakeHttp:
-    """requests.Session 替身：捕获 payload；脚本化返回/抛错。
-    {"raise": Exception} → 抛异常（模拟网络级错误）；{"status": int} →
-    返该状态码响应（4xx 按 requests 惯例走正常返回）；{"content": str} → 200 响应。
-    """
+def _script_transport(script):
+    """httpx.MockTransport 替身：捕获 payload；脚本化返回/抛错。
+    每项 script：{"raise": 异常} / {"status": int} / {"content": str}。"""
+    seen = []
 
-    def __init__(self):
-        self.payloads = []
-        self.script = []   # 每项：{"raise": 异常} / {"status": int} / {"content": str}
-
-    def post(self, url, json=None, headers=None, timeout=60):
-        self.payloads.append(json)
-        step = self.script.pop(0) if self.script else {"content": "ok"}
+    def handler(request):
+        body = json.loads(request.content) if request.content else {}
+        seen.append(body)
+        step = script.pop(0) if script else {"content": "ok"}
         if "raise" in step:
             raise step["raise"]
         status = step.get("status")
         if status is not None:
-            return _FakeResponse({"error": f"HTTP {status}"}, status_code=status)
-        content = step.get("content", "ok")
-        return _FakeResponse(
-            {"choices": [{"message": {"content": content}}]})
+            return httpx.Response(status, json={"error": f"HTTP {status}"})
+        return httpx.Response(200, json=_cc_ok(step.get("content", "ok")))
+
+    return httpx.Client(transport=httpx.MockTransport(handler)), seen
 
 
 class JsonModeFallbackTest(unittest.TestCase):
 
     def _client(self, fake):
-        c = LLMClient()
-        c._session = fake
+        c = LLMClient(http_client=fake)
         return c
 
     def test_400_falls_back_without_response_format(self):
-        fake = _FakeHttp()
-        fake.script = [
-            {"status": 400},
-            {"content": '{"a":1}'},
-        ]
+        fake, seen = _script_transport([{"status": 400}, {"content": '{"a":1}'}])
         c = self._client(fake)
         out = c.chat([{"role": "user", "content": "hi"}],
                      json_mode=True, config={"base_url": "http://x/v1",
                                              "api_key": "k", "model": "m"})
         self.assertEqual(out, '{"a":1}')
-        self.assertIn("response_format", fake.payloads[0])
-        self.assertNotIn("response_format", fake.payloads[1])   # 降级重试去掉参数
+        self.assertIn("response_format", seen[0])
+        self.assertNotIn("response_format", seen[1])   # 降级重试去掉参数
+        fake.close()
 
     def test_400_without_json_mode_no_retry(self):
-        fake = _FakeHttp()
-        fake.script = [
-            {"status": 400},
-        ]
+        fake, seen = _script_transport([{"status": 400}])
         c = self._client(fake)
         with self.assertRaises(RuntimeError) as ctx:
             c.chat([{"role": "user", "content": "hi"}],
                    config={"base_url": "http://x/v1", "api_key": "k",
                            "model": "m"})
         self.assertIn("HTTP 400", str(ctx.exception))
-        self.assertEqual(len(fake.payloads), 1)
+        self.assertEqual(len(seen), 1)
+        fake.close()
 
     def test_fallback_also_fails_raises_descriptive(self):
-        fake = _FakeHttp()
-        fake.script = [
-            {"status": 400},
-            {"status": 401},
-        ]
+        fake, _ = _script_transport([{"status": 400}, {"status": 401}])
         c = self._client(fake)
         with self.assertRaises(RuntimeError) as ctx:
             c.chat([{"role": "user", "content": "hi"}],
@@ -404,6 +389,7 @@ class JsonModeFallbackTest(unittest.TestCase):
                    config={"base_url": "http://x/v1", "api_key": "k",
                            "model": "m"})
         self.assertIn("json_mode 降级重试仍失败", str(ctx.exception))
+        fake.close()
 
 
 if __name__ == "__main__":

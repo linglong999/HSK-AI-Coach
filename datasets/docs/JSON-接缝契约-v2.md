@@ -91,8 +91,8 @@
 | 3 | `meta_confidence` | 图谱 Node 最近快照 + message 完整事件；**不进识别契约本体** | B3 | ✔ 本批落地 |
 | 4 | 回避（avoidance）独立类型 | 图谱层独立类型，**不入识别契约** | B3 | ✔ 本批落地 |
 | 5 | `senses[]` 词义项 | Node 属性/子键（`sense_id/gloss/example/s_*` 四字段），主键仍 `kp_id` | B4 | ✔ 本批落地 |
-| 6 | 账本 KINDS 扩展 | 同一 KINDS 常量四路：`feedback_presented`/`uptake_observed`(B2)、`avoidance_observed`(B3)、token 用量事件(B7)，与 `_writeback_ledger_events` 对齐 | B2/B3/B7 | ✔ B2 新增 `feedback_presented`/`uptake_observed`（实值见 §8）；✔ B3 新增 `avoidance_observed`（实值见 §9）；B7 仅钉挂载位 |
-| 7 | SSE 四事件形状 | message/done/error/intercept 的 JSON 传输层形状（payload = 契约 v1/v2 原样内嵌，只钉形状不新造 schema） | B7 S1 | 仅钉挂载位 |
+| 6 | 账本 KINDS 扩展 | 同一 KINDS 常量四路：`feedback_presented`/`uptake_observed`(B2)、`avoidance_observed`(B3)、token 用量事件(B7)，与 `_writeback_ledger_events` 对齐 | B2/B3/B7 | ✔ B2 新增 `feedback_presented`/`uptake_observed`（实值见 §8）；✔ B3 新增 `avoidance_observed`（实值见 §9）；✔ B7 token 用量事件已落地（见 §10） |
+| 7 | SSE 四事件形状 | message/done/error/intercept 的 JSON 传输层形状（payload = 契约 v1/v2 原样内嵌，只钉形状不新造 schema） | B7 S1 | ✔ B7 S1 落地（实值见 §10） |
 
 > 顺手锁定：`priority`（L3）与候选质量（L2）**不进契约 schema**（派生量归主路径现算）；`meta_confidence`/回避类型由 B3（图谱层）消费，B0 只钉挂载位不实现。
 
@@ -151,3 +151,18 @@
   - **完整事件进账本**（同一 KINDS 四路扩展）：`avoidance_observed` kind（`error_ledger.observe_avoidance(kp, state, evidence)`，走 record() 幂等链不误改 repeated）；不与"错误"混：错误=`error_count/error_types`，该用未用=`avoidance_state/avoidance_count` 独立可查。
   - **Node 快照**：`avoidance_state`/`avoidance_count`/`last_avoidance_at` 三新字段（默认值向后兼容）。
   - **静默处置**（总纲 §2）：avoided→"该复习"喂 B4 调度权重、unlearned→"该教"喂 B5 排序层——**绝不进 intervention/directive**（学习者不可见）。骨架期 `target_constructions` 为空 → 观测不激活零行为（B3 拍板3）；`attempt_ok/attempt_err` 走既有正向/偏误链，不重复写避险账本。
+
+## 10. B7 实现回填（SSE 四事件 / quota 现态 / 邀请制）
+
+以下由 B7 S1/S3/S5 落地，属**产品壳传输层与配额闸门**，识别契约顶/error 条目键集合保持 v2 冻结（SSE 只钉「传输形状」，payload 内嵌契约 v1/v2 原样，不新造 schema）。
+
+- **`POST /api/dialog`：200 成功改 SSE**（S1）。事件序 = `intercept? → message×N → done`：
+  - `intercept`（可选，S3 配额三档拦截才注入）：`out["intercept"]` 原样，含 `{msg, energy_left, tier}`（low/exhaust/round_cap 各自触发，round_cap 不截断已产出回合）。
+  - `message`：单回合卡片 `{trace_i, kind, ok, payload}`——`payload` = 契约回合卡片原样内嵌（契约 v1/v2 字段全集，SSE 不转录不新造）。
+  - `done`：完整对话响应 dict（含 `trace/conversation_id/…`），另加 `rounds`（=len(trace)）与 `energy_used`（S2/S3 计量后回填，缺省 0）。
+  - `error`：非 200 路径（空文本/无 Key/配额硬错）**不流式**，仍一次性 JSON，与 M0 纪律同构。
+- **`GET /api/quota` 现态端点**（S1，QuotaBar 首屏数据源）：返回 `{energy_left, daily_total, est_cost, round_count, reset_at}`。只读（不消耗、不落盘），读 VisitorGate 现态；gate=None（测试默认豁免）或 BYOK 非 env 供应商 → 额度不限（`energy_left=-1/daily_total=0/reset_at="额度不限"`）。intercept 事件只管会话中增量更新，首屏必须靠此 REST 拉取源。
+- **能量折算**（S2 TokenMeter，见 §5 表 #6 挂载位）：`energy = prompt_tokens/1000×in_rate + completion_tokens/1000×out_rate`（线性折算，哨兵费率 `QUOTA_PARAMS={input:1.0, output:2.0}`，上线按真实成本回填）。失败回合（零产出）不入账不扣能量；`RoundUsage` 随请求线程 contextvars 收集，RLock 串行化下互不串扰。
+- **12 回合硬限**（S3）：单会话最多 12 回合，round_cap 拦截不截断已产出；三档文案与触发由 VisitorGate 锁定。
+- **邀请制 allowlist**（S5）：`config.settings.INVITE_ALLOWLIST`（逗号分隔 open_id；空=闸门关闭完全旁路，契约零变化）。闸门开启时——页面请求只出邀请页（不公开 speak/图谱入口）；`/api/*` 未授权 → `403 {"error":"invite_required",...}`（防绕过直取数据）。open_id 来源：query `open_id=` 或 Cookie `hsk_openid`。
+- **双壳静态托管**（S4）：`/` → React 壳构建产物 `index_dir/dist`（未构建回退 `index_dir` 目录本身，便于开发）；`/legacy/` → legacy 工具壳（`web_legacy/`）。两者/API 均为 GET 静态/home，POST 等未知路径由 `api_unknown_method` 统一 404——13 条既有路由契约零变化。

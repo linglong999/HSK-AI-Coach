@@ -15,7 +15,9 @@ import re
 import unittest
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_INDEX = os.path.join(_PROJECT_ROOT, "web", "index.html")
+# B7 S4 双壳平移：data-i18n / I18N / $() id 引用 = legacy vanilla 壳不变量，
+# 壳已平移至 web_legacy/（React 壳不消费这些机制）。路径随平移更新。
+_INDEX = os.path.join(_PROJECT_ROOT, "web_legacy", "index.html")
 
 
 def _load():

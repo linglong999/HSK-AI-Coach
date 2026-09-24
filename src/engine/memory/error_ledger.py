@@ -16,7 +16,8 @@ from engine.memory import store
 KINDS = {"observation_error", "repeated_error",
          "concept_confirmed", "concept_reviewed",
          "feedback_presented", "uptake_observed",   # B2：反馈呈现/采纳观测
-         "avoidance_observed"}                      # B3：回避观测（该用未用）
+         "avoidance_observed",                      # B3：回避观测（该用未用）
+         "token_usage"}                             # B7 S2：回合 token 用量（能量计量）
 MAX_EVENTS = 500          # ring buffer 上限（仿 MAX_ENGAGEMENT_EVENTS）
 REPEAT_THRESHOLD = 3      # 惯犯判定阈值（决策 B-乙）
 
@@ -88,6 +89,18 @@ class ErrorLedger:
         return self.record("avoidance_observed", kp_id,
                            signature=kp_id,
                            evidence=f"state={state} {evidence}".strip())
+
+    def record_token_usage(self, prompt_tokens: int, completion_tokens: int,
+                           energy: float = 0.0, evidence: str = "") -> str:
+        """B7 S2：回合 token 用量记账（能量计量防绕过）。
+        无 kp 可挂 → 用保留标记 kp_id，token 明细进 evidence 结构化文本。
+        失败/零产出回合不入账（由记账方在调前判定，见 _account_energy）。"""
+        kp = "__round_energy__"
+        det = (f"prompt_tokens={int(prompt_tokens or 0)} "
+               f"completion_tokens={int(completion_tokens or 0)} "
+               f"energy={energy:.3f}"
+               + (f" {evidence}".strip() if evidence else ""))
+        return self.record("token_usage", kp, signature=kp, evidence=det)
 
     # ---------------- 读 ----------------
     def count_for_kp(self, kp_id: str) -> int:

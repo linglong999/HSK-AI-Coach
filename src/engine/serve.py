@@ -42,14 +42,17 @@ import time
 
 import anyio
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sse_starlette.sse import EventSourceResponse
 
 from engine.dialog_service import DialogService
+from engine.invite import (OPENID_COOKIE, check_openid, parse_allowlist)  # B7 S5 邀请守卫
 from engine.visitor_gate import COOKIE_NAME, VisitorGate  # P0.10 游客配额闸门
 from engine.router import Router
 
 from config.paths import PROJECT_ROOT as _PROJECT_ROOT
+from config import settings as _cfg_settings  # B7 S5：读邀请白名单（测试 patch config.settings.X）
 
 
 # 前端壳静态目录：serve.py 位于 engine/，前端壳在项目根前端/ 或 web/
@@ -127,6 +130,19 @@ def _json(obj, status=200, vid_cookie=None):
     return JSONResponse(obj, status_code=status, headers=headers)
 
 
+def _request_open_id(request: Request):
+    """B7 S5 · 从请求取 open_id：query `open_id=` 优先，其次 Cookie `hsk_openid`。"""
+    q = str((request.query_params.get("open_id") or "")).strip()
+    if q:
+        return q
+    cookie = request.headers.get("Cookie") or ""
+    for part in cookie.split(";"):
+        k, _, v = part.strip().partition("=")
+        if k == OPENID_COOKIE and v:
+            return v
+    return None
+
+
 def _read_json_body(request: Request) -> tuple:
     """读 POST body 为 dict；非法/缺失 → 返回 (None, {"error":"invalid json body"})。"""
     try:
@@ -138,9 +154,35 @@ def _read_json_body(request: Request) -> tuple:
         return None, {"error": "invalid json body"}
 
 
+def _dialog_sse_events(out: dict):
+    """B7 S1 · /api/dialog SSE 四事件契约（契约文档 v2，[B7-B] 聚焦 6 形状落地）：
+    事件序 = intercept? → message×N → done。
+    - intercept.data：配额三档（S3 注入 out["intercept"]，未注入则无此事件）。
+    - message.data：单个回合卡片 {trace_i, kind, ok, payload}，payload = 契约回合卡片原样内嵌。
+    - done.data：完整对话响应 dict（含 trace/conversation_id/…，另加 rounds/energy_used）——
+      对前端是流式收尾全集，对测试是可保真重汇编回原 JSON 形状（既有断言零改动）。
+    断连：sse-starlette 取消生成器 → asyncio.CancelledError 由 EventSourceResponse 消化；
+    已产出回合已由服务端内存落盘（对话深链幂等恢复），不丢。"""
+    intc = out.get("intercept")
+    if intc:
+        yield {"event": "intercept", "data": json.dumps(intc, ensure_ascii=False)}
+    for i, item in enumerate(out.get("trace", [])):
+        card = {
+            "trace_i": i,
+            "kind": item.get("kind", "dialog"),
+            "ok": bool(item.get("ok")),
+            "payload": item,
+        }
+        yield {"event": "message", "data": json.dumps(card, ensure_ascii=False)}
+    done = dict(out)
+    done["rounds"] = len(out.get("trace", []))
+    done.setdefault("energy_used", 0)   # S2/S3 计量后回填
+    yield {"event": "done", "data": json.dumps(done, ensure_ascii=False)}
+
+
 def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=None,
                memory_root: str = "data",
-               gate=None):
+               gate=None, legacy_dir=None):
     """构造 FastAPI app，闭包捕获 Router（每个请求共享同一图谱实例）。
     路由函数全部 def（sync）→ Starlette 丢线程池执行，每请求一线程 ≈
     ThreadingHTTPServer 语义，RLock 串行化闭环保持。禁 async def 路由（防事件循环改锁语义）。
@@ -157,8 +199,28 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
     _svc = svc
     _router = router
     _memory_root = memory_root
+    # B7 S4 双壳：/ → React 壳（index_dir 或其 dist 构建产物）；/legacy/ → legacy 工具壳。
+    _legacy_dir = legacy_dir or os.path.join(_PROJECT_ROOT, "web_legacy")
 
     app = FastAPI()
+
+    # B7 S5 · 邀请制守卫（白名单非空才启用；默认空 = 完全旁路，契约零变化）。
+    # 未授权：页面请求 → 只出邀请页；/api/* → 403 invite_required（防绕过直取数据）。
+    # async 中间件仅读请求头/query 并可能短路返回，不触业务 RLock（sync handler 仍走线程池）。
+    _invite_allowlist = parse_allowlist(getattr(_cfg_settings, "INVITE_ALLOWLIST", ""))
+    if _invite_allowlist:
+        from engine.invite import INVITE_HTML
+
+        @app.middleware("http")
+        async def _invite_guard(request: Request, call_next):
+            if not check_openid(_invite_allowlist, _request_open_id(request)):
+                if request.url.path.startswith("/api/"):
+                    return JSONResponse(
+                        {"error": "invite_required",
+                         "message": "当前为邀请制内测，尚未开放公开访问。"},
+                        status_code=403)
+                return HTMLResponse(INVITE_HTML, status_code=200)
+            return await call_next(request)
 
     # ---------------- 6 个改数据端点：薄委托 DialogService（0.30 拆分第 1 步） ----------------
 
@@ -198,12 +260,48 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
         # 唯一对话入口（业务编排全在 DialogService.dialog）：
         # vid（P0.10 游客配额）是唯一需 HTTP 上下文的前置——Cookie 读写自此解耦；
         # owner-key 判定在 HTTP 层，配额扣减在服务层。
+        # B7 S1：200 成功改 SSE（事件序 intercept?→message*→done，见契约文档 v2）；
+        #       非 200（empty text/无 Key/配额硬错）仍一次性 JSON，与 M0 纪律同构。
         payload, err = _read_json_body(request)
         if err is not None:
             return _json(err, 400)
         vid, vid_cookie = _extract_vid(request, payload, _svc.gate)
         status, out = _svc.dialog(payload, vid=vid)
-        return _json(out, status=status, vid_cookie=vid_cookie)
+        if status != 200 or "trace" not in out:
+            return _json(out, status=status, vid_cookie=vid_cookie)
+        headers = {"Access-Control-Allow-Origin": "*"}
+        if vid_cookie:
+            headers["Set-Cookie"] = vid_cookie
+        return EventSourceResponse(_dialog_sse_events(out), headers=headers)
+
+    @app.get("/api/quota")
+    def api_quota(request: Request):
+        """B7 S1 · QuotaBar 首屏数据源：读 VisitorGate 现态（只读，不消耗、不落盘）。
+        返回 {energy_left, daily_total, est_cost, round_count}（契约文档 v2，[B7 quota 现态]）。
+        能量折算(S2 TokenMeter) / 12 回合硬限(S3) 落闸后由 gate 回填；此处读取现态原样外挂。
+        - gate=None（测试默认豁免）或 BYOK（非 env 供应商）→ 不限额度
+        - 复用 _extract_vid 的 owner-key 判定，但 vid 只读解析（GET 无副作用，不生成不下发 cookie）"""
+        gate = _svc.gate
+        st = {"energy_left": -1, "daily_total": 0, "est_cost": 1,
+              "round_count": 0, "reset_at": "额度不限"}
+        if gate is not None:
+            provider_id = str((request.query_params.get("provider_id") or "")).strip()
+            session_id = (request.query_params.get("session_id") or "").strip() or None
+            from engine import providers as _prov
+            uses_owner_key = (not provider_id) or (provider_id == _prov.ENV_PROVIDER_ID)
+            if uses_owner_key:
+                vid = None
+                cookie = request.headers.get("Cookie") or ""
+                for part in cookie.split(";"):
+                    k, _, v = part.strip().partition("=")
+                    if k == COOKIE_NAME and v:
+                        vid = v
+                        break
+                s = gate.get_state(vid, session_id=session_id)
+                st = {"energy_left": s["energy_left"], "daily_total": s["daily_total"],
+                      "est_cost": s["est_cost"], "round_count": s["round_count"],
+                      "reset_at": s["reset_at"]}
+        return _json(st)
 
     @app.post("/api/session/update")
     def api_session_update(request: Request):
@@ -709,9 +807,18 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
     def api_unknown_method(path: str):
         return _json({"error": "not found"}, 404)
 
-    # 尾挂静态：/ → index.html（本文由测试守，过滤 API 未命中）。
-    if os.path.isdir(index_dir):
-        app.mount("/", StaticFiles(directory=index_dir, html=True), name="static")
+    # 尾挂静态 · B7 S4 双壳：/legacy/ → legacy 工具壳（先挂，防被 / catch-all 吞噬）；
+    # / → React 壳构建产物 dist（未构建则回退 index_dir 目录本身，便于开发）。
+    # 两者/API 均为 GET 静态/home，POST 等未知路径由上方 api_unknown_method 统一 404。
+    if os.path.isdir(_legacy_dir):
+        app.mount("/legacy", StaticFiles(directory=_legacy_dir, html=True),
+                  name="static_legacy")
+    root_dir = index_dir
+    _dist = os.path.join(index_dir, "dist")
+    if os.path.isdir(_dist):
+        root_dir = _dist
+    if os.path.isdir(root_dir):
+        app.mount("/", StaticFiles(directory=root_dir, html=True), name="static")
 
     return app
 
