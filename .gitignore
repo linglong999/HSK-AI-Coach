@@ -10,3 +10,8 @@ web/*.log
 web/*.tsbuildinfo
 web/vite.config.js
 web/vite.config.d.ts
+# B8 C1：HSK 3.0 原始语料不随仓库分发（krmanik/HSK-3.0 + elkmovie/hsk30 的 txt + 官方 PDF）。
+#   可复现：scripts/fetch_hsk3_lexicon.py 拉取到 datasets/hsk30_raw/；仅提交内置转换产物 lexicon_hsk3_2025.json。
+datasets/hsk30_raw/krmanik_lexicon/
+datasets/hsk30_raw/elkmovie/
+datasets/hsk30_raw/*.pdf

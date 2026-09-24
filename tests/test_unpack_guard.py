@@ -152,7 +152,8 @@ class RouterIntegrationTest(unittest.TestCase):
         def _expl(err, **kw):
             if "_b5_guard_violations" in err:
                 got_retry["v"] = True
-            # "历史"在 HSK1_4 词表 level=4；HSK2 学习者宽容相邻 >3 → 判定超纲
+            # B8 换源 3.0：讲解含"提到/知识"=4 级，HSK2 宽容相邻 >3 → 仍判超纲；
+            # "历史"3.0=3 已不触发（2021 版为 4，等级漂移见 tests/test_lexicon3.py）
             return {"explanation": "讲解提到了历史这个知识点。",
                     "key_points": [], "keywords": [],
                     "uncertain_note": "", "free_generated": False}

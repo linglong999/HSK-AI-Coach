@@ -20,8 +20,9 @@ from engine.construction_diagnostics import (
 
 # 知识清单路径（HSK 1-4 级 MVP 骨架版）：位于项目根（HSK-AI-Coach/）datasets/
 KNOWLEDGE_POINTS_PATH = os.path.join(_PROJECT_ROOT, "datasets", "knowledge_points_v1_4.json")
-# 权威 lexicon 路径（HSK1-4 词表+字表，GF 0025-2021，超纲判定真源）
-LEXICON_PATH = os.path.join(_PROJECT_ROOT, "datasets", "lexicon_hsk1_4.json")
+# 权威 lexicon 路径（B8 迁 HSK 3.0/2025 词表：lexicon_hsk3_2025.json；2021 版
+# lexicon_hsk1_4.json 保留并行为下载/对照/滚回。word_level 键结构同构，仅换源。）
+LEXICON_PATH = os.path.join(_PROJECT_ROOT, "datasets", "lexicon_hsk3_2025.json")
 
 # 主识别提示词——对齐 2.1 v0.3 定稿（Prompt 六要素 + knowledge_point_id 候选）
 SYSTEM_PROMPT = """【角色】你是一个 HSK 偏误识别器。任务是从给定的中文句子中识别语言偏误并输出结构化结果。全程不要寒暄、不要评价、不要附加任何人格，只输出结果。

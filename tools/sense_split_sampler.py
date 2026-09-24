@@ -19,7 +19,8 @@ from collections import Counter
 random.seed(20260921)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LEXICON = os.path.join(ROOT, "datasets", "lexicon_hsk1_4.json")
+# B8 换源自 lexicon_hsk1_4.json（2021）→ 3.0（2025）；word_level 键结构同构仅换源。
+LEXICON = os.path.join(ROOT, "datasets", "lexicon_hsk3_2025.json")
 CEDICT_GZ = os.path.join(os.path.dirname(ROOT), "_tmp_cedict.txt.gz")
 OUT = os.path.join(ROOT, "datasets", "docs", "sense_split_sample.md")
 

@@ -21,7 +21,8 @@
 | 数据            | 来源                                                                              | 说明                                                            |
 | ------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | 复述验证集         | [MuCGEC](https://github.com/HillZhang1999/MuCGEC)（NAACL 2022）、CGED（HSK 动态作文语料库） | 用于复述验证黄金集；第三方原始语料不随仓库分发                                       |
-| HSK3.0 官方字表词表 | 《GF0025-2021》HSK1-4 字表词表                                                        | `HSK1-4_字表词表_GF0025-2021.xlsx`，引擎内置转换后的 `lexicon_hsk1_4.json` |
+| HSK3.0 词表/字表（生效真源） | [krmanik/HSK-3.0](https://github.com/krmanik/HSK-3.0) 2025 版 1-4 级词/认读字/书写字 txt（**CC BY-SA 4.0**） | 内置转换后 `lexicon_hsk3_2025.json`（词~1978/认读 1096/书写 400），经 [elkmovie/hsk30](https://github.com/elkmovie/hsk30)（MIT）交叉核对；原始 txt 不随仓库分发（`fetch_hsk3_lexicon.py` 拉取） |
+| HSK 旧标准字表词表（对照/滚回） | 《GF0025-2021》HSK1-4 字表词表（`HSK1-4_字表词表_GF0025-2021.xlsx`） | `lexicon_hsk1_4.json`（word 3208）保留并行 |
 | 考纲语法点         | 开源 HSK-3.0 数据（krmanik 等）                                                        | 经人工审核转正并标注依赖边，见 `datasets/docs/0.15-*`                        |
 | OCR 校正语料      | 本项目真实引擎实测（RapidOCR 逐字扫描 HSK30 认读字表）                                             | `datasets/ocr_corrections/`                                   |
 

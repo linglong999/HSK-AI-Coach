@@ -3,7 +3,9 @@
 
 从义项分拣扫描结果筛"义项数≥5 的 HSK1-2 高频词"→ 产出 `sense_whitelist_v1.json`。
 - 数据源    : datasets/docs/sense_split_scan.json 的 high_sense（{词: 义项数}）
-- 等级源    : datasets/lexicon_hsk1_4.json 的 word_level（HSK1-2 保留，3-4/缺省剔除）
+- 等级源    : datasets/lexicon_hsk3_2025.json 的 word_level（HSK1-2 保留，3-4/缺省剔除）
+               注：B8 换源自 lexicon_hsk1_4.json（2021）→ 3.0（2025），键结构同构仅换源；
+               产物等级口径随 3.0 漂移（B3/B4 已锁"等级源=当前生效词表"）。
 - 义项序    : 按 scan 义项主次序，sense_id = "{词}-{序号 2 位}"（中心→扩展）
 - 结构先行  : gloss/example 留空串，义项内容后续教材线/RAG 回填（CC-CEDICT 原文件
              已不在工作区，超纲重切非本批依赖）
@@ -26,7 +28,7 @@ LEVEL_FILTER = ("1", "2")          # HSK1-2（词频近似=等级，低级=高�
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCAN = os.path.join(ROOT, "datasets", "docs", "sense_split_scan.json")
-LEXICON = os.path.join(ROOT, "datasets", "lexicon_hsk1_4.json")
+LEXICON = os.path.join(ROOT, "datasets", "lexicon_hsk3_2025.json")
 OUT = os.path.join(ROOT, "datasets", "sense_whitelist_v1.json")
 
 

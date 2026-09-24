@@ -2,7 +2,8 @@
 """义项分拣成本评估（§4a/§4b 切法前置）
 
 数据源：
-- 词表       : datasets/lexicon_hsk1_4.json (HSK1-4, 3208 词)
+- 词表       : datasets/lexicon_hsk3_2025.json (HSK 3.0/2025 1-4 级)
+               注：B8 换源自 lexicon_hsk1_4.json（2021，3208 词）→ 3.0（2025）；word_level 键结构同构仅换源。
 - 义项标注   : CC-CEDICT（义项以 / 分隔，同义项内释义以 ; 分列）
 对照锚点     : CCL-2016 论文 HSK 1-4 重点多义词 434 个
 
@@ -18,7 +19,8 @@ import sys
 from collections import Counter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LEXICON = os.path.join(ROOT, "datasets", "lexicon_hsk1_4.json")
+# B8 换源自 lexicon_hsk1_4.json（2021）→ 3.0（2025）；word_level 键结构同构仅换源。
+LEXICON = os.path.join(ROOT, "datasets", "lexicon_hsk3_2025.json")
 CEDICT_GZ = os.path.join(os.path.dirname(ROOT), "_tmp_cedict.txt.gz")
 
 def load_cedict(gz_path):

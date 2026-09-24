@@ -16,7 +16,8 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 KB_PATH = os.path.join(_PROJECT_ROOT, "datasets", "knowledge_points_v1_4.json")
-LEXICON_PATH = os.path.join(_PROJECT_ROOT, "datasets", "lexicon_hsk1_4.json")
+# B8 迁 HSK 3.0/2025 词表（与 recognizer.LEXICON_PATH 同步；2021 版保留并行）。
+LEXICON_PATH = os.path.join(_PROJECT_ROOT, "datasets", "lexicon_hsk3_2025.json")
 CORRECTIONS_PATH = os.path.join(_PROJECT_ROOT, "datasets", "ocr_corrections")
 
 _CJK_CHAR = re.compile(r'[\u4e00-\u9fff]')

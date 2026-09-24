@@ -142,7 +142,7 @@ HSK-AI-Coach/
 
 ## 📚 数据与语料来源
 - 黄金评测集（45 句 / 复述 60 条）为自建，偏误样本为作者自审（self-review）标注，尚未经二语教师仲裁（见 `datasets/eval/README.md` 诚实声明）；复述验证集取材自 [MuCGEC](https://github.com/HillZhang1999/MuCGEC)（NAACL 2022）与 CGED（HSK 动态作文语料库）
-- 第三方原始语料不随仓库分发（见 `.gitignore`），版权归原作者；`HSK1-4_字表词表_GF0025-2021.xlsx` 为 HSK3.0 官方字表词表（《GF0025-2021》），引擎内置转换后的 `lexicon_hsk1_4.json`
+- 第三方原始语料不随仓库分发（见 `.gitignore`），版权归原作者，引擎内置的是**转换后**产物；词表真源已迁 **2025《HSK 考试大纲》3.0**（B8）：`datasets/lexicon_hsk3_2025.json` 由 `datasets/convert_lexicon_3.py` 取 [krmanik/HSK-3.0](https://github.com/krmanik/HSK-3.0) 2025 版 1-4 级词/认读字/书写字 txt 转换（词~1978、认读 1096、书写 400），**CC BY-SA 4.0**，并经 [elkmovie/hsk30](https://github.com/elkmovie/hsk30)（MIT）交叉核对；原 `lexicon_hsk1_4.json`（《GF0025-2021》，word 3208）**保留并行**供对照/滚回
 - 考纲语法点取自开源 HSK-3.0 数据，经人工审核转正并标注依赖边；OCR 校正语料来自真实引擎实测（RapidOCR 逐字扫 HSK30 认读字表）
 
 ## 📄 设计文档与过程记录
