@@ -1,0 +1,728 @@
+{
+  "meta": {
+    "name": "hsk_calibration_100",
+    "version": "b6-cal-v1",
+    "date": "2026-09-24",
+    "n": 100,
+    "note": "自包含教学回复文本（judge∧人工同对象）；rubric.md v2 双门槛；gold_pass 仅口径提示，最终以 judge∧人工 kappa 为准",
+    "dist_quality": {
+      "high": 30,
+      "mid": 40,
+      "low": 30
+    },
+    "dist_dim": {
+      "7": 13,
+      "8": 13,
+      "9": 13,
+      "10": 14,
+      "2": 9,
+      "3": 9,
+      "4": 7,
+      "1": 8,
+      "5": 7,
+      "6": 7
+    }
+  },
+  "cases": [
+    {
+      "id": "CAL-001",
+      "dim": 7,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "（点餐）你要点什么？我们看下菜单，要不要也来杯茶？这边有招牌菜，可以试试。"
+    },
+    {
+      "id": "CAL-002",
+      "dim": 7,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "（药店）您哪不太舒服？我帮您对症找药，胸闷还是咳嗽？说给我听听。"
+    },
+    {
+      "id": "CAL-003",
+      "dim": 7,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "（问路）您要去哪？我帮你看线路图，往东换乘还是往西，顺着走就到。"
+    },
+    {
+      "id": "CAL-004",
+      "dim": 7,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "（咖啡店）想喝什么？热的、冰的还是气泡的，你挑，我帮你看单子。"
+    },
+    {
+      "id": "CAL-005",
+      "dim": 7,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "我们来做一个点餐的练习，这就是一个点餐场景，请回答。"
+    },
+    {
+      "id": "CAL-006",
+      "dim": 7,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "这是关于问路的对话，请你照着说一遍。"
+    },
+    {
+      "id": "CAL-007",
+      "dim": 7,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "现在情景是买东西，你来买东西，我来卖，请开始。"
+    },
+    {
+      "id": "CAL-008",
+      "dim": 7,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "我们把对话换成医院，你来问，我来答，练习开始。"
+    },
+    {
+      "id": "CAL-009",
+      "dim": 7,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "我们假设在地铁站，你在买票，请回答售票员的问题。"
+    },
+    {
+      "id": "CAL-010",
+      "dim": 7,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "请把'我把书放到了桌上'这个句子翻译成中文，现在。"
+    },
+    {
+      "id": "CAL-011",
+      "dim": 7,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "练习'被字句'，用这个词造三个句，马上交。"
+    },
+    {
+      "id": "CAL-012",
+      "dim": 7,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "背诵本课语法模板，然后完成书后第 3 题。"
+    },
+    {
+      "id": "CAL-013",
+      "dim": 7,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "这是造句作业，题目已发，明天上课前批改。"
+    },
+    {
+      "id": "CAL-014",
+      "dim": 8,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "（服务员口吻）好嘞，一杯热茶马上就好，您稍等。"
+    },
+    {
+      "id": "CAL-015",
+      "dim": 8,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "（导览）这边走，前面就是老城，慢点走不着急，边走边说。"
+    },
+    {
+      "id": "CAL-016",
+      "dim": 8,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "（售货员）这件您穿上很好看，颜色衬您，要不要也试试另一件？"
+    },
+    {
+      "id": "CAL-017",
+      "dim": 8,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "（医生）先坐稳别着急，我看看您的症状，慢慢讲给我听。"
+    },
+    {
+      "id": "CAL-018",
+      "dim": 8,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "好的，我来说明我的角色：我是服务员，现在你来当顾客说这句话。"
+    },
+    {
+      "id": "CAL-019",
+      "dim": 8,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "现在你换成医生角色，回答护士的问题。"
+    },
+    {
+      "id": "CAL-020",
+      "dim": 8,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "模拟点餐，我是店员你是顾客，请开始。"
+    },
+    {
+      "id": "CAL-021",
+      "dim": 8,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "这是角色扮演练习，你来演顾客，请说。"
+    },
+    {
+      "id": "CAL-022",
+      "dim": 8,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "现在你来当售货员，欢迎顾客进店，请开口。"
+    },
+    {
+      "id": "CAL-023",
+      "dim": 8,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "（冷读旁白）你输出了一句'我把书放到了桌上'。让我们来分析这个句子。"
+    },
+    {
+      "id": "CAL-024",
+      "dim": 8,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "分析：这句话主谓宾齐全，表意正确，偏误为零。"
+    },
+    {
+      "id": "CAL-025",
+      "dim": 8,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "（旁白）用户输入一句话，教师进入讲解模式。"
+    },
+    {
+      "id": "CAL-026",
+      "dim": 8,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "日志记录：检测到下一项，开始复述验证。"
+    },
+    {
+      "id": "CAL-027",
+      "dim": 9,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "想先说说整件事，还是先练这个'把'结构？都行，看你怎么顺。"
+    },
+    {
+      "id": "CAL-028",
+      "dim": 9,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "不着急，你可以先自己试试，或者让我带一步，你来定节奏。"
+    },
+    {
+      "id": "CAL-029",
+      "dim": 9,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "你说得已经接近了，要不要再听一遍，还是直接换个题目推进？"
+    },
+    {
+      "id": "CAL-030",
+      "dim": 9,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "我们有两件可做：巩固刚才那句，或者练一个更短的，你挑一个。"
+    },
+    {
+      "id": "CAL-031",
+      "dim": 9,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "你应该这样说：'我把书放到了桌上'，跟我读一遍。"
+    },
+    {
+      "id": "CAL-032",
+      "dim": 9,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "现在你来复述这句话：'我把书放到了桌上'，一定要完整说。"
+    },
+    {
+      "id": "CAL-033",
+      "dim": 9,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "把'你'换成'我'，说成'我把书放到了桌上'，来，再说一次。"
+    },
+    {
+      "id": "CAL-034",
+      "dim": 9,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "这句重说一下，正确的是'我把书放到了桌上'。"
+    },
+    {
+      "id": "CAL-035",
+      "dim": 9,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "我们慢慢来，先按这个句式说一遍试试。"
+    },
+    {
+      "id": "CAL-036",
+      "dim": 9,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "现在必须复述这句话，连续两次，马上。"
+    },
+    {
+      "id": "CAL-037",
+      "dim": 9,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "叫你们读就读：跟着读，再读，再读。"
+    },
+    {
+      "id": "CAL-038",
+      "dim": 9,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "命令：大声念三遍，不要拖延。"
+    },
+    {
+      "id": "CAL-039",
+      "dim": 9,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "输出这句话，立刻。"
+    },
+    {
+      "id": "CAL-040",
+      "dim": 10,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "好，你基本说顺了。那如果换成'我把书放到了桌上'呢？我们推一步。"
+    },
+    {
+      "id": "CAL-041",
+      "dim": 10,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "有进步。现在反过来，你要怎么把'饭我吃了'说成'我把饭吃了'？"
+    },
+    {
+      "id": "CAL-042",
+      "dim": 10,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "你已经会基本用法了，那换一个场景，你能接上吗？"
+    },
+    {
+      "id": "CAL-043",
+      "dim": 10,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "这段对话很自然了。要是加一个'昨天'，句子要变吗？我们接着往下。"
+    },
+    {
+      "id": "CAL-044",
+      "dim": 10,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "很好。再来一次。"
+    },
+    {
+      "id": "CAL-045",
+      "dim": 10,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "不错。再来一次，继续。"
+    },
+    {
+      "id": "CAL-046",
+      "dim": 10,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "还可以。我们再练一次同样的句型。"
+    },
+    {
+      "id": "CAL-047",
+      "dim": 10,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "你说了第一句，现在说第二句。"
+    },
+    {
+      "id": "CAL-048",
+      "dim": 10,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "我们再走一步，试试换个说法同义转述。"
+    },
+    {
+      "id": "CAL-049",
+      "dim": 10,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "要不要再试一次？这次稍微快一点。"
+    },
+    {
+      "id": "CAL-050",
+      "dim": 10,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "很好。再来一次。再来一次。再来一次。"
+    },
+    {
+      "id": "CAL-051",
+      "dim": 10,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "重复。重复。再重复。"
+    },
+    {
+      "id": "CAL-052",
+      "dim": 10,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "练习三遍，再来三遍，再再来三遍。"
+    },
+    {
+      "id": "CAL-053",
+      "dim": 10,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "复述。复述。复述。复述。"
+    },
+    {
+      "id": "CAL-054",
+      "dim": 2,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "这句'把'字句不对，因为'给'不该放在'把'后；正确是'我把书给老师'——你对比'我给了老师书'，结构不同，我们再复述一遍刚才那句。"
+    },
+    {
+      "id": "CAL-055",
+      "dim": 2,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "你少了一个'地'：'认真听'不对，正确是'认真地听'。对比：'认真'作状语要加'地'。我们验证，你再说一遍正确的。"
+    },
+    {
+      "id": "CAL-056",
+      "dim": 2,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "这里该用'被'而不是'把'，因为主语是承受者；正确是'门被他关上了'。对比两句，我再说一遍正确的。"
+    },
+    {
+      "id": "CAL-057",
+      "dim": 2,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "这句错了，正确的是'我把书放到了桌上'，你记住下次别错。"
+    },
+    {
+      "id": "CAL-058",
+      "dim": 2,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "这里应该用'被'，你改一下，下次注意。"
+    },
+    {
+      "id": "CAL-059",
+      "dim": 2,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "这是'了/的'的问题，正确的是'他做完了作业'，多读几遍就记住。"
+    },
+    {
+      "id": "CAL-060",
+      "dim": 2,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "错。拼音有误，重做。"
+    },
+    {
+      "id": "CAL-061",
+      "dim": 2,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "语法错误，请看教材第 74 页，改。不要问为什么。"
+    },
+    {
+      "id": "CAL-062",
+      "dim": 2,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "不对。输出正确句子。"
+    },
+    {
+      "id": "CAL-063",
+      "dim": 3,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "光明白不够，得练到会用。你先复述一次'我把书放到了桌上'；连说两次都顺我们就推进，卡顿就从'放到了'练起。试试？"
+    },
+    {
+      "id": "CAL-064",
+      "dim": 3,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "你刚说会了？那请再说一遍'他做完了作业'。两次都顺就换句子，没把握就先从'做完'练起。"
+    },
+    {
+      "id": "CAL-065",
+      "dim": 3,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "复述一次验证下：'我把书放到了桌上'。不熟了我们就降一步练短的。"
+    },
+    {
+      "id": "CAL-066",
+      "dim": 3,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "好，请你复述：'我把书放到了桌上'。"
+    },
+    {
+      "id": "CAL-067",
+      "dim": 3,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "现在你说一遍这个句子。"
+    },
+    {
+      "id": "CAL-068",
+      "dim": 3,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "会了吗？那你复述一下。"
+    },
+    {
+      "id": "CAL-069",
+      "dim": 3,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "是不是真会了？复述'我把书放到了桌上'，必须对。"
+    },
+    {
+      "id": "CAL-070",
+      "dim": 3,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "复述一遍，错两个字就算不过。"
+    },
+    {
+      "id": "CAL-071",
+      "dim": 3,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "别装懂，念一遍。"
+    },
+    {
+      "id": "CAL-072",
+      "dim": 4,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "你说得很流利，这里没有错，不用打断——我们记下来，接着往下推进。"
+    },
+    {
+      "id": "CAL-073",
+      "dim": 4,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "这段你表达很顺，纠错我先留着，等你说完整句再回头拾那个小点。"
+    },
+    {
+      "id": "CAL-074",
+      "dim": 4,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "停一下，这里有个错，先改对再说。"
+    },
+    {
+      "id": "CAL-075",
+      "dim": 4,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "你错了，马上纠正：'我把书放到了桌上'。"
+    },
+    {
+      "id": "CAL-076",
+      "dim": 4,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "这里有偏误，我们稍停一下把它改对，再说下去。"
+    },
+    {
+      "id": "CAL-077",
+      "dim": 4,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "停！你在第三秒停顿，这是流利度下降信号，重来。"
+    },
+    {
+      "id": "CAL-078",
+      "dim": 4,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "打断。这个音不准，听，打断，下一个。"
+    },
+    {
+      "id": "CAL-079",
+      "dim": 1,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "你这里不是'了'的问题，而是补语'完'没用对：'吃完'才顺，说成'我吃完饭了'。"
+    },
+    {
+      "id": "CAL-080",
+      "dim": 1,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "这句不用动'把'，真正的问题是'给'的位置——结构是'我把书给老师'。"
+    },
+    {
+      "id": "CAL-081",
+      "dim": 1,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "这个词有点问题，应该是'放'，你自己想想看呢？"
+    },
+    {
+      "id": "CAL-082",
+      "dim": 1,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "这里可以改一下，你再看看。"
+    },
+    {
+      "id": "CAL-083",
+      "dim": 1,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "这句的问题可能出在补语上，你想想'完'该放哪"
+    },
+    {
+      "id": "CAL-084",
+      "dim": 1,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "这里偏误大概率和'给'的位置有关，先试着调一下结构。"
+    },
+    {
+      "id": "CAL-085",
+      "dim": 1,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "你说得全错，重说。"
+    },
+    {
+      "id": "CAL-086",
+      "dim": 1,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "这句完全不行，别浪费练习时间。"
+    },
+    {
+      "id": "CAL-087",
+      "dim": 5,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "这里「把」叫做 \"disposal construction\"。中文里，动词加「掉」表示 \"completed change\"。我们中文说：他把咖啡喝掉了。"
+    },
+    {
+      "id": "CAL-088",
+      "dim": 5,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "注意「被」字句表 \"passive\"，主语是承受者。中文里：门被他关上了。我们对应英文的 \"the door was closed by him\"。"
+    },
+    {
+      "id": "CAL-089",
+      "dim": 5,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "「把」是 \"disposal\" 结构，中文里我们这么说：我把咖啡喝掉了。"
+    },
+    {
+      "id": "CAL-090",
+      "dim": 5,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "「被」表被动，中文里：门被关上了。类似英文，但位置不同。"
+    },
+    {
+      "id": "CAL-091",
+      "dim": 5,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "这里要用「把」，中文习惯是把宾语提前，比如：我把书放好了。"
+    },
+    {
+      "id": "CAL-092",
+      "dim": 5,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "把字句不对，改成被字句，去背一下。"
+    },
+    {
+      "id": "CAL-093",
+      "dim": 5,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "这是被动语态，记牢，别问为什么。"
+    },
+    {
+      "id": "CAL-094",
+      "dim": 6,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "有可能你受英语'give someone something'影响把'给'放后面了，这只是一个可能，我们主要记住正确结构。"
+    },
+    {
+      "id": "CAL-095",
+      "dim": 6,
+      "quality": "high",
+      "gold_pass": true,
+      "text": "西班牙语里形容词一般在名词后，中文在前——这可能是影响因素之一，但先以正确用法为准。"
+    },
+    {
+      "id": "CAL-096",
+      "dim": 6,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "这个说法可能受了英文影响，但也不一定，我们主要记住正确结构就好。"
+    },
+    {
+      "id": "CAL-097",
+      "dim": 6,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "母语迁移只是一个可能的原因，我们先聚焦正确用法。"
+    },
+    {
+      "id": "CAL-098",
+      "dim": 6,
+      "quality": "mid",
+      "gold_pass": false,
+      "text": "也许是习惯问题，我们不多猜，按正确形式来。"
+    },
+    {
+      "id": "CAL-099",
+      "dim": 6,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "你会这样说就是因为英语母语干扰，你的大脑一定这么想。"
+    },
+    {
+      "id": "CAL-100",
+      "dim": 6,
+      "quality": "low",
+      "gold_pass": false,
+      "text": "肯定是你中文没学好，谁都这样，你就是照搬英文。"
+    }
+  ]
+}

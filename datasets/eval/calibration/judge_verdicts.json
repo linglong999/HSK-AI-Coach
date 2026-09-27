@@ -1,0 +1,2002 @@
+{
+  "CAL-001": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 1,
+      "3": 1,
+      "4": 3,
+      "5": 3,
+      "6": 3,
+      "7": 4,
+      "8": 3,
+      "9": 4,
+      "10": 2
+    },
+    "quality_mean": 2.33,
+    "naturalness_mean": 3.25,
+    "reason": "无偏误可纠（errors为空），故定位/讲解/复述维度无对象可评；对话仅单轮点餐邀请，任务真实但无学习者回应、无推进，角色代入与推进感偏弱。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-002": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "被测输出为空对话（errors 与 trace 均为空），无任何纠错、讲解、复述验证或角色化推进，全部维度均未体现，故各维均判 1 分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-003": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 2,
+      "8": 2,
+      "9": 2,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.75,
+    "reason": "该输出仅为一句无学习者参与的问路台词，无任何偏误定位、讲解、复述验证或介入，教学质量各维均未体现；自然度上任务虽真实但无对话回合、无角色承接与推进，属单句独白而非可交际对话。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-004": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 1,
+      "3": 1,
+      "4": 3,
+      "5": 3,
+      "6": 3,
+      "7": 4,
+      "8": 3,
+      "9": 4,
+      "10": 2
+    },
+    "quality_mean": 2.33,
+    "naturalness_mean": 3.25,
+    "reason": "该对话仅有一句开场邀请，无任何偏误可定位、无讲解四段、无复述验证，教学质量维度多为空转；自然度上任务真实且给选择感，但角色代入与推进感不足，整体属未展开的锚点开场。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-005": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无任何 tutor 回合、无纠错/讲解/复述/角色承接），仅剩任务提示，所有维度均无从体现，教学质量与自然度全部判 1。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-006": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何教学回合），任务仅要求照说一遍，未产生任何纠错、讲解、复述验证或真实交际推进，全部维度均无表现。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-007": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无任何回合、无纠错、无讲解、无角色承接），所有维度均无从体现，故全维给最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-008": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话为空（无 errors、无 trace、无任何 tutor 回合），未产生任何纠错/讲解/复述/介入，教学质量 6 维与自然度 4 维均无从体现，全部按最低分计。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-009": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何回合），既无偏误定位/讲解/复述/介入等教学质量行为，也无任何真实交际任务、角色代入或对话推进，全部维度均未做到。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-010": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "该对话输出为空（无 errors、无 trace、无任何教学回合），未对学习者做任何纠错、讲解、复述验证或角色化推进，且任务本身是命令式翻译指令，故教学质量与自然度各维均判最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-011": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何教学回合），未对'被字句'任务做任何纠错、讲解、复述验证或角色化推进，且任务本身为命令式机械指令，故教学质量与自然度各维均判最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-012": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何回合），未产生任何纠错、讲解、复述验证或交际互动，全部维度均无表现，故均判 1 分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-013": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何教学回合），未产生任何纠错、讲解、复述验证或自然对话，全部维度均无表现，故各维给 1 分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-014": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 5,
+      "2": 3,
+      "3": 3,
+      "4": 5,
+      "5": 5,
+      "6": 5,
+      "7": 5,
+      "8": 5,
+      "9": 5,
+      "10": 4
+    },
+    "quality_mean": 4.33,
+    "naturalness_mean": 4.75,
+    "reason": "该输出为纯角色扮演的服务员台词，无偏误可纠、无讲解与复述验证需求，故教学维度按无错可纠的中性处理；自然度上任务真实、角色代入强、非命令性且推进自然，仅推进感略弱。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-015": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 1,
+      "3": 1,
+      "4": 3,
+      "5": 3,
+      "6": 3,
+      "7": 3,
+      "8": 3,
+      "9": 3,
+      "10": 2
+    },
+    "quality_mean": 2.33,
+    "naturalness_mean": 2.75,
+    "reason": "该对话为空输出（无错误、无 trace、无任何教学介入），偏误定位与讲解四段、复述验证均未体现，仅任务本身具备导览交际场景，故教学质量维度偏低、自然度维度中性偏弱。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-016": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 1,
+      "3": 1,
+      "4": 3,
+      "5": 3,
+      "6": 3,
+      "7": 4,
+      "8": 4,
+      "9": 4,
+      "10": 2
+    },
+    "quality_mean": 2.33,
+    "naturalness_mean": 3.5,
+    "reason": "该输出为售货员单句任务且无错误、无对话轨迹，偏误定位/讲解/复述等教学维度无对象可评（给中性偏低分），自然度上任务与角色尚可但无回合推进，对话推进感弱。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-017": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "被测输出为空对话（errors 与 trace 均为空），未产生任何纠错、讲解、复述验证或对话推进，教学质量与自然度各维均无表现，全部按最低分计。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-018": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 2,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.25,
+    "reason": "该输出仅为角色分配指令，无任何偏误定位、讲解、复述验证或归因，且以命令式旁白布置任务，缺乏真实交际任务与角色代入，对话未推进。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-019": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无任何回合、无纠错、无讲解、无角色承接），所有维度均无内容可评，故全维给最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-020": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无任何回合、无纠错、无讲解、无角色承接），所有维度均无内容可评，故全维给最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-021": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无任何 tutor 回合、无纠错/讲解/复述/介入），仅有一条任务提示，故教学质量 6 维与自然度 4 维均无从体现，全部按最低分计。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-022": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无任何回合、无纠错、无讲解、无角色扮演），所有维度均无从体现，故全维打 1 分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-023": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "冷读旁白式离身分析，无真实交际任务、无角色代入、命令式开场，且未做任何偏误定位/讲解/复述验证，属自然度负样例。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-024": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出为空壳（errors=[]、trace=[]），既无任何纠错/讲解/复述/介入，也无真实交际任务与角色对话，全部维度均未做到。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-025": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何教师话语），未产生任何纠错、讲解、复述验证或交际互动，所有维度均无从体现，按最低分计。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-026": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出仅为一条日志记录，无任何实际对话内容、纠错讲解或复述验证，所有维度均无从体现，故全维打最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-027": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 1,
+      "3": 1,
+      "4": 3,
+      "5": 3,
+      "6": 3,
+      "7": 3,
+      "8": 3,
+      "9": 5,
+      "10": 2
+    },
+    "quality_mean": 2.33,
+    "naturalness_mean": 3.25,
+    "reason": "该输出仅为一句选择式引导语，无偏误可定位、无讲解四段、无复述验证，教学质量维度多为中性；自然度上非命令性佳（选择感强），但任务真实性弱、角色代入浅、对话推进感不足，整体属自然度锚点样例而非完整教学回合。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-028": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 1,
+      "3": 1,
+      "4": 3,
+      "5": 3,
+      "6": 3,
+      "7": 2,
+      "8": 2,
+      "9": 5,
+      "10": 2
+    },
+    "quality_mean": 2.33,
+    "naturalness_mean": 2.75,
+    "reason": "该输出仅为一句无偏误、无讲解、无复述验证的元层面引导语，教学质量维度因缺少纠错对象而普遍偏低，自然度上非命令性做得好但任务真实性与角色代入不足。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-029": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 1,
+      "3": 1,
+      "4": 3,
+      "5": 3,
+      "6": 3,
+      "7": 3,
+      "8": 3,
+      "9": 5,
+      "10": 3
+    },
+    "quality_mean": 2.33,
+    "naturalness_mean": 3.5,
+    "reason": "该输出为一句无偏误、无讲解、无复述验证的推进性话术：偏误定位与讲解四段、复述验证均缺失（无错可纠但未做任何验证），介入时机与语言分层基本守约，归因无从体现；自然度上任务真实性一般、角色代入偏弱，但非命令性给足选择感，对话推进感中等。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-030": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 1,
+      "3": 1,
+      "4": 4,
+      "5": 3,
+      "6": 3,
+      "7": 4,
+      "8": 3,
+      "9": 5,
+      "10": 3
+    },
+    "quality_mean": 2.5,
+    "naturalness_mean": 3.75,
+    "reason": "无偏误可纠（errors 为空），故定位/讲解/复述维度无对象仅给中性分；介入时机合理、非命令性突出（给选择感），但角色代入与对话推进感偏弱，整体为一句无场景承接的引导语。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-031": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "该输出仅为命令式跟读指令，无任何偏误定位、讲解、复述验证或角色代入，任务真实性、非命令性与对话推进感均缺失，属机械指令链。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-032": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "该输出仅为一条命令式复述指令，无任何偏误定位、讲解、验证或角色代入，且属命令链负样例，教学质量与自然度各维均未达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-033": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "该输出仅为一条命令式指令（'把…换成…，来，再说一次'），无任何偏误定位、讲解四段、复述验证、介入时机、语言分层或归因内容，且属命令链、无角色代入与任务真实性，对话无推进，故各维均判 1 分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-034": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出为空对话（无 errors、无 trace），仅给出命令式单句纠正，未定位偏误、无四段讲解、无复述验证、无角色代入与任务推进，且属命令式机械指令，各维度均未达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-035": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 2,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.25,
+    "reason": "对话输出为空（无 errors、无 trace、无任何 tutor 回合），未产生任何纠错/讲解/复述/介入，教学质量 6 维与自然度 4 维均无从体现，仅任务文本本身略带邀请式语气。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-036": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "该输出仅为命令式指令'现在必须复述这句话，连续两次，马上'，无任何偏误定位、讲解、验证或真实交际任务，且属命令链负样例，教学质量与自然度各维均未达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-037": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "该输出为纯命令式机械重复（'跟着读，再读，再读'），无真实交际任务、无角色代入、无偏误定位与讲解、无复述验证设计，且命令链违反非命令性，属自然度负样例，各维度均判最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-038": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出为空对话（无 errors、无 trace），未做任何偏误定位、讲解、复述验证或介入，且任务本身为命令式指令，自然度四维均不达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-039": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何教学回合），任务本身是命令式指令且无真实交际任务，所有维度均无内容可评，故全维最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-040": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 2,
+      "3": 2,
+      "4": 4,
+      "5": 3,
+      "6": 3,
+      "7": 4,
+      "8": 3,
+      "9": 5,
+      "10": 5
+    },
+    "quality_mean": 2.83,
+    "naturalness_mean": 4.25,
+    "reason": "该输出是自然度锚点句，无偏误可定位、无四段讲解与复述验证，故1-3维偏低；介入时机合理、语言分层中性、归因无污染；自然度上任务真实、非命令性、推进感强，角色代入略弱。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-041": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 3,
+      "5": 3,
+      "6": 3,
+      "7": 2,
+      "8": 2,
+      "9": 3,
+      "10": 2
+    },
+    "quality_mean": 2.0,
+    "naturalness_mean": 2.25,
+    "reason": "该输出仅为一句任务指令，无任何纠错/讲解/复述验证内容，教学质量维度基本缺失；自然度上属刻意造句式练习指令，角色代入与对话推进感弱。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-042": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何回合），既无偏误定位/讲解/复述验证等教学质量行为，也无任何真实交际任务、角色代入或对话推进，全部维度均无可评内容，按最低分计。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-043": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 2,
+      "3": 2,
+      "4": 3,
+      "5": 3,
+      "6": 3,
+      "7": 4,
+      "8": 3,
+      "9": 4,
+      "10": 4
+    },
+    "quality_mean": 2.67,
+    "naturalness_mean": 3.75,
+    "reason": "无偏误可纠，讲解四段与复述验证基本缺失，但以真实任务式追问推进对话，自然度尚可。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-044": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出仅为'很好。再来一次。'，无任何偏误定位、讲解、复述验证或教学介入，且属命令式单句循环，任务真实性与对话推进感均缺失，各维度均判最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-045": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出仅为'不错。再来一次，继续。'，无任何偏误定位、讲解、复述验证或真实交际任务，属命令式机械循环，各维度均未达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-046": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 2,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.25,
+    "reason": "该输出仅为一句无纠错、无讲解、无复述验证的机械重复指令，未针对任何偏误进行教学，且缺乏真实交际任务与角色代入，属'为练习而念句'的负样例。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-047": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无任何回合、无纠错、无讲解、无角色承接），所有维度均无内容可评，故全维给最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-048": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何回合），既无偏误定位/讲解/复述/介入，也无任何真实交际任务或角色对话，全部维度均无内容可评，故全维 1 分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-049": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何教学回合），未产生任何纠错/讲解/复述/介入，也未形成真实交际任务或角色对话，全部维度均无内容可评，故均为最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-050": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出仅为'再来一次'的机械重复，无任何偏误定位、讲解、复述验证或角色代入，属自然度负样例中的单句循环，且触发R3漏复述验证红线。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-051": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何教学回合），未产生任何纠错/讲解/复述/介入，也无真实交际任务与角色推进，全部维度均无内容可评，故均为最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-052": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何教学回合），未做偏误定位、讲解、复述验证或任何真实交际任务，且任务本身为机械重复指令，故教学质量与自然度各维均判最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-053": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何教学回合），任务仅为重复'复述'的机械指令，未定位偏误、无四段讲解、无复述验证、无角色代入与真实交际任务，全部维度均为最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-054": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 2,
+      "2": 2,
+      "3": 2,
+      "4": 3,
+      "5": 2,
+      "6": 3,
+      "7": 2,
+      "8": 2,
+      "9": 2,
+      "10": 2
+    },
+    "quality_mean": 2.33,
+    "naturalness_mean": 2.0,
+    "reason": "该输出仅给出孤立纠错指令，未定位具体错误句、未提供完整四段讲解与严格复述验证，且语言分层与角色代入不足，整体更像机械指令而非真实交际对话。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-055": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 4,
+      "2": 3,
+      "3": 3,
+      "4": 3,
+      "5": 2,
+      "6": 3,
+      "7": 2,
+      "8": 2,
+      "9": 2,
+      "10": 2
+    },
+    "quality_mean": 3.0,
+    "naturalness_mean": 2.0,
+    "reason": "偏误定位基本准确（'认真听'缺'地'），但讲解四段不完整、复述验证仅一句命令式、无英文脚手架、语言分层不足；自然度上属冷读式语法纠错，无真实交际任务、无角色代入、命令性强、对话推进感弱。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-056": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 4,
+      "2": 2,
+      "3": 1,
+      "4": 3,
+      "5": 2,
+      "6": 3,
+      "7": 2,
+      "8": 2,
+      "9": 2,
+      "10": 2
+    },
+    "quality_mean": 2.5,
+    "naturalness_mean": 2.0,
+    "reason": "偏误定位基本正确（把→被），但讲解仅给结论无四段结构、无复述验证（触R3），语言分层与角色代入、任务真实性、非命令性、推进感均偏弱，属冷读式单句讲解。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-057": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 2,
+      "2": 1,
+      "3": 1,
+      "4": 2,
+      "5": 2,
+      "6": 2,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.67,
+    "naturalness_mean": 1.0,
+    "reason": "仅给出正确句和命令式'记住别错'，无错因讲解、无对比、无复述验证，且全程教师式命令、无角色代入与任务推进，属典型听写式负样例。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-058": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "该输出仅为一句命令式纠错指令，无偏误定位依据、无四段讲解、无复述验证、无角色代入与任务推进，且属命令链，各维度均不达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-059": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 2,
+      "2": 1,
+      "3": 1,
+      "4": 2,
+      "5": 2,
+      "6": 2,
+      "7": 1,
+      "8": 1,
+      "9": 2,
+      "10": 1
+    },
+    "quality_mean": 1.67,
+    "naturalness_mean": 1.25,
+    "reason": "仅给出正确说法与'多读几遍'的机械指令，未定位真错点、无四段讲解、无复述验证、无角色代入与真实交际任务，属命令式单句循环，自然度与教学质量均不达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-060": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出仅为'错。拼音有误，重做。'，无偏误定位、无讲解四段、无复述验证、无角色代入与任务推进，属命令式空判，各维均不达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-061": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出为空对话（无 errors、无 trace），未做任何偏误定位、讲解、复述验证或角色化交际推进，且任务本身为命令式'不要问为什么'，十维均无表现。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-062": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出为空对话（无 errors、无 trace、无任何教学回合），既未定位偏误、无四段讲解、无复述验证，也无任何真实交际任务或角色代入，全部维度均为最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-063": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 2,
+      "3": 4,
+      "4": 3,
+      "5": 3,
+      "6": 3,
+      "7": 2,
+      "8": 2,
+      "9": 3,
+      "10": 3
+    },
+    "quality_mean": 3.0,
+    "naturalness_mean": 2.5,
+    "reason": "无具体偏误可定位（errors 为空），讲解四段缺失，仅给出复述指令；自然度上属刻意造句式练习、教师离身口吻，任务真实性与角色代入偏弱。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-064": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 2,
+      "4": 2,
+      "5": 2,
+      "6": 1,
+      "7": 2,
+      "8": 1,
+      "9": 2,
+      "10": 2
+    },
+    "quality_mean": 1.5,
+    "naturalness_mean": 1.75,
+    "reason": "该输出仅为一句命令式复述指令，无任何偏误定位、讲解四段、归因或语言分层，且角色离身、命令性强、无真实交际任务，教学质量与自然度均不达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-065": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "被测输出为空对话（errors 与 trace 均为空），未产生任何纠错、讲解、复述验证或自然对话回合，无法满足任一维度判据，且触发 R3 漏复述验证红线。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-066": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "该输出仅为一条命令式复述指令，无任何偏误定位、讲解、验证或角色代入，属机械命令链且无真实交际任务，各维度均未达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-067": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出仅为一句无上下文的命令式指令（'现在你说一遍这个句子'），无偏误定位、无讲解四段、无复述验证、无角色代入与真实交际任务，属命令链且对话无推进，各维度均不达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-068": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何回合），既无偏误定位/讲解/复述验证等教学质量行为，也无任何真实交际任务或角色代入，全部维度均无内容可评，按最低分计。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-069": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何回合），未做偏误定位、讲解、复述验证或任何自然交际推进，全部维度均无表现。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-070": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何回合），未产生任何纠错/讲解/复述验证或自然对话，全部维度均无表现，且触发 R3（讲了错因却不做复述引导）等红线风险。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-071": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何教学回合），未产生任何纠错、讲解、复述验证或自然对话，全部维度均无表现，故均判 1 分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-072": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 5,
+      "2": 1,
+      "3": 1,
+      "4": 5,
+      "5": 3,
+      "6": 5,
+      "7": 3,
+      "8": 3,
+      "9": 4,
+      "10": 4
+    },
+    "quality_mean": 3.33,
+    "naturalness_mean": 3.5,
+    "reason": "该输出正确识别无偏误、未误报干净句且介入时机恰当（不打断流利表达），但作为教学介入完全缺失讲解四段与复述验证，语言分层与任务/角色自然度也仅中等，故教学质量维度2、3偏低而定位与介入维度满分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-073": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 1,
+      "3": 1,
+      "4": 4,
+      "5": 3,
+      "6": 3,
+      "7": 3,
+      "8": 3,
+      "9": 4,
+      "10": 3
+    },
+    "quality_mean": 2.5,
+    "naturalness_mean": 3.25,
+    "reason": "该输出为延迟纠错的元话语，无具体偏误可定位、无四段讲解与复述验证，故教学维度偏低；但介入时机合理、非命令性尚可，自然度中等，整体属自然度锚点而非完整纠错教学。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-074": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（errors 与 trace 均无内容），未产生任何纠错、讲解、复述验证或自然对话，全部维度均无表现，且触发 R3（讲了错却不做复述引导）与 R2（无依据地宣称有错）红线。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-075": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（errors 与 trace 均为空），未对'我把书放到了桌上'做任何纠错、讲解、复述验证或角色化推进，且该句本身为干净句，任务指令'你错了'属误报诱导，全部维度均无表现。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-076": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（errors 与 trace 均为空），未产生任何纠错、讲解、复述验证或自然对话，全部维度均无表现。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-077": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "该输出为命令式打断（'停！重来'），无偏误定位、无讲解、无复述验证、无角色代入与任务推进，属机械指令链，自然度与教学质量各维均不达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-078": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出为空对话（无 errors、无 trace、无任何教学回合），未定位偏误、无四段讲解、无复述验证、无角色代入与任务推进，且'打断/下一个'式命令链触犯非命令性与流利打断红线，全维最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-079": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 4,
+      "2": 2,
+      "3": 1,
+      "4": 3,
+      "5": 2,
+      "6": 3,
+      "7": 2,
+      "8": 2,
+      "9": 3,
+      "10": 2
+    },
+    "quality_mean": 2.5,
+    "naturalness_mean": 2.25,
+    "reason": "偏误定位基本准确（'完'补语问题），但讲解仅一句、缺四段结构、无复述验证（触R3），语言分层与角色代入弱，对话推进感差，属单句冷读式纠错。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-080": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 2,
+      "3": 1,
+      "4": 3,
+      "5": 3,
+      "6": 3,
+      "7": 2,
+      "8": 2,
+      "9": 3,
+      "10": 2
+    },
+    "quality_mean": 2.5,
+    "naturalness_mean": 2.25,
+    "reason": "偏误定位方向合理（指出'给'的位置而非'把'），但讲解仅一句结论、缺四段结构、无复述验证（触R3），且为离身冷读式单句输出，任务真实性与角色代入弱、无对话推进。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-081": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 2,
+      "2": 1,
+      "3": 1,
+      "4": 2,
+      "5": 2,
+      "6": 2,
+      "7": 2,
+      "8": 2,
+      "9": 3,
+      "10": 2
+    },
+    "quality_mean": 1.67,
+    "naturalness_mean": 2.25,
+    "reason": "仅一句模糊提示'应该是放'，无错因讲解、无对比、无复述验证，且未定位真错点，教学四段全缺；自然度上任务与角色感薄弱、推进感不足，仅'你自己想想看'略带非命令性。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-082": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何教学回合），未定位偏误、无四段讲解、无复述验证、无介入、无语言分层与归因，也无任何真实交际任务或角色推进，全部维度均未做到。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-083": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 2,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.25,
+    "reason": "该输出仅为一句提示性任务指令，无任何纠错、讲解、复述验证或对话推进，且无真实交际任务与角色代入，教学质量与自然度各维均未达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-084": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 2,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.25,
+    "reason": "该输出仅为一句元层面的任务提示（'偏误大概率和给的位置有关，先试着调一下结构'），既无具体偏误定位、无四段讲解、无复述验证、无角色代入与真实交际任务，也未构成任何对话推进，故教学质量与自然度各维均判低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-085": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出仅为一句命令式否定'你说得全错，重说'，无任何偏误定位、讲解、复述验证或角色/任务承接，且属命令链与无任务目标的负样例，全维触底。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-086": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出仅为一句否定性命令（'这句完全不行，别浪费练习时间'），无任何偏误定位、讲解、复述验证或角色化交际推进，且属命令式打压，全部维度均为最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-087": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "该输出仅为一段教师式语法独白（术语讲解+例句），无学习者偏误可定位、无四段讲解、无复述验证、无介入时机、无语言分层、无归因，且非真实交际任务、无角色代入、命令式灌输、无对话推进，全部维度均为最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-088": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "该输出仅为一条关于「被」字句的静态教学提示，无任何对话回合、纠错、讲解四段、复述验证或角色代入，故教学质量与自然度各维均判最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-089": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出仅为任务元数据（errors 与 trace 均为空），没有任何纠错、讲解、复述验证或对话回合，教学质量与自然度各维均无从体现，全部按最低分计。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-090": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（errors 与 trace 均为空），未产生任何纠错、讲解、复述验证或交际互动，所有维度均无从体现，教学质量与自然度均判最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-091": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "输出仅为一句孤立的任务说明，无任何对话回合、纠错、讲解或复述验证，教学质量六维与自然度四维均完全未体现。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-092": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何教学回合），未做偏误定位、讲解、复述验证或任何自然交际推进，全部维度均为最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-093": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "该输出仅为一句命令式断言（'这是被动语态，记牢，别问为什么'），无偏误定位、无四段讲解、无复述验证、无角色代入与任务推进，且命令式打压提问，教学质量与自然度各维均不达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-094": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 2,
+      "6": 4,
+      "7": 1,
+      "8": 1,
+      "9": 3,
+      "10": 1
+    },
+    "quality_mean": 1.67,
+    "naturalness_mean": 1.5,
+    "reason": "该输出仅为一句孤立的元语言归因说明，无具体偏误定位、无四段讲解、无复述验证、无真实交际任务与角色代入，对话推进感缺失，仅归因表述较谨慎。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-095": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何教学回合），未产生任何纠错、讲解、复述验证或自然对话，所有维度均无从体现，故全维判 1。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-096": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "被测输出为空对话（errors 与 trace 均为空），未产生任何纠错、讲解、复述验证或交际互动，无法满足任一维度判据，故全部维度取最低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-097": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "被测输出为空对话（errors 与 trace 均为空），仅有一句任务描述，无任何纠错、讲解、复述验证或交际互动，所有维度均无从体现，故全维打 1 分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-098": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无 errors、无 trace、无任何教学回合），未产生任何纠错/讲解/复述/介入，教学质量与自然度各维均无从体现，按最低分计。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-099": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "该输出仅有一句武断的母语迁移归因断言，无偏误定位、无四段讲解、无复述验证、无介入时机与语言分层，且把母语迁移假设当事实陈述，触发 R5 归因污染红线，自然度四维亦全为命令式离身旁白，无真实交际任务与对话推进。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-100": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "该输出为一句武断指责（'肯定是你中文没学好…照搬英文'），无偏误定位、无四段讲解、无复述验证、无介入设计、无语言分层、归因武断污染图谱，且非真实交际任务、无角色代入、命令式指责、无对话推进，全维触底并触发 R5 归因污染红线。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  }
+}
