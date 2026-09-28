@@ -1,6 +1,7 @@
 {
-  "note": "B6 J6 统计门控基准（首版哨兵）。naturalness_mean 首版为 null=尚无真实 LLM judge 语义基准，门控退化不启用；LLM judge 跑出首轮平均自然度后回填真实值。band=慢漂移容限带宽。",
+  "note": "B6 校准后首版真实自然度基线（生产 L2 judge 注入 rubric §七锚，judge_model=settings 默认）。由 write_baseline.py 运行 llm_judge 层回填，启用 delta 统计门控。",
   "pass_rate": 0.9,
-  "naturalness_mean": null,
-  "band": 0.3
+  "naturalness_mean": 2.769,
+  "band": 0.3,
+  "judge_qualified": true
 }

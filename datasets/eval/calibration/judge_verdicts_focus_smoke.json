@@ -1,0 +1,100 @@
+{
+  "CAL-001": {
+    "focus_score": 5,
+    "focus_dim": 7,
+    "quality": "high",
+    "reason": "围绕点餐场景展开真实可交际的对话，有菜单、推荐招牌菜、询问是否加茶等具体交际目标，任务真实清晰。",
+    "pending": false
+  },
+  "CAL-007": {
+    "focus_score": 3,
+    "focus_dim": 7,
+    "quality": "mid",
+    "reason": "设定了买东西的真实交际任务，但仅以指令式一句带过，未展开任何可交际的场景内容或目标细节，属流于形式。",
+    "pending": false
+  },
+  "CAL-017": {
+    "focus_score": 5,
+    "focus_dim": 8,
+    "quality": "high",
+    "reason": "以医生角色口吻自然承接，语气贴合就医场景，安抚与问诊兼具，全程角色代入。",
+    "pending": false
+  },
+  "CAL-021": {
+    "focus_score": 3,
+    "focus_dim": 8,
+    "quality": "mid",
+    "reason": "文本仅作角色设定（'你来演顾客'）并给出指令，未以顾客或场景身份自然承接对话，属偶有角色感的中间档。",
+    "pending": false
+  },
+  "CAL-026": {
+    "focus_score": 1,
+    "focus_dim": 8,
+    "quality": "low",
+    "reason": "文本是系统日志口吻的旁观者旁白，完全没有以对话角色或场景身份承接，属于冷读/日志式表达。",
+    "pending": false
+  },
+  "CAL-035": {
+    "focus_score": 4,
+    "focus_dim": 9,
+    "quality": "mid",
+    "reason": "用“我们慢慢来”“试试”营造邀请式、低压引导，尊重学习者节奏，但未给出明确选择项（如“要不要先…还是…”），略低于5分的选择感。",
+    "pending": false
+  },
+  "CAL-065": {
+    "focus_score": 3,
+    "focus_dim": 3,
+    "quality": "high",
+    "reason": "有明确复述引导并预设降难度，但仅单次复述、未体现连续2次不过的严格验证与拒绝假懂机制。",
+    "pending": false
+  },
+  "CAL-068": {
+    "focus_score": 3,
+    "focus_dim": 3,
+    "quality": "mid",
+    "reason": "有复述引导（'那你复述一下'），但仅单次泛问，未预设连续2次不过降难度、也未体现拒绝假懂的严格验证机制。",
+    "pending": false
+  },
+  "CAL-069": {
+    "focus_score": 3,
+    "focus_dim": 3,
+    "quality": "low",
+    "reason": "有明确复述要求并强调'必须对'，但仅单次指令，未预设连续2次不过降难度或拒绝假懂的机制。",
+    "pending": false
+  },
+  "CAL-079": {
+    "focus_score": 5,
+    "focus_dim": 1,
+    "quality": "high",
+    "reason": "精准指出真错点是补语'完'而非'了'，并给出正确说法'我吃完饭了'，不误报不教错。",
+    "pending": false
+  },
+  "CAL-081": {
+    "focus_score": 3,
+    "focus_dim": 1,
+    "quality": "mid",
+    "reason": "点出了正确说法'放'，但未说明错在哪里、错因或原词，定位不精确，属半引导式提示。",
+    "pending": false
+  },
+  "CAL-082": {
+    "focus_score": 1,
+    "focus_dim": 1,
+    "quality": "low",
+    "reason": "只说“这里可以改一下，你再看看”，未指出任何具体错点、类型或正确说法，定位完全缺失。",
+    "pending": false
+  },
+  "CAL-091": {
+    "focus_score": 1,
+    "focus_dim": 5,
+    "quality": "mid",
+    "reason": "全中文讲解，无任何英文脚手架，未体现教学语言分层。",
+    "pending": false
+  },
+  "CAL-100": {
+    "focus_score": 1,
+    "focus_dim": 6,
+    "quality": "low",
+    "reason": "把母语迁移假设当作绝对事实断言（'肯定''就是照搬英文'），并附加贬损性归因，完全未标注'可能/假设'，属污染图谱的典型表述。",
+    "pending": false
+  }
+}

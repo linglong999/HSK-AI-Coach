@@ -42,8 +42,19 @@ python -m datasets.eval.tutor_quality.run_tutor_judge --case TQ-HSK1ERR001
 2. 人工核 **20 个 case** 的 L2 判定，报告 judge 与人工一致率并回填 `gold_judge_hint`
 3. badcase 回流：线上失败经归因 SOP → 入 `cases.json` regression 子集（版本升级、记录日期）
 
+## B6 校准（2026-09-27 · 达标启用 L2 门）
+
+- **三元组 pin**：`judge_model_id=deepseek-chat`（settings 默认）· `rubric_version=v2` · `prompt_template_hash=2ce0f212`
+- **对拍集**：`../calibration/calibration_cases.json` v2（100 条 focus 维），人工标注 `annotation_user.csv`
+- **一致性**：二次加权 kappa **0.8622** / 二元 kappa **0.9081**（≥0.70 门槛）→ **judge_qualified=true**
+- **样本修正**：dim6 错放 CAL-057/058/082 mid→low、CAL-096/097/098 mid→high
+- **锚定**：每维 1/3/5 描述性档（rubric.md §七），生产 `_build_judge_prompt` 整篇注入，fix 双峰化
+- **基线**：`../baseline.json` naturalness_mean=2.769、band=0.3 已回写，delta 统计门控生效
+- **残留**：8 条命令式口吻 mid（人工 3/judge 1）系统偏严 + 3 条 dim5 英文占比（人工 5/judge 3-4），已接受不调锚（防过拟合）
+
 ## 版本与日期记录
 
 | 版本 | 日期 | 说明 |
 |---|---|---|
 | v0.1 | 2026-09-11 | 首版：L1+L3 确定性，19 case，门禁 PASS，1 条 case 标记待核 |
+| v2 | 2026-09-27 | B6 校准达标：kappa≈0.86，L2 LLM-judge 启用，rubric 增 §七 每维 1/3/5 锚，baseline 统计门控生效 |

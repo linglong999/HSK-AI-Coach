@@ -6,9 +6,9 @@
     "n": 100,
     "note": "自包含教学回复文本（judge∧人工同对象）；rubric.md v2 双门槛；gold_pass 仅口径提示，最终以 judge∧人工 kappa 为准",
     "dist_quality": {
-      "high": 30,
-      "mid": 40,
-      "low": 30
+      "high": 33,
+      "mid": 34,
+      "low": 33
     },
     "dist_dim": {
       "7": 13,
@@ -92,7 +92,7 @@
       "dim": 7,
       "quality": "low",
       "gold_pass": false,
-      "text": "请把'我把书放到了桌上'这个句子翻译成中文，现在。"
+      "text": "请把'我把书放到了桌上'这个句子翻译成英文，现在。"
     },
     {
       "id": "CAL-011",
@@ -419,14 +419,14 @@
     {
       "id": "CAL-057",
       "dim": 2,
-      "quality": "mid",
+      "quality": "low",
       "gold_pass": false,
       "text": "这句错了，正确的是'我把书放到了桌上'，你记住下次别错。"
     },
     {
       "id": "CAL-058",
       "dim": 2,
-      "quality": "mid",
+      "quality": "low",
       "gold_pass": false,
       "text": "这里应该用'被'，你改一下，下次注意。"
     },
@@ -594,7 +594,7 @@
     {
       "id": "CAL-082",
       "dim": 1,
-      "quality": "mid",
+      "quality": "low",
       "gold_pass": false,
       "text": "这里可以改一下，你再看看。"
     },
@@ -692,22 +692,22 @@
     {
       "id": "CAL-096",
       "dim": 6,
-      "quality": "mid",
-      "gold_pass": false,
+      "quality": "high",
+      "gold_pass": true,
       "text": "这个说法可能受了英文影响，但也不一定，我们主要记住正确结构就好。"
     },
     {
       "id": "CAL-097",
       "dim": 6,
-      "quality": "mid",
-      "gold_pass": false,
+      "quality": "high",
+      "gold_pass": true,
       "text": "母语迁移只是一个可能的原因，我们先聚焦正确用法。"
     },
     {
       "id": "CAL-098",
       "dim": 6,
-      "quality": "mid",
-      "gold_pass": false,
+      "quality": "high",
+      "gold_pass": true,
       "text": "也许是习惯问题，我们不多猜，按正确形式来。"
     },
     {

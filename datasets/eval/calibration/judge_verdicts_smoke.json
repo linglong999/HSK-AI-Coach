@@ -1,0 +1,102 @@
+{
+  "CAL-001": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 1,
+      "3": 1,
+      "4": 3,
+      "5": 3,
+      "6": 3,
+      "7": 4,
+      "8": 4,
+      "9": 4,
+      "10": 3
+    },
+    "quality_mean": 2.33,
+    "naturalness_mean": 3.75,
+    "reason": "该对话为点餐场景的自然开场，无偏误可纠（errors 为空），故偏误定位/讲解四段/复述验证等教学维度无对象可评，仅给中性分；自然度上任务真实、角色代入与选择式引导较好，但对话推进感一般，整体属自然度锚点样本而非纠错教学样本。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-002": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "被测输出为空对话（errors 与 trace 均为空），无任何纠错、讲解、复述验证或角色化交际推进，全部维度均未达标。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-003": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 2,
+      "8": 2,
+      "9": 2,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.75,
+    "reason": "该输出仅为一条无学习者话语、无偏误、无讲解与复述验证的孤立问路句，教学质量六维均无从体现，自然度上任务流于形式、无角色承接与对话推进，故各维低分。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-004": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 3,
+      "2": 1,
+      "3": 1,
+      "4": 3,
+      "5": 3,
+      "6": 3,
+      "7": 4,
+      "8": 3,
+      "9": 4,
+      "10": 2
+    },
+    "quality_mean": 2.33,
+    "naturalness_mean": 3.25,
+    "reason": "该对话无任何偏误与教学介入（errors/trace 为空），教学质量维度多为中性默认分；自然度上任务真实、引导非命令，但角色代入弱、对话无推进，整体偏静态。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  },
+  "CAL-005": {
+    "verdict": "pass",
+    "per_dim": {
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "4": 1,
+      "5": 1,
+      "6": 1,
+      "7": 1,
+      "8": 1,
+      "9": 1,
+      "10": 1
+    },
+    "quality_mean": 1.0,
+    "naturalness_mean": 1.0,
+    "reason": "对话输出为空（无任何回合、无纠错、无讲解、无角色承接），仅回显任务元数据，所有维度均无表现，自然度亦无对话可评。",
+    "pending": false,
+    "judge_model": "(settings default)"
+  }
+}

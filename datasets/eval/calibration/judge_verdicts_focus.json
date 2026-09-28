@@ -1,0 +1,702 @@
+{
+  "CAL-001": {
+    "focus_score": 5,
+    "focus_dim": 7,
+    "quality": "high",
+    "reason": "围绕点餐场景展开真实可交际的对话，目标清晰（点菜、看菜单、推荐招牌菜、询问是否加茶），符合5分锚。",
+    "pending": false
+  },
+  "CAL-002": {
+    "focus_score": 5,
+    "focus_dim": 7,
+    "quality": "high",
+    "reason": "以药店购药为真实就医场景，围绕症状询问与对症找药展开，任务目标清晰、可直接交际。",
+    "pending": false
+  },
+  "CAL-003": {
+    "focus_score": 4,
+    "focus_dim": 7,
+    "quality": "high",
+    "reason": "围绕问路这一真实交际场景展开，有明确任务目标（帮看线路图、指方向），但内容较简短、未充分展开可交际细节，未达5分。",
+    "pending": false
+  },
+  "CAL-004": {
+    "focus_score": 5,
+    "focus_dim": 7,
+    "quality": "high",
+    "reason": "以咖啡店点单为真实交际场景，围绕饮品温度/类型给出可交际的选择，任务目标清晰自然。",
+    "pending": false
+  },
+  "CAL-005": {
+    "focus_score": 3,
+    "focus_dim": 7,
+    "quality": "mid",
+    "reason": "提到了点餐场景，有真实交际任务的框架，但仅以指令式一句带过，未展开任何可交际的点餐内容，流于形式。",
+    "pending": false
+  },
+  "CAL-006": {
+    "focus_score": 3,
+    "focus_dim": 7,
+    "quality": "mid",
+    "reason": "提到了问路这一真实交际场景，但仅以指令式带过，未展开任何可交际内容，任务流于形式。",
+    "pending": false
+  },
+  "CAL-007": {
+    "focus_score": 3,
+    "focus_dim": 7,
+    "quality": "mid",
+    "reason": "设定了买东西的真实交际任务，但仅以指令式一句带过，未展开可交际内容或明确目标，流于形式。",
+    "pending": false
+  },
+  "CAL-008": {
+    "focus_score": 3,
+    "focus_dim": 7,
+    "quality": "mid",
+    "reason": "设定了医院问诊这一真实交际场景，但仅以指令式一句带过，未展开任何可交际内容或目标细节，属流于形式。",
+    "pending": false
+  },
+  "CAL-009": {
+    "focus_score": 3,
+    "focus_dim": 7,
+    "quality": "mid",
+    "reason": "设定了地铁站买票的真实交际场景，但仅以指令式带过，未展开可交际的对话内容或目标，流于形式。",
+    "pending": false
+  },
+  "CAL-010": {
+    "focus_score": 1,
+    "focus_dim": 7,
+    "quality": "low",
+    "reason": "该句是脱离真实交际任务的机械翻译练习，无场景、无交际目标，属典型'为练习而念句'。",
+    "pending": false
+  },
+  "CAL-011": {
+    "focus_score": 1,
+    "focus_dim": 7,
+    "quality": "low",
+    "reason": "文本是脱离真实交际任务的机械造句指令（'用这个词造三个句，马上交'），无场景、无交际目标，属为练习而练习。",
+    "pending": false
+  },
+  "CAL-012": {
+    "focus_score": 1,
+    "focus_dim": 7,
+    "quality": "low",
+    "reason": "文本是背诵语法模板和做书后练习的机械指令，完全脱离真实交际任务，无场景与交际目标。",
+    "pending": false
+  },
+  "CAL-013": {
+    "focus_score": 1,
+    "focus_dim": 7,
+    "quality": "low",
+    "reason": "文本是布置造句作业的指令，属于脱离真实交际任务的机械练习，无场景与交际目标。",
+    "pending": false
+  },
+  "CAL-014": {
+    "focus_score": 5,
+    "focus_dim": 8,
+    "quality": "high",
+    "reason": "全程以服务员角色口吻自然承接，语气贴合点餐场景，无教师式离身追问。",
+    "pending": false
+  },
+  "CAL-015": {
+    "focus_score": 4,
+    "focus_dim": 8,
+    "quality": "high",
+    "reason": "以导览员/陪同者身份自然承接，语气贴合场景（“这边走”“慢点走不着急”），有角色代入感，但仅一句、未展开对话互动，未达全程角色承接的5分。",
+    "pending": false
+  },
+  "CAL-016": {
+    "focus_score": 5,
+    "focus_dim": 8,
+    "quality": "high",
+    "reason": "全程以售货员身份自然承接，语气贴合购物场景，用推荐和邀请式话术推进对话。",
+    "pending": false
+  },
+  "CAL-017": {
+    "focus_score": 5,
+    "focus_dim": 8,
+    "quality": "high",
+    "reason": "以医生角色口吻自然承接，语气贴合就医场景，全程角色代入，无旁观者旁白或教师式离身追问。",
+    "pending": false
+  },
+  "CAL-018": {
+    "focus_score": 3,
+    "focus_dim": 8,
+    "quality": "mid",
+    "reason": "文本仅声明了服务员角色设定，但未以该角色身份自然承接对话，属于“仅作角色设定”的中间档。",
+    "pending": false
+  },
+  "CAL-019": {
+    "focus_score": 2,
+    "focus_dim": 8,
+    "quality": "mid",
+    "reason": "文本只是元层面的角色指派指令（“换成医生角色”），并未以医生身份自然承接对话，属于旁观者/导演式旁白，仅比完全无角色感略强。",
+    "pending": false
+  },
+  "CAL-020": {
+    "focus_score": 3,
+    "focus_dim": 8,
+    "quality": "mid",
+    "reason": "文本仅设定了角色（店员/顾客）并发出开始指令，属于角色设定而非以角色身份自然承接对话，未进入场景语气，故为中间档。",
+    "pending": false
+  },
+  "CAL-021": {
+    "focus_score": 3,
+    "focus_dim": 8,
+    "quality": "mid",
+    "reason": "文本仅作角色设定（'你来演顾客'）并发出指令，未以顾客或场景身份自然承接对话，属偶有角色感的中间档。",
+    "pending": false
+  },
+  "CAL-022": {
+    "focus_score": 3,
+    "focus_dim": 8,
+    "quality": "mid",
+    "reason": "文本仅给出角色设定指令（'你来当售货员'），属于布置任务而非以售货员身份自然承接对话，角色感流于形式，未真正代入场景。",
+    "pending": false
+  },
+  "CAL-023": {
+    "focus_score": 1,
+    "focus_dim": 8,
+    "quality": "low",
+    "reason": "文本以冷读旁白口吻分析句子，完全是旁观者视角，没有任何对话角色或场景身份代入。",
+    "pending": false
+  },
+  "CAL-024": {
+    "focus_score": 1,
+    "focus_dim": 8,
+    "quality": "low",
+    "reason": "文本是冷读式分析旁白（“分析：这句话主谓宾齐全……”），以评卷者/日志口吻陈述，完全无对话角色或场景身份代入。",
+    "pending": false
+  },
+  "CAL-025": {
+    "focus_score": 1,
+    "focus_dim": 8,
+    "quality": "low",
+    "reason": "文本是旁白式元描述（“用户输入一句话，教师进入讲解模式”），以旁观者/日志口吻说明流程，完全没有以对话角色或场景身份承接，符合1分锚。",
+    "pending": false
+  },
+  "CAL-026": {
+    "focus_score": 1,
+    "focus_dim": 8,
+    "quality": "low",
+    "reason": "文本是系统日志口吻的旁观者旁白，完全没有以对话角色或场景身份承接，角色代入为零。",
+    "pending": false
+  },
+  "CAL-027": {
+    "focus_score": 5,
+    "focus_dim": 9,
+    "quality": "high",
+    "reason": "用'想先…还是…？都行，看你怎么顺'给出两个选项并把决定权交给学习者，是典型的选择/邀请式引导，无任何命令或指令收尾。",
+    "pending": false
+  },
+  "CAL-028": {
+    "focus_score": 5,
+    "focus_dim": 9,
+    "quality": "high",
+    "reason": "文本以“你可以先自己试试，或者让我带一步，你来定节奏”给出选择并明确把节奏决定权交给学习者，属选择/邀请式引导，尊重自主，无命令链。",
+    "pending": false
+  },
+  "CAL-029": {
+    "focus_score": 5,
+    "focus_dim": 9,
+    "quality": "high",
+    "reason": "用“要不要…还是…”给出两个选项，邀请学习者自主决定，无任何命令式收尾，完全符合选择/邀请式引导。",
+    "pending": false
+  },
+  "CAL-030": {
+    "focus_score": 5,
+    "focus_dim": 9,
+    "quality": "high",
+    "reason": "用“你挑一个”给出两个明确选项，选择/邀请式引导，尊重学习者自主，无命令链。",
+    "pending": false
+  },
+  "CAL-031": {
+    "focus_score": 1,
+    "focus_dim": 9,
+    "quality": "mid",
+    "reason": "文本以'跟我读一遍'的命令式指令收尾，属于典型命令链，无任何选择或邀请感。",
+    "pending": false
+  },
+  "CAL-032": {
+    "focus_score": 2,
+    "focus_dim": 9,
+    "quality": "mid",
+    "reason": "文本以“你来复述”“一定要完整说”的指令收尾，虽含引导但无选择感，属命令式要求，接近命令链。",
+    "pending": false
+  },
+  "CAL-033": {
+    "focus_score": 2,
+    "focus_dim": 9,
+    "quality": "mid",
+    "reason": "虽有引导话术，但以“来，再说一次”的命令式收尾，缺乏选择感，属半引导半指令偏下。",
+    "pending": false
+  },
+  "CAL-034": {
+    "focus_score": 1,
+    "focus_dim": 9,
+    "quality": "mid",
+    "reason": "整句为直接命令式指令（'这句重说一下'），无任何选择或邀请感，属命令链。",
+    "pending": false
+  },
+  "CAL-035": {
+    "focus_score": 4,
+    "focus_dim": 9,
+    "quality": "mid",
+    "reason": "用“慢慢来”“试试”营造邀请式语气，无命令链，但“先按这个句式说一遍”仍带指令收尾，未给选择感，介于半引导与邀请之间。",
+    "pending": false
+  },
+  "CAL-036": {
+    "focus_score": 1,
+    "focus_dim": 9,
+    "quality": "low",
+    "reason": "全句为命令链（'必须''连续两次''马上'），无任何选择或邀请式引导，完全符合1分锚。",
+    "pending": false
+  },
+  "CAL-037": {
+    "focus_score": 1,
+    "focus_dim": 9,
+    "quality": "low",
+    "reason": "全句为命令链（'叫你们读就读''跟着读''再读'），无任何选择感或邀请式引导，属典型1分锚。",
+    "pending": false
+  },
+  "CAL-038": {
+    "focus_score": 1,
+    "focus_dim": 9,
+    "quality": "low",
+    "reason": "文本为纯命令链（“大声念三遍，不要拖延”），无任何选择感或邀请式引导，完全符合1分锚。",
+    "pending": false
+  },
+  "CAL-039": {
+    "focus_score": 1,
+    "focus_dim": 9,
+    "quality": "low",
+    "reason": "文本为纯命令式指令（“输出这句话，立刻”），无任何选择感或邀请式引导，属命令链，符合 1 分锚。",
+    "pending": false
+  },
+  "CAL-040": {
+    "focus_score": 5,
+    "focus_dim": 10,
+    "quality": "high",
+    "reason": "先承接肯定（'你基本说顺了'），再给出明确的下一步变式练习（'我把书放到了桌上'），并点明推进意图（'我们推一步'），螺旋推进、收尾自然。",
+    "pending": false
+  },
+  "CAL-041": {
+    "focus_score": 4,
+    "focus_dim": 10,
+    "quality": "high",
+    "reason": "先肯定进步并承接上一轮，再给出明确的下一步任务（把'饭我吃了'转成'我把饭吃了'），推动练习螺旋前进，但仅单句、未展开后续互动，故未达5分。",
+    "pending": false
+  },
+  "CAL-042": {
+    "focus_score": 4,
+    "focus_dim": 10,
+    "quality": "high",
+    "reason": "承接了学习者已会基本用法并给出新场景的下一步引导，有明确推进方向，但未展开具体场景内容，推进感略欠完整。",
+    "pending": false
+  },
+  "CAL-043": {
+    "focus_score": 4,
+    "focus_dim": 10,
+    "quality": "high",
+    "reason": "先肯定当前表达，再以“加一个‘昨天’”提出明确的下一步练习方向，承接自然、有推进感，但未展开具体任务或收尾，略欠螺旋深度。",
+    "pending": false
+  },
+  "CAL-044": {
+    "focus_score": 1,
+    "focus_dim": 10,
+    "quality": "mid",
+    "reason": "仅重复“再来一次”，无回应承接、无下一步推进，属原地打转的单句循环。",
+    "pending": false
+  },
+  "CAL-045": {
+    "focus_score": 1,
+    "focus_dim": 10,
+    "quality": "mid",
+    "reason": "只有“再来一次，继续”的机械重复指令，无回应承接也无明确下一步，属原地打转的单句循环。",
+    "pending": false
+  },
+  "CAL-046": {
+    "focus_score": 2,
+    "focus_dim": 10,
+    "quality": "mid",
+    "reason": "仅以“再练一次同样的句型”原地重复，无回应承接、无新情境或变式推进，属单句循环打转。",
+    "pending": false
+  },
+  "CAL-047": {
+    "focus_score": 1,
+    "focus_dim": 10,
+    "quality": "mid",
+    "reason": "该句只是机械指令“说第二句”，没有对上一句的回应承接，也没有明确下一步内容，属于原地打转的单句循环，未推动对话前进。",
+    "pending": false
+  },
+  "CAL-048": {
+    "focus_score": 3,
+    "focus_dim": 10,
+    "quality": "mid",
+    "reason": "有承接并给出下一步方向（换说法同义转述），但仅一句指令式推进，未展开具体任务或收尾，属半格推进。",
+    "pending": false
+  },
+  "CAL-049": {
+    "focus_score": 3,
+    "focus_dim": 10,
+    "quality": "mid",
+    "reason": "有承接（回应上一轮并给出下一步尝试），但仅停留在'再试一次'的重复练习层面，未引入新内容或情境变化，属有来有回但原地打转、推进半格。",
+    "pending": false
+  },
+  "CAL-050": {
+    "focus_score": 1,
+    "focus_dim": 10,
+    "quality": "low",
+    "reason": "连续三次“再来一次”属原地打转的单句循环，无回应承接也无下一步推进，符合1分锚。",
+    "pending": false
+  },
+  "CAL-051": {
+    "focus_score": 1,
+    "focus_dim": 10,
+    "quality": "low",
+    "reason": "文本仅为“重复。重复。再重复。”，无任何回应承接或下一步推进，属原地打转的单句循环。",
+    "pending": false
+  },
+  "CAL-052": {
+    "focus_score": 1,
+    "focus_dim": 10,
+    "quality": "low",
+    "reason": "文本只是机械重复“练习三遍，再来三遍，再再来三遍”，没有任何回应承接或话题推进，属于原地打转的单句循环。",
+    "pending": false
+  },
+  "CAL-053": {
+    "focus_score": 1,
+    "focus_dim": 10,
+    "quality": "low",
+    "reason": "文本仅为“复述。复述。复述。复述。”的机械重复，无任何回应承接或下一步推进，属单句循环原地打转。",
+    "pending": false
+  },
+  "CAL-054": {
+    "focus_score": 4,
+    "focus_dim": 2,
+    "quality": "high",
+    "reason": "四段基本齐全：讲清'给'不能放'把'后（为什么错）、给出正确句'我把书给老师'（正确说法）、对比'我给了老师书'结构不同（对比）、并引导复述（验证），但对比略简、验证仅一句，未达5分。",
+    "pending": false
+  },
+  "CAL-055": {
+    "focus_score": 4,
+    "focus_dim": 2,
+    "quality": "high",
+    "reason": "四段基本齐全：指出错误（少'地'）、给出正确说法、对比'认真'作状语需加'地'、并引导复述验证，但'为什么错'的讲解较简略，未充分说明状语与'地'的语法关系。",
+    "pending": false
+  },
+  "CAL-056": {
+    "focus_score": 3,
+    "focus_dim": 2,
+    "quality": "high",
+    "reason": "讲清了为什么错（主语是承受者）和正确说法（门被他关上了），但对比仅一句带过、无实质对比内容，且完全缺少复述验证环节，四段不全。",
+    "pending": false
+  },
+  "CAL-057": {
+    "focus_score": 1,
+    "focus_dim": 2,
+    "quality": "low",
+    "reason": "仅给出正确说法和否定式指令，完全没有解释为什么错、对比或复述验证，四段全缺。",
+    "pending": false
+  },
+  "CAL-058": {
+    "focus_score": 1,
+    "focus_dim": 2,
+    "quality": "low",
+    "reason": "仅给出改法指令（'应该用被'）和提醒，完全没有解释为什么错、正确说法、对比或验证，四段全缺。",
+    "pending": false
+  },
+  "CAL-059": {
+    "focus_score": 1,
+    "focus_dim": 2,
+    "quality": "mid",
+    "reason": "仅给出正确说法和'多读几遍'的机械指令，完全没有解释为什么错、对比辨析或复述验证，四段全缺。",
+    "pending": false
+  },
+  "CAL-060": {
+    "focus_score": 1,
+    "focus_dim": 2,
+    "quality": "low",
+    "reason": "仅给出否定与重做指令，四段（为什么错/正确说法/对比/验证）全部缺失。",
+    "pending": false
+  },
+  "CAL-061": {
+    "focus_score": 1,
+    "focus_dim": 2,
+    "quality": "low",
+    "reason": "仅给出改法指令和教材页码，四段（为什么错、正确说法、对比、验证）全部缺失。",
+    "pending": false
+  },
+  "CAL-062": {
+    "focus_score": 1,
+    "focus_dim": 2,
+    "quality": "low",
+    "reason": "仅给出否定与改法指令，四段（为什么错/正确说法/对比/验证）全缺。",
+    "pending": false
+  },
+  "CAL-063": {
+    "focus_score": 5,
+    "focus_dim": 3,
+    "quality": "high",
+    "reason": "明确要求复述并预设连续两次不顺即降难度（从'放到了'练起），体现拒绝假懂、练到会用的严格验证。",
+    "pending": false
+  },
+  "CAL-064": {
+    "focus_score": 4,
+    "focus_dim": 3,
+    "quality": "high",
+    "reason": "明确要求复述并预设两次都顺才换句、没把握就降难度从'做完'练起，体现了连续2次不过降难度与拒绝假懂，但未显式要求连续两次复述同一句。",
+    "pending": false
+  },
+  "CAL-065": {
+    "focus_score": 4,
+    "focus_dim": 3,
+    "quality": "high",
+    "reason": "明确要求复述并预设降难度路径，体现拒绝假懂，但未明确连续2次不过的判定标准，略欠严格。",
+    "pending": false
+  },
+  "CAL-066": {
+    "focus_score": 3,
+    "focus_dim": 3,
+    "quality": "mid",
+    "reason": "有明确的复述引导，但仅单次要求，未体现连续2次不过降难度或拒绝假懂的机制。",
+    "pending": false
+  },
+  "CAL-067": {
+    "focus_score": 3,
+    "focus_dim": 3,
+    "quality": "mid",
+    "reason": "有明确的复述引导（'你说一遍这个句子'），但仅单次泛问，未体现连续2次不过降难度或拒绝假懂的严格验证机制。",
+    "pending": false
+  },
+  "CAL-068": {
+    "focus_score": 3,
+    "focus_dim": 3,
+    "quality": "mid",
+    "reason": "有复述引导（'那你复述一下'），但仅单次泛问，未体现连续2次不过降难度或拒绝假懂，属中间档。",
+    "pending": false
+  },
+  "CAL-069": {
+    "focus_score": 3,
+    "focus_dim": 3,
+    "quality": "low",
+    "reason": "有明确复述要求并强调'必须对'，但仅单次指令，未预设连续2次不过降难度，也未体现拒绝'假懂'的机制。",
+    "pending": false
+  },
+  "CAL-070": {
+    "focus_score": 3,
+    "focus_dim": 3,
+    "quality": "low",
+    "reason": "有明确复述要求并设了通过标准（错两字不过），体现一定严格性，但未预设连续2次不过降难度、也未涉及拒绝假懂，属单次泛化的中间档。",
+    "pending": false
+  },
+  "CAL-071": {
+    "focus_score": 2,
+    "focus_dim": 3,
+    "quality": "low",
+    "reason": "有复述引导（“念一遍”）且拒绝假懂（“别装懂”），但仅为单次命令式指令，未预设连续2次不过降难度，严格性不足。",
+    "pending": false
+  },
+  "CAL-072": {
+    "focus_score": 5,
+    "focus_dim": 4,
+    "quality": "high",
+    "reason": "明确识别学习者表达流利、无错可纠，主动选择不打断并记录后继续推进，完全符合“识别流畅表达主动不打断”的5分锚。",
+    "pending": false
+  },
+  "CAL-073": {
+    "focus_score": 5,
+    "focus_dim": 4,
+    "quality": "high",
+    "reason": "识别到学习者表达流畅，主动推迟纠错、不打断流利输出，介入时机严格匹配流利度信号。",
+    "pending": false
+  },
+  "CAL-074": {
+    "focus_score": 1,
+    "focus_dim": 4,
+    "quality": "mid",
+    "reason": "无任何难度或求助信号依据，直接以命令式打断，属于强行介入、过度干预流利表达的典型表现。",
+    "pending": false
+  },
+  "CAL-075": {
+    "focus_score": 1,
+    "focus_dim": 4,
+    "quality": "mid",
+    "reason": "无任何难度或求助信号依据，直接以命令式强行打断并纠正，属于典型的过度干预。",
+    "pending": false
+  },
+  "CAL-076": {
+    "focus_score": 3,
+    "focus_dim": 4,
+    "quality": "mid",
+    "reason": "有介入意识并明确要暂停纠错，但未给出任何难度或流利度信号判断，介入依据不足、偏机械。",
+    "pending": false
+  },
+  "CAL-077": {
+    "focus_score": 1,
+    "focus_dim": 4,
+    "quality": "low",
+    "reason": "无任何难度或求助依据，仅凭主观臆测的“停顿信号”强行打断，属于明显过度干预流畅表达。",
+    "pending": false
+  },
+  "CAL-078": {
+    "focus_score": 1,
+    "focus_dim": 4,
+    "quality": "low",
+    "reason": "文本以命令式连续打断（“打断……打断，下一个”），无任何难度或求助信号依据，属于强行过度干预，完全未体现介入时机判断。",
+    "pending": false
+  },
+  "CAL-079": {
+    "focus_score": 5,
+    "focus_dim": 1,
+    "quality": "high",
+    "reason": "精准指出真错点是补语'完'而非'了'，并给出正确说法'我吃完饭了'，不误报不教错。",
+    "pending": false
+  },
+  "CAL-080": {
+    "focus_score": 5,
+    "focus_dim": 1,
+    "quality": "high",
+    "reason": "精准指出真错点在'给'的位置而非'把'，并给出正确结构'我把书给老师'，不误报不教错。",
+    "pending": false
+  },
+  "CAL-081": {
+    "focus_score": 3,
+    "focus_dim": 1,
+    "quality": "mid",
+    "reason": "点出了目标词'放'并给出正确说法，但未说明错在哪里、错因或结构类型，定位不够精确。",
+    "pending": false
+  },
+  "CAL-082": {
+    "focus_score": 1,
+    "focus_dim": 1,
+    "quality": "low",
+    "reason": "只说“这里可以改一下”，未指出任何具体错点、类型或正确说法，定位完全缺失。",
+    "pending": false
+  },
+  "CAL-083": {
+    "focus_score": 3,
+    "focus_dim": 1,
+    "quality": "mid",
+    "reason": "点出大致方向（补语、'完'的位置），但未给出具体错点结构或正确说法，定位不够精确。",
+    "pending": false
+  },
+  "CAL-084": {
+    "focus_score": 3,
+    "focus_dim": 1,
+    "quality": "mid",
+    "reason": "点出偏误与'给'的位置有关，方向大致正确但未精确到具体错点、类型或给出正确说法，属部分做到。",
+    "pending": false
+  },
+  "CAL-085": {
+    "focus_score": 1,
+    "focus_dim": 1,
+    "quality": "low",
+    "reason": "只说'全错、重说'，未指出任何具体错点、类型或正确说法，定位完全缺失。",
+    "pending": false
+  },
+  "CAL-086": {
+    "focus_score": 1,
+    "focus_dim": 1,
+    "quality": "low",
+    "reason": "只说“完全不行”，未指出任何具体错点、类型或正确说法，定位缺失。",
+    "pending": false
+  },
+  "CAL-087": {
+    "focus_score": 3,
+    "focus_dim": 5,
+    "quality": "high",
+    "reason": "有英文脚手架（术语解释）与中文内容载体（例句），但英文占比偏高、术语堆叠，分层不够均衡彻底。",
+    "pending": false
+  },
+  "CAL-088": {
+    "focus_score": 3,
+    "focus_dim": 5,
+    "quality": "high",
+    "reason": "有英文脚手架（passive、the door was closed by him）和中文内容载体（门被他关上了），但英文解释占比偏重、分层不够均衡，中文仅作例句呈现。",
+    "pending": false
+  },
+  "CAL-089": {
+    "focus_score": 3,
+    "focus_dim": 5,
+    "quality": "mid",
+    "reason": "有英文脚手架（\"disposal\"）和中文内容载体（例句），但英文仅一个术语、中文解释几乎全中文，分层不均衡、脚手架作用有限。",
+    "pending": false
+  },
+  "CAL-090": {
+    "focus_score": 2,
+    "focus_dim": 5,
+    "quality": "mid",
+    "reason": "文本以中文为主，仅用“类似英文”作极简对比，缺少成体系的英文脚手架，分层不彻底、英文侧占比严重失衡。",
+    "pending": false
+  },
+  "CAL-091": {
+    "focus_score": 1,
+    "focus_dim": 5,
+    "quality": "mid",
+    "reason": "全中文讲解、无任何英文脚手架，未体现教学语言分层。",
+    "pending": false
+  },
+  "CAL-092": {
+    "focus_score": 1,
+    "focus_dim": 5,
+    "quality": "low",
+    "reason": "全中文指令、无任何英文脚手架，且未提供中文内容载体分层，完全未做到语言分层守约。",
+    "pending": false
+  },
+  "CAL-093": {
+    "focus_score": 1,
+    "focus_dim": 5,
+    "quality": "low",
+    "reason": "全中文、无任何英文脚手架，且以命令式断言代替分层讲解，完全未做到语言分层守约。",
+    "pending": false
+  },
+  "CAL-094": {
+    "focus_score": 5,
+    "focus_dim": 6,
+    "quality": "high",
+    "reason": "明确用'有可能''只是一个可能'标注母语迁移仅为假设，并主动把重点拉回正确结构，不污染图谱。",
+    "pending": false
+  },
+  "CAL-095": {
+    "focus_score": 5,
+    "focus_dim": 6,
+    "quality": "high",
+    "reason": "明确用'可能/影响因素之一'标注母语迁移仅为假设，并主动把重点拉回'以正确用法为准'，不污染图谱。",
+    "pending": false
+  },
+  "CAL-096": {
+    "focus_score": 5,
+    "focus_dim": 6,
+    "quality": "mid",
+    "reason": "用“可能…但也不一定”明确标注母语迁移仅为假设，并主动把重点拉回正确结构，不污染图谱。",
+    "pending": false
+  },
+  "CAL-097": {
+    "focus_score": 5,
+    "focus_dim": 6,
+    "quality": "mid",
+    "reason": "明确将母语迁移标注为'只是一个可能的原因'，并主动把重点拉回正确用法，完全符合5分锚点。",
+    "pending": false
+  },
+  "CAL-098": {
+    "focus_score": 5,
+    "focus_dim": 6,
+    "quality": "mid",
+    "reason": "明确用“也许是习惯问题，我们不多猜”标注为不确定假设、拒绝臆断，并主动把重点拉回正确形式，不污染图谱。",
+    "pending": false
+  },
+  "CAL-099": {
+    "focus_score": 1,
+    "focus_dim": 6,
+    "quality": "low",
+    "reason": "把母语迁移假设当事实绝对断言（'就是因为英语母语干扰''大脑一定这么想'），无任何'可能/假设'标注，直接污染图谱。",
+    "pending": false
+  },
+  "CAL-100": {
+    "focus_score": 1,
+    "focus_dim": 6,
+    "quality": "low",
+    "reason": "文本以绝对断言'肯定是你中文没学好''你就是照搬英文'把母语迁移假设当事实，且带贬损，直接污染图谱，属1分锚。",
+    "pending": false
+  }
+}
