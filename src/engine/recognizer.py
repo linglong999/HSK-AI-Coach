@@ -102,6 +102,15 @@ def derive_verdict(score) -> Optional[str]:
     return "acceptable"
 
 
+def locate_fragment(text: str, fragment) -> int:
+    """A 面·朱笔批注定位：fragment 在 input 中的字符起点（0 基），找不到返回 -1。
+    契约可选键 offset 的数据源。fragment 是原句连续子串，故 str.find 即可；
+        multiple 同现取首处（批注位置确定性，宁取首不臆断）。"""
+    if not isinstance(text, str) or not isinstance(fragment, str) or not fragment:
+        return -1
+    return text.find(fragment)
+
+
 def load_knowledge_points(path: str = KNOWLEDGE_POINTS_PATH) -> dict:
     """加载 HSK 知识清单，返回 {id: 知识点dict}。失败返回空 dict（不阻断）"""
     try:
@@ -366,6 +375,12 @@ class Recognizer:
         top_verdict = derive_verdict(min(_s)) if _s else "acceptable"
         top_score = min(_s) if _s else 1.0
 
+        # A 面：朱笔批注定位——给每条已确认/待确认偏误钉上 fragment 在
+        # input 中的字符起点 offset（可选键；-1 = 定位失败，前端回退 indexOf）。
+        for _err in list(confirmed) + list(uncertain):
+            if isinstance(_err, dict) and "offset" not in _err:
+                _err["offset"] = locate_fragment(text, _err.get("fragment"))
+
         return {"errors": confirmed, "uncertain": uncertain, "raw": raw,
                 "kp_total": len(self.kps),
                 "hypotheses": hypotheses,          # L1 迁移候选假设（0.22，只读不写图谱）
@@ -393,6 +408,10 @@ class Recognizer:
             "knowledge_point_id": "",
             "source": "rule_fallback",
         } for b in beyond]
+        # A 面：降级路径同样钉 offset（超纲词 candidate 与构式 error 均可定位）
+        for _err in list(confirmed) + list(uncertain):
+            if isinstance(_err, dict) and "offset" not in _err:
+                _err["offset"] = locate_fragment(text, _err.get("fragment"))
         return {"errors": confirmed, "uncertain": uncertain, "raw": {},
                 "kp_total": len(self.kps),
                 "hypotheses": [],                  # 降级路径无确认偏误，无迁移假设（0.22）

@@ -53,6 +53,9 @@ def ordered_error(e: dict, version: int = 2) -> dict:
     base["score"] = e.get("score") if e.get("score") is not None else None
     base["verdict"] = e.get("verdict") if e.get("verdict") is not None else None
     base["construction_diagnostics"] = e.get("construction_diagnostics")  # B1 产出；B0 恒 None
+    # A 面：fragment 在原句 input_text 中的字符起点（识别层 locate_fragment 产出；
+    #       -1 = 定位失败；v2 可选键，恒在但值可 -1，老客户端忽略不破坏）
+    base["offset"] = int(e.get("offset", -1) or -1)
     return base
 
 

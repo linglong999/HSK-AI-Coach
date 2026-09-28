@@ -34,7 +34,7 @@
 
 ---
 
-## 2. error 条目结构（7→10 键）
+## 2. error 条目结构（7→11 键）
 
 每个 error 条目为嵌套结构 `{error:{…}, explanation, graph_write, verification}`，其中 **`construction_diagnostics` 挂内层 `error` dict**（不混入外层嵌套、不碰 explanation）：
 
@@ -50,8 +50,11 @@
 | `score` | number³ | **新增** | 该偏误的连续分（0-1）；无 → `None` |
 | `verdict` | string³ | **新增** | 由 `score` 确定性派生；无 → `None` |
 | `construction_diagnostics` | object⁴ | **新增** | 规则诊断器 1 层扁平嵌套，**6 键实值** `{construction,instance,verdict,score,checks[],explanation}`（B1 产出；B0 恒 `None`） |
+| `offset` | int¥ | **新增（A 面）** | `fragment` 在 `input_text` 中的**字符起点（0 基）**；识别层主路径与降级 `_rule_fallback` 均按需补算，缺省/越界/不吻合 → `-1` |
 
-`ordered_error(e, version=2)` 负责白名单与恒序；`version=1` 时只返回 7 旧键。
+`ordered_error(e, version=2)` 负责白名单与恒序（含 `offset` 恒序），只在 `offset` 为有效非负 int 时输出，无效则恒 `-1`；`version=1` 时只返回 7 旧键。
+
+> ¥ `offset` 为**可选定位键**，服务端 best-effort：`recognizer.locate_fragment` 用 `str.find` 求 `fragment` 在原句字符起点，不吻合即 `-1`。前端在标定批注时以 `offset` 为准、`text.indexOf(fragment)` 兜底（**A 面·朱笔批注**消费），缺 `offset` 也能自行定位（无该键不破坏既有调用方）。
 
 ---
 
@@ -166,3 +169,20 @@
 - **12 回合硬限**（S3）：单会话最多 12 回合，round_cap 拦截不截断已产出；三档文案与触发由 VisitorGate 锁定。
 - **邀请制 allowlist**（S5）：`config.settings.INVITE_ALLOWLIST`（逗号分隔 open_id；空=闸门关闭完全旁路，契约零变化）。闸门开启时——页面请求只出邀请页（不公开 speak/图谱入口）；`/api/*` 未授权 → `403 {"error":"invite_required",...}`（防绕过直取数据）。open_id 来源：query `open_id=` 或 Cookie `hsk_openid`。
 - **双壳静态托管**（S4）：`/` → React 壳构建产物 `index_dir/dist`（未构建回退 `index_dir` 目录本身，便于开发）；`/legacy/` → legacy 工具壳（`web_legacy/`）。两者/API 均为 GET 静态/home，POST 等未知路径由 `api_unknown_method` 统一 404——13 条既有路由契约零变化。
+
+---
+
+## 11. A 面实现回填（朱笔批注 / 学习手记）
+
+> 功能面 A 落地：让「原句校读」把偏误从碎片卡片改成**原句上的逐点校对**——字恢复原句正文为纲，偏误点以朱笔标注（对=竹青/错=朱砂），点译浮出矫正字，单轮深攻 ≤1，低置信独立琥珀条。以下属**契约 + 前端消费方式**，识别 schema 只新增 `offset` 一个可选键（§2）：
+
+| 环节 | 落地 | 状态 |
+|---|---|---|
+| 1 | **服务端定位** `offset`（§2 ¥）：识别主路径 + 降级 `_rule_fallback` 按需补算 `fragment` 在原句 0 基字符起点；不吻合/越界→`-1`。函数 `recognizer.locate_fragment` | ✔ 落地 |
+| 2 | **识别卡独立下发**：`serve._dialog_sse_events` 在 trace 前先发 `kind=identify_errors` 卡 `{trace_i:-1, ok:true, payload:{name:"identify_errors", result:identified}}`（`identified` 含 `errors/uncertain` 各带 `offset`），保证 planner 未把识别注入 trace 也落批注 | ✔ 落地 |
+| 3 | **前端定位纯函数** `web/src/lib/annotate.ts`：`collectMarks`（errors→confirmed、uncertain→候选）、`dedupeOverlap`（相邻相交丢后保留朱笔锚点）、`splitSegments`（切 plain/mark 交替段）、`pickDeepMark`（已确认取置信最高 = 深攻默认点 ≤1）；`offset` 优先、`indexOf` 兜底 | ✔ 落地 |
+| 4 | **批注渲染** `web/src/components/AnnotatedSentence.tsx`：原句为正文 + 逐点 amark（朱砂下划）/acar 内联浮出矫正字「错→对」/摘要行 asum 点击展开 adetail/低置信 annot-uc 琥珀条独立不混入 | ✔ 落地 |
+| 5 | **防刷屏分层**：单轮默认仅展开已确认最高置信 1 处（深攻≤1），其余轻标折叠、低置信静默进琥珀条；类型语义色 `atag vocab/grammar/pragma/char` | ✔ 落地 |
+| 6 | **SSE 消费** `web/src/pages/Speak.tsx`：识别卡一到即落 `role=recog` 批注，同句去重，无 errors/uncertain 不渲染 | ✔ 落地 |
+
+- A 面**不改识别契约顶/error 键集合语义**：仅新增 `offset` 一个可选键（默认 -1），其余键集合对 v2 冻结不变；验证走 `tests/test_offset.py`（服务端定位）+ 契约测试 `ERR_V2_KEYS` 已并入 `offset`。

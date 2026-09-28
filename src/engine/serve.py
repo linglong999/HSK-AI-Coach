@@ -166,6 +166,14 @@ def _dialog_sse_events(out: dict):
     intc = out.get("intercept")
     if intc:
         yield {"event": "intercept", "data": json.dumps(intc, ensure_ascii=False)}
+    # A 面·朱笔批注：pre_scan 权威别误（含 offset）先于 trace 以独立识别卡下发，
+    # 保证前端即使 planner 未把识别注入 trace 也能落批注（trace 卡片可重复，前端去重）。
+    _ident = out.get("identified") or {}
+    if _ident.get("errors") or _ident.get("uncertain"):
+        yield {"event": "message", "data": json.dumps({
+            "trace_i": -1, "kind": "identify_errors", "ok": True,
+            "payload": {"name": "identify_errors", "result": _ident},
+        }, ensure_ascii=False)}
     for i, item in enumerate(out.get("trace", [])):
         card = {
             "trace_i": i,
@@ -820,6 +828,18 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
     if os.path.isdir(root_dir):
         app.mount("/", StaticFiles(directory=root_dir, html=True), name="static")
 
+    # SPA 缓存正确性：vite 产物带 hash，浏览器若缓存入口 index.html（无扩展名路径），会引用
+    # 已被新 build 清理的旧 hash 文件而白屏。仅对 html/入口路径禁用缓存；hashed 资源可长缓存。
+    @app.middleware("http")
+    async def _spa_no_cache(request: Request, call_next):
+        resp = await call_next(request)
+        path = request.url.path
+        last = path.rsplit("/", 1)[-1]
+        if (path.startswith("/api/") and last.startswith("index.")) or \
+           (not path.startswith("/api/") and (last.endswith(".html") or "." not in last)):
+            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        return resp
+
     return app
 
 
@@ -835,7 +855,7 @@ def main():
     router = Router(learner_id=args.learner, native_lang=args.lang, user_level="HSK3")
     if not os.path.isdir(_INDEX_DIR):
         print(f"[serve] 前端壳目录不存在：{_INDEX_DIR}")
-        print("[serve] 将仅提供 API（/api/process /api/graph），静态页待 M10 生成 web/index.html")
+        print("[serve] 前端壳目录缺失，将仅提供 API（/api/process /api/dialog /api/graph）；静态壳见 web/（React 壳）与 web_legacy/（legacy 工具壳）")
     app = create_app(router, _INDEX_DIR, gate=VisitorGate(root="data"))
     uvicorn.run(app, host=args.host, port=args.port)
     print(f"HSK-AI-Coach 前端壳：http://{args.host}:{args.port}  (learner={args.learner})")
@@ -850,7 +870,7 @@ def main():
     print("  GET  /api/conversation?id=  单会话消息历史（URL 深链恢复，只读）")
     print("  POST /api/session/update   会话置顶/重命名（右键菜单）")
     print("  POST /api/session/delete   删除会话（右键菜单）")
-    print("  GET  /              前端壳页面（若 web/index.html 存在）")
+    print("  GET  /              前端壳页面（web/ React 壳 dist 优先，回退 index_dir；/legacy/ → legacy 工具壳）")
 
 
 if __name__ == "__main__":

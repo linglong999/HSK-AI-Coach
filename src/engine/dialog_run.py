@@ -426,12 +426,20 @@ class DialogRun:
     def _build_dialog_response(self, learner_id, conversation_id, provider,
                                res, pre, wb_out, cap, graph_snapshot):
         """阶段 · AssembleResponse：组装对外响应（13 键契约）。
-        degraded = 账本/画像写入降级 notices；fallback 时追加 planner 通知（非致命）。"""
+        degraded = 账本/画像写入降级 notices；fallback 时追加 planner 通知（非致命）。
+        identified（A 面）：pre_scan 权威别误（含 offset），独立于 planner trace 暴露——
+        planner 是否把识别注入 trace 由 LLM 决定，pre_scan 恒定先跑，前端据此落朱笔批注。"""
         degraded = wb_out["notices"]
         if res.get("fallback"):
             degraded.append({"stage": "planner",
                              "reason": f"planner fallback: {res.get('reason', 'unterminated')}",
                              "fatal": False})
+        identified = {}
+        if isinstance(pre.get("pre_scan"), dict):
+            identified = {
+                "errors": pre["pre_scan"].get("errors") or [],
+                "uncertain": pre["pre_scan"].get("uncertain") or [],
+            }
         return {
             "dialog_version": "v1",
             "learner_id": learner_id,
@@ -448,4 +456,5 @@ class DialogRun:
             "why": wb_out["why_items"],
             "degraded": degraded,
             "graph": graph_snapshot,
+            "identified": identified,   # A 面：pre_scan 权威别误（含 offset），供前端落朱笔批注
         }

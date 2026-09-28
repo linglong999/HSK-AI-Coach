@@ -127,8 +127,8 @@ class OrderedErrorVersionTest(unittest.TestCase):
             ["fragment", "correction", "type", "type_confident",
              "confidence", "knowledge_point_id", "uncertain"])
 
-    def test_v2_ten_keys_with_none_defaults(self):
-        # 缺软评分的条目 → v2 仍 10 键恒在、值 None（向后兼容）
+    def test_v2_eleven_keys_with_none_defaults(self):
+        # 缺软评分的条目 → v2 仍 11 键恒在、值 None/占位（向后兼容；offset 为 A 面可选键）
         e = {"fragment": "a", "correction": "b", "type": "语法",
              "type_confident": True, "confidence": 0.9, "knowledge_point_id": "",
              "uncertain": False}
@@ -137,7 +137,7 @@ class OrderedErrorVersionTest(unittest.TestCase):
             list(out.keys()),
             ["fragment", "correction", "type", "type_confident", "confidence",
              "knowledge_point_id", "uncertain", "score", "verdict",
-             "construction_diagnostics"])
+             "construction_diagnostics", "offset"])
         self.assertIsNone(out["score"])
         self.assertIsNone(out["verdict"])
         self.assertIsNone(out["construction_diagnostics"])

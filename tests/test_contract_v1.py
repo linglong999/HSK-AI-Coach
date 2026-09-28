@@ -43,10 +43,10 @@ META_KEYS = {"start_ts", "end_ts", "elapsed_ms"}
 # 契约 v2 = v1 13 键 + verdict/score（软评分，识别层顶层聚合透传）
 TRUE_KEYS_V2 = TRUE_KEYS_V1 | {"verdict", "score"}
 
-# error 条目核心 7 旧键 + v2 追加 3 键（总在但值可 None）
+# error 条目核心 7 旧键 + v2 追加 4 键（总在但值可 None/-1）
 ERR_BASE_KEYS = ["fragment", "correction", "type", "type_confident",
                  "confidence", "knowledge_point_id", "uncertain"]
-ERR_V2_KEYS = ERR_BASE_KEYS + ["score", "verdict", "construction_diagnostics"]
+ERR_V2_KEYS = ERR_BASE_KEYS + ["score", "verdict", "construction_diagnostics", "offset"]
 
 
 def _mock_ok(router):
@@ -120,7 +120,7 @@ class TestContractShape(ContractBase):
         json.dumps(res, ensure_ascii=False)  # 应静默成功
 
     def test_error_field_whitelist_order_v2(self):
-        """v2 error 条目：7 旧键恒序 + score/verdict/construction_diagnostics（10 键总在）"""
+        """v2 error 条目：7 旧键恒序 + score/verdict/construction_diagnostics/offset（11 键总在）"""
         res = self.router.process("我想买苹果很多。", event_key="c4")
         err = res["errors"][0]["error"]
         self.assertEqual(list(err.keys()), ERR_V2_KEYS)
