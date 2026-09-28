@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # DeepSeek 官方 API（OpenAI 兼容格式）
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
-    DEEPSEEK_MODEL: str = "deepseek-chat"
+    DEEPSEEK_MODEL: str = "deepseek-v4-flash"  # chat 名已于 2026/07/24 弃用，映射 v4-flash 非思考模式
     # 备选：千问 Qwen（DashScope 兼容格式）
     QWEN_API_KEY: str = ""
     QWEN_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"

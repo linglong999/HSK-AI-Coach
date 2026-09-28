@@ -15,11 +15,11 @@ import contextvars
 # B7-A 拍板常量的哨兵位：真实 ①积分锚/一回合几分 上线后回填。
 #   energy_per_1k_input / _output：每 1000 token 折算能量"分"。
 #   哨兵值只保证确定性可测、口径线性，不代表真实定价（上线即替换）。
-# 【2026-09-27 现状核对】DeepSeek 官方价（deepseek-v4-flash / deepseek-chat 兼容名，
-#   chat 名已于 2026/07/24 弃用，映射 v4-flash 非思考模式）：输入 1元/M、输出 2元/M。
+# 【2026-09-27 现状核对】DeepSeek 官方价（deepseek-v4-flash 为当前显式名，chat
+#   兼容名已于 2026/07/24 弃用并映射 v4-flash 非思考模式）：输入 1元/M、输出 2元/M。
 #   → 官方 per-1k = in 0.001 元 / out 0.002 元，in:out = 1:2 与下方哨兵比例一致，故数值保留；
 #   ⚠ 真正待回填的是"1 能量分=多少成本"的积分锚（B7-A 三缺一 ①），属产品定价，
-#   定锚后才能把 energy_per_1k 改为真实成本（届时同时核对模型名是否沿用 chat 兼容名）。
+#   定锚后才能把 energy_per_1k 改为真实成本。
 QUOTA_PARAMS = {
     "energy_per_1k_input": 1.0,
     "energy_per_1k_output": 2.0,

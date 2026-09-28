@@ -825,6 +825,11 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
     _dist = os.path.join(index_dir, "dist")
     if os.path.isdir(_dist):
         root_dir = _dist
+    _index_html = ""
+    _index_path = os.path.join(root_dir, "index.html")
+    if os.path.isfile(_index_path):
+        with open(_index_path, "r", encoding="utf-8") as _f:
+            _index_html = _f.read()
     if os.path.isdir(root_dir):
         app.mount("/", StaticFiles(directory=root_dir, html=True), name="static")
 
@@ -838,6 +843,26 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
         if (path.startswith("/api/") and last.startswith("index.")) or \
            (not path.startswith("/api/") and (last.endswith(".html") or "." not in last)):
             resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        return resp
+
+    # SPA 子页历史回退：前端为 hash 路由（#/speak 等 hash 不到服务器，刷新天然回首页）；
+    # 但书签/分享直链若用无 hash 的 path 直达（如 /speak、/map），GET 且非 /api/ 时会 404。
+    # 这里仅对白名单内的 SPA 视图路径回退到 index.html（与前端 HASH_TO_VIEW 键一致），
+    # 交由前端 hash 路由接管；其余未知路径保持 404（还原服务契约），穿越仍由 StaticFiles 拦截。
+    _SPA_VIEW_PATHS = {
+        # 与前端 App.tsx HASH_TO_VIEW 键一致：书签/直链用无 hash path 直达时回退入口 html
+        "dialog", "map", "review", "report", "doc", "metrics", "help",
+    }
+
+    @app.middleware("http")
+    async def _spa_history_fallback(request: Request, call_next):
+        resp = await call_next(request)
+        if resp.status_code == 404 and request.method == "GET":
+            segs = [s for s in request.url.path.split("/") if s]
+            if (not request.url.path.startswith("/api/") and len(segs) == 1
+                    and segs[0] in _SPA_VIEW_PATHS):
+                resp = HTMLResponse(_index_html, 200)
+                resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         return resp
 
     return app
