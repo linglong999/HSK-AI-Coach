@@ -19,3 +19,25 @@ datasets/hsk30_raw/*.pdf
 .env
 .env.*
 *.egg-info/
+
+# ---- 以下为本轮前端提交前加固：运行数据/密钥/备份/临时产物一律不提交 ----
+# 运行期数据与数据库（含 llm_providers.json 的 API Key、coach.db、graph/ledger 快照）
+data/
+*.db
+*.db-shm
+*.db-wal
+# 备份文件
+*.bak
+*.bak_*
+*.bak*
+*.bak2026-*
+# 下载缓存 / 侦察脚本 / 一次性临时产物
+reports/_cg_download/
+reports/_hj_download/
+reports/_krmanik2025/
+scripts/_*.py
+_probe_a_sse.py
+datasets/eval/_raw_corpus/
+datasets/_yaclc_valid.jsonl
+# 工具链本地产物（实施计划 / 未结构化笔记）
+.claude/
