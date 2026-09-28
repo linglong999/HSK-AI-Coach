@@ -1,3 +1,9 @@
+# 全仓库行尾约定：索引与工作区统一 LF。
+# 本环境 core.autocrlf=true，会让 git 期望工作区为 CRLF，从而把 LF 文件误报为已修改
+# （表现为一批 "would be replaced by CRLF" 的假 M）。gitattributes 优先级高于
+# core.autocrlf，显式声明 eol=lf 后假 M 消失，且不产生任何内容 diff（索引本就全 LF）。
+* text=auto eol=lf
+
 # 行尾确定性：ci.yml 必须保持 LF（GitHub runner 用 bash 执行其 run: 脚本）。
 # 本环境 core.autocrlf=true；用 -text 按"原始字节"存储，杜绝 autocrlf 在编辑时
 # 把 LF 写成 CRLF 进 blob。注：此前 CI 全 job 失败的真因并非 CRLF（各提交 blob
