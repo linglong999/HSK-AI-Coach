@@ -1,0 +1,605 @@
+[
+  {
+    "id": "hsk30-g1-049",
+    "level": 1,
+    "category": "句子的类型",
+    "name": "句类",
+    "desc": "",
+    "grammar": "（3）正反问句",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-050",
+    "level": 1,
+    "category": "句子的类型",
+    "name": "句类",
+    "desc": "",
+    "grammar": "",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-051",
+    "level": 1,
+    "category": "句子的类型",
+    "name": "句类",
+    "desc": "",
+    "grammar": "",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-052",
+    "level": 1,
+    "category": "句子的类型",
+    "name": "特殊句型",
+    "desc": "",
+    "grammar": "表示等同或类属",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-053",
+    "level": 1,
+    "category": "句子的类型",
+    "name": "特殊句型",
+    "desc": "",
+    "grammar": "表示领有",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-054",
+    "level": 1,
+    "category": "句子的类型",
+    "name": "特殊句型",
+    "desc": "",
+    "grammar": "（1）所处+是+名词",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-055",
+    "level": 1,
+    "category": "句子的类型",
+    "name": "特殊句型",
+    "desc": "",
+    "grammar": "（2）处所+有+数量短语+名词",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-056",
+    "level": 1,
+    "category": "句子的类型",
+    "name": "特殊句型",
+    "desc": "",
+    "grammar": "（1）前后动作先后发生，后一动作是前一动作的目的",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-057",
+    "level": 1,
+    "category": "句子的类型",
+    "name": "特殊句型",
+    "desc": "",
+    "grammar": "（2）前一动作是后一动作的方式",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-058",
+    "level": 1,
+    "category": "句子的类型",
+    "name": "特殊句型",
+    "desc": "",
+    "grammar": "主语+动词+宾语1+宾语2",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-059",
+    "level": 1,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-060",
+    "level": 1,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "……，也……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-061",
+    "level": 1,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "……，还……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-062",
+    "level": 1,
+    "category": "动作的态",
+    "name": "",
+    "desc": "",
+    "grammar": "用动态助词“了1”表示",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-063",
+    "level": 1,
+    "category": "动作的态",
+    "name": "",
+    "desc": "",
+    "grammar": "用动态助词“了2”表示",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-064",
+    "level": 1,
+    "category": "动作的态",
+    "name": "",
+    "desc": "",
+    "grammar": "（1）……在/正在+动词",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-065",
+    "level": 1,
+    "category": "动作的态",
+    "name": "",
+    "desc": "",
+    "grammar": "（2）……在/正在+动词……+呢",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-066",
+    "level": 1,
+    "category": "动作的态",
+    "name": "",
+    "desc": "",
+    "grammar": "（3）……呢",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-067",
+    "level": 1,
+    "category": "特殊表达法",
+    "name": "数的表达法",
+    "desc": "",
+    "grammar": "钱数表示法",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-068",
+    "level": 1,
+    "category": "特殊表达法",
+    "name": "数的表达法",
+    "desc": "",
+    "grammar": "序数表达法1：第+数词",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-069",
+    "level": 1,
+    "category": "特殊表达法",
+    "name": "时间表示法",
+    "desc": "",
+    "grammar": "（1）年、月、日、星期表示法",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g1-070",
+    "level": 1,
+    "category": "特殊表达法",
+    "name": "时间表示法",
+    "desc": "",
+    "grammar": "（2）钟点表示法",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-006",
+    "level": 3,
+    "category": "词类",
+    "name": "动词",
+    "desc": "",
+    "grammar": "动补式离合词：离开、完成、分开",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-031",
+    "level": 3,
+    "category": "词类",
+    "name": "助词",
+    "desc": "",
+    "grammar": "的话",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-032",
+    "level": 3,
+    "category": "短语",
+    "name": "结构类型",
+    "desc": "",
+    "grammar": "同位短语",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-035",
+    "level": 3,
+    "category": "短语",
+    "name": "固定短语",
+    "desc": "",
+    "grammar": "不A 不 B",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-042",
+    "level": 3,
+    "category": "短语",
+    "name": "固定短语",
+    "desc": "",
+    "grammar": "一般来说",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-044",
+    "level": 3,
+    "category": "固定格式",
+    "name": "",
+    "desc": "",
+    "grammar": "除了 ……（以外），……还/也/都……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-052",
+    "level": 3,
+    "category": "固定格式",
+    "name": "",
+    "desc": "",
+    "grammar": "该……了",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-068",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "特殊句型",
+    "desc": "",
+    "grammar": "（2）主语+把+宾语1+动词（+给）+宾语2",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-072",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "特殊句型",
+    "desc": "",
+    "grammar": "“着”表示动作的伴随：动词1+着+动词2",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-074",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "特殊句型",
+    "desc": "",
+    "grammar": "（2）A跟B一样",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-075",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "特殊句型",
+    "desc": "",
+    "grammar": "（3）A跟B一样+形容词",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-082",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "先……，再/然后……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-083",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "或者……，或者……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-084",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "一会儿……，一会儿……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-085",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "又……，又……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-086",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "一边……，一边……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-087",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "不但……，而且……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-088",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "虽然……，可是……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-089",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "如果……，就……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-090",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "……的话，就……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-091",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "只有……，才……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-092",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "只要……，就……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-093",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "为了……，……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-094",
+    "level": 3,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "……了……（就）……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-095",
+    "level": 3,
+    "category": "特殊表达法",
+    "name": "数的表达法",
+    "desc": "",
+    "grammar": "概数表达法2：（1）用“大概”表示概数",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g3-096",
+    "level": 3,
+    "category": "特殊表达法",
+    "name": "数的表达法",
+    "desc": "",
+    "grammar": "（2）相邻数词连用表示概数",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-077",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "尽管……，但是/可是……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-078",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "……，然而……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-079",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "……，不过……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-080",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "……X是X，就是/不过……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-081",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "……，否则……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-082",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "要是……，就……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-083",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "要是……，（就）……，否则……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-084",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "不管……，都/也……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-085",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "无论……，都/也……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-086",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "既然……，就……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-087",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "（由于）……，因此……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-088",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "……，好……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-089",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "即使……，也……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-090",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "就是……，也……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-091",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "无标记",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-092",
+    "level": 4,
+    "category": "句子的类型",
+    "name": "复句",
+    "desc": "",
+    "grammar": "不……也……",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-093",
+    "level": 4,
+    "category": "特殊表达法",
+    "name": "数的表示法",
+    "desc": "",
+    "grammar": "概数表示法3：数词+来+量词",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-094",
+    "level": 4,
+    "category": "特殊表达法",
+    "name": "数的表示法",
+    "desc": "",
+    "grammar": "用“大约、左右、前后”表示概数",
+    "example_targets": ""
+  },
+  {
+    "id": "hsk30-g4-095",
+    "level": 4,
+    "category": "特殊表达法",
+    "name": "数的表示法",
+    "desc": "",
+    "grammar": "小数、分数、百分数、倍数的表示法",
+    "example_targets": ""
+  }
+]

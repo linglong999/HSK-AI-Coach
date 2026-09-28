@@ -1,0 +1,2714 @@
+[
+  {
+    "sid": "hsk30-g1-001",
+    "sid_name": "前缀",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-002",
+    "sid_name": "后缀",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-003",
+    "sid_name": "名词",
+    "matches_no7z_id": "1-01",
+    "no7z_label": "方位名词(上/下/里/外/前…)",
+    "via": "score=9",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-004",
+    "sid_name": "动词",
+    "matches_no7z_id": "1-02",
+    "no7z_label": "能愿动词(会/能)",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-005",
+    "sid_name": "动词",
+    "matches_no7z_id": "1-03",
+    "no7z_label": "能愿动词(想/要)",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-006",
+    "sid_name": "动词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-007",
+    "sid_name": "动词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-008",
+    "sid_name": "代词",
+    "matches_no7z_id": "1-04",
+    "no7z_label": "疑问代词(多/多少/几/哪/…)",
+    "via": "score=19",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-009",
+    "sid_name": "代词",
+    "matches_no7z_id": "1-05",
+    "no7z_label": "人称代词(我/你/您/他/她…)",
+    "via": "score=16",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-010",
+    "sid_name": "代词",
+    "matches_no7z_id": "1-06",
+    "no7z_label": "指示代词(这/那/这儿/那儿…)",
+    "via": "score=19",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-011",
+    "sid_name": "数词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-012",
+    "sid_name": "量词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-013",
+    "sid_name": "量词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-014",
+    "sid_name": "量词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-015",
+    "sid_name": "副词",
+    "matches_no7z_id": "1-09",
+    "no7z_label": "程度副词(非常/很/太/真/最)",
+    "via": "score=8",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-016",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-017",
+    "sid_name": "副词",
+    "matches_no7z_id": "1-11",
+    "no7z_label": "时间副词(马上/先/有时/在…)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-018",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-019",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-020",
+    "sid_name": "副词",
+    "matches_no7z_id": "1-14",
+    "no7z_label": "否定副词(另/不/没/没有)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-021",
+    "sid_name": "介词",
+    "matches_no7z_id": "1-16",
+    "no7z_label": "在",
+    "via": "score=4",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-022",
+    "sid_name": "介词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-023",
+    "sid_name": "连词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-024",
+    "sid_name": "助词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-025",
+    "sid_name": "助词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-026",
+    "sid_name": "助词",
+    "matches_no7z_id": "1-22",
+    "no7z_label": "语气助词(吧/了/吗/呢)",
+    "via": "score=4",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-027",
+    "sid_name": "叹词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-028",
+    "sid_name": "结构类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-029",
+    "sid_name": "结构类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-030",
+    "sid_name": "结构类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-031",
+    "sid_name": "结构类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-032",
+    "sid_name": "结构类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-033",
+    "sid_name": "结构类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-034",
+    "sid_name": "结构类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-035",
+    "sid_name": "主语",
+    "matches_no7z_id": "1-24",
+    "no7z_label": "名词、代词或名词性短语作主语",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-036",
+    "sid_name": "谓语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-037",
+    "sid_name": "谓语",
+    "matches_no7z_id": "1-25",
+    "no7z_label": "动词或动词性短语、形容词或…",
+    "via": "score=7",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-038",
+    "sid_name": "宾语",
+    "matches_no7z_id": "1-26",
+    "no7z_label": "名词、代词或名词性短语作宾语",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-039",
+    "sid_name": "定语",
+    "matches_no7z_id": "1-27",
+    "no7z_label": "名词性词语、形容词性词语、…",
+    "via": "score=7",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-040",
+    "sid_name": "状语",
+    "matches_no7z_id": "1-28",
+    "no7z_label": "副词、形容词作状语；表示时…",
+    "via": "score=7",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-041",
+    "sid_name": "补语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-042",
+    "sid_name": "句型",
+    "matches_no7z_id": "1-29",
+    "no7z_label": "主谓句1(动词谓语句)",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-043",
+    "sid_name": "句型",
+    "matches_no7z_id": "1-30",
+    "no7z_label": "主谓句2(形容词谓语句)",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-044",
+    "sid_name": "句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-045",
+    "sid_name": "句型",
+    "matches_no7z_id": "1-31",
+    "no7z_label": "非主谓句",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-046",
+    "sid_name": "句类",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-047",
+    "sid_name": "句类",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-048",
+    "sid_name": "句类",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-049",
+    "sid_name": "句类",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-050",
+    "sid_name": "句类",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-051",
+    "sid_name": "句类",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-052",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-053",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-054",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-055",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-056",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-057",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-058",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-059",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-060",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-061",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-062",
+    "sid_name": "",
+    "matches_no7z_id": "1-40",
+    "no7z_label": "变化态(用动态助词“了”表示)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-063",
+    "sid_name": "",
+    "matches_no7z_id": "1-41",
+    "no7z_label": "完成态(用动态助词“了”表示)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g1-064",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-065",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-066",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-067",
+    "sid_name": "数的表达法",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-068",
+    "sid_name": "数的表达法",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-069",
+    "sid_name": "时间表示法",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g1-070",
+    "sid_name": "时间表示法",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-001",
+    "sid_name": "后缀",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-002",
+    "sid_name": "名词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-003",
+    "sid_name": "动词",
+    "matches_no7z_id": "2-04",
+    "no7z_label": "动词重叠(AA/A一A/A了…)",
+    "via": "score=11",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-004",
+    "sid_name": "动词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-005",
+    "sid_name": "动词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-006",
+    "sid_name": "代词",
+    "matches_no7z_id": "2-05",
+    "no7z_label": "疑问代词(多久/为什么/怎么…)",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-007",
+    "sid_name": "代词",
+    "matches_no7z_id": "2-06",
+    "no7z_label": "人称代词(别人/大家/它/它…)",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-008",
+    "sid_name": "代词",
+    "matches_no7z_id": "2-07",
+    "no7z_label": "指示代词(那么/那样/这么/…)",
+    "via": "score=11",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-009",
+    "sid_name": "形容词",
+    "matches_no7z_id": "2-08",
+    "no7z_label": "形容词重叠(AA/AABB)",
+    "via": "score=7",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-010",
+    "sid_name": "数词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-011",
+    "sid_name": "量词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-012",
+    "sid_name": "量词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-013",
+    "sid_name": "量词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-014",
+    "sid_name": "副词",
+    "matches_no7z_id": "2-13",
+    "no7z_label": "程度副词(多/多么/好/更/…)",
+    "via": "score=2",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-015",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-016",
+    "sid_name": "副词",
+    "matches_no7z_id": "2-81",
+    "no7z_label": "要/快要/就要⋯⋯了",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-017",
+    "sid_name": "副词",
+    "matches_no7z_id": "2-16",
+    "no7z_label": "频率、重复副词(重新/经常/老/老…)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-018",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-019",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-020",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-021",
+    "sid_name": "介词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-022",
+    "sid_name": "介词",
+    "matches_no7z_id": "2-22",
+    "no7z_label": "往",
+    "via": "score=4",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-023",
+    "sid_name": "介词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-024",
+    "sid_name": "介词",
+    "matches_no7z_id": "2-26",
+    "no7z_label": "给",
+    "via": "score=4",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-025",
+    "sid_name": "介词",
+    "matches_no7z_id": "2-58",
+    "no7z_label": "比较句2",
+    "via": "score=4",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-026",
+    "sid_name": "介词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-027",
+    "sid_name": "介词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-028",
+    "sid_name": "连词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-029",
+    "sid_name": "连词",
+    "matches_no7z_id": "2-30",
+    "no7z_label": "连接分句或句子(不过/但/但是/而…)",
+    "via": "score=6",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-030",
+    "sid_name": "助词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-031",
+    "sid_name": "助词",
+    "matches_no7z_id": "2-32",
+    "no7z_label": "动态助词(过)",
+    "via": "score=4",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-032",
+    "sid_name": "助词",
+    "matches_no7z_id": "2-33",
+    "no7z_label": "动态助词(着)",
+    "via": "score=4",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-033",
+    "sid_name": "助词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-034",
+    "sid_name": "结构类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-035",
+    "sid_name": "结构类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-036",
+    "sid_name": "结构类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-037",
+    "sid_name": "结构类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-038",
+    "sid_name": "功能类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-039",
+    "sid_name": "功能类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-040",
+    "sid_name": "功能类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-041",
+    "sid_name": "固定短语",
+    "matches_no7z_id": "2-43",
+    "no7z_label": "什么的",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-042",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-043",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-044",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-045",
+    "sid_name": "主语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-046",
+    "sid_name": "谓语",
+    "matches_no7z_id": "2-48",
+    "no7z_label": "名词、代词、数词或数量短语…",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-047",
+    "sid_name": "定语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-048",
+    "sid_name": "补语",
+    "matches_no7z_id": "2-49",
+    "no7z_label": "结果补语1(动词+错/懂/干净…)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-049",
+    "sid_name": "补语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-050",
+    "sid_name": "补语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-051",
+    "sid_name": "补语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-052",
+    "sid_name": "补语",
+    "matches_no7z_id": "2-51",
+    "no7z_label": "状态补语1(动词+得+形容词性…)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-053",
+    "sid_name": "补语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-054",
+    "sid_name": "补语",
+    "matches_no7z_id": "2-53",
+    "no7z_label": "数量补语2(形容词+数量补语)",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-055",
+    "sid_name": "句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-056",
+    "sid_name": "句类",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-057",
+    "sid_name": "句类",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-058",
+    "sid_name": "特殊句式",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-059",
+    "sid_name": "特殊句式",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-060",
+    "sid_name": "特殊句式",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-061",
+    "sid_name": "特殊句式",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-062",
+    "sid_name": "特殊句式",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-063",
+    "sid_name": "特殊句式",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-064",
+    "sid_name": "特殊句式",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-065",
+    "sid_name": "特殊句式",
+    "matches_no7z_id": "2-60",
+    "no7z_label": "“是⋯⋯的”句1(强调时间/地点/方…)",
+    "via": "score=11",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-066",
+    "sid_name": "特殊句式",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-067",
+    "sid_name": "特殊句式",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-068",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-069",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-070",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-071",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-072",
+    "sid_name": "",
+    "matches_no7z_id": "2-70",
+    "no7z_label": "持续态(动词+着)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-073",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-074",
+    "sid_name": "",
+    "matches_no7z_id": "2-71",
+    "no7z_label": "经历态(用动态助词“过”表示)",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g2-075",
+    "sid_name": "数的表达法",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-076",
+    "sid_name": "数的表达法",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-077",
+    "sid_name": "数的表达法",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g2-078",
+    "sid_name": "数的表达法",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-001",
+    "sid_name": "前缀",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-002",
+    "sid_name": "后缀",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-003",
+    "sid_name": "名词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-004",
+    "sid_name": "动词",
+    "matches_no7z_id": "3-04",
+    "no7z_label": "能愿动词(需要)",
+    "via": "score=2",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-005",
+    "sid_name": "动词",
+    "matches_no7z_id": "3-05",
+    "no7z_label": "动宾式离合词(帮忙/点头/放假/…)",
+    "via": "score=9",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-006",
+    "sid_name": "动词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-007",
+    "sid_name": "代词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-008",
+    "sid_name": "代词",
+    "matches_no7z_id": "3-07",
+    "no7z_label": "疑问代词的非疑问用法",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-009",
+    "sid_name": "代词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-010",
+    "sid_name": "代词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-011",
+    "sid_name": "代词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "REJECTED_BLACKLIST",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-012",
+    "sid_name": "量词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-013",
+    "sid_name": "量词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-014",
+    "sid_name": "量词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-015",
+    "sid_name": "量词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-016",
+    "sid_name": "副词",
+    "matches_no7z_id": "3-12",
+    "no7z_label": "程度副词(比较/更加，还/相当)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-017",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-018",
+    "sid_name": "副词",
+    "matches_no7z_id": "3-61",
+    "no7z_label": "一会儿⋯⋯，一会儿⋯⋯",
+    "via": "score=2",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-019",
+    "sid_name": "副词",
+    "matches_no7z_id": "3-15",
+    "no7z_label": "频率、重复副词(通常/往往/总/总是)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-020",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-021",
+    "sid_name": "副词",
+    "matches_no7z_id": "3-18",
+    "no7z_label": "情态副词(大概/恐怕)",
+    "via": "score=2",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-022",
+    "sid_name": "副词",
+    "matches_no7z_id": "3-19",
+    "no7z_label": "语气副词(白/并/当然/到底…)",
+    "via": "score=6",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-023",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-024",
+    "sid_name": "介词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-025",
+    "sid_name": "介词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-026",
+    "sid_name": "介词",
+    "matches_no7z_id": "3-26",
+    "no7z_label": "为了",
+    "via": "score=2",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-027",
+    "sid_name": "介词",
+    "matches_no7z_id": "3-27",
+    "no7z_label": "把、被、叫、让",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-028",
+    "sid_name": "介词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-029",
+    "sid_name": "连词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-030",
+    "sid_name": "连词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "REJECTED_BLACKLIST",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-031",
+    "sid_name": "助词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-032",
+    "sid_name": "结构类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-033",
+    "sid_name": "结构类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-034",
+    "sid_name": "结构类型",
+    "matches_no7z_id": "3-33",
+    "no7z_label": "数量重叠(数词+量词+数词+…)",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-035",
+    "sid_name": "固定短语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-036",
+    "sid_name": "固定短语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-037",
+    "sid_name": "固定短语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-038",
+    "sid_name": "固定短语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-039",
+    "sid_name": "固定短语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-040",
+    "sid_name": "固定短语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-041",
+    "sid_name": "固定短语",
+    "matches_no7z_id": "3-36",
+    "no7z_label": "看上去",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-042",
+    "sid_name": "固定短语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-043",
+    "sid_name": "固定短语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-044",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-045",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-046",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-047",
+    "sid_name": "",
+    "matches_no7z_id": "3-41",
+    "no7z_label": "一……也/都+不/没⋯⋯",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-048",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-049",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-050",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-051",
+    "sid_name": "",
+    "matches_no7z_id": "3-81",
+    "no7z_label": "X什么（啊）",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-052",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-053",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-054",
+    "sid_name": "主语",
+    "matches_no7z_id": "3-43",
+    "no7z_label": "动词或动词性短语、形容词或…",
+    "via": "score=7",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-055",
+    "sid_name": "主语",
+    "matches_no7z_id": "3-45",
+    "no7z_label": "动词或动词性短语、主谓短语…",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-056",
+    "sid_name": "定语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-057",
+    "sid_name": "补语",
+    "matches_no7z_id": "3-46",
+    "no7z_label": "结果补语2(动词+到/住/走)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-058",
+    "sid_name": "补语",
+    "matches_no7z_id": "3-47",
+    "no7z_label": "趋向补语2",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-059",
+    "sid_name": "补语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-060",
+    "sid_name": "补语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-061",
+    "sid_name": "补语",
+    "matches_no7z_id": "3-48",
+    "no7z_label": "可能补语1(动词+得/不+动词…)",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-062",
+    "sid_name": "补语",
+    "matches_no7z_id": "3-49",
+    "no7z_label": "程度补语1(形容词/心理动词+…)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-063",
+    "sid_name": "补语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-064",
+    "sid_name": "补语",
+    "matches_no7z_id": "3-51",
+    "no7z_label": "数量补语4（动词+时量补语）(表示动作持续的时间)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-065",
+    "sid_name": "句类",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-066",
+    "sid_name": "句类",
+    "matches_no7z_id": "3-76",
+    "no7z_label": "用反问句表示强调",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-067",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": "3-55",
+    "no7z_label": "被动句1(主语+被/叫/让+…)",
+    "via": "score=3",
+    "count": 1
+  },
+  {
+    "sid": "hsk30-g3-068",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-069",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-070",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-071",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-072",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-073",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-074",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-075",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-076",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-077",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-078",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-079",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-080",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-081",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": "3-59",
+    "no7z_label": "重动词(主语+动词+宾语+…)",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g3-082",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-083",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-084",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-085",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-086",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-087",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-088",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-089",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-090",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-091",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-092",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-093",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-094",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-095",
+    "sid_name": "数的表达法",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g3-096",
+    "sid_name": "数的表达法",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-001",
+    "sid_name": "动词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-002",
+    "sid_name": "代词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-003",
+    "sid_name": "量词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-004",
+    "sid_name": "量词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-005",
+    "sid_name": "量词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-006",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-007",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-008",
+    "sid_name": "副词",
+    "matches_no7z_id": "4-07",
+    "no7z_label": "时间副词(按时/即将/急忙/…)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-009",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-010",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-011",
+    "sid_name": "副词",
+    "matches_no7z_id": "4-09",
+    "no7z_label": "关联副词(却)",
+    "via": "score=4",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-012",
+    "sid_name": "副词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-013",
+    "sid_name": "副词",
+    "matches_no7z_id": "4-12",
+    "no7z_label": "语气副词(的确/反而/竟然/…)",
+    "via": "score=4",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-014",
+    "sid_name": "介词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-015",
+    "sid_name": "介词",
+    "matches_no7z_id": "4-75",
+    "no7z_label": "让/叫你X你就X",
+    "via": "score=2",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-016",
+    "sid_name": "介词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-017",
+    "sid_name": "介词",
+    "matches_no7z_id": "4-14",
+    "no7z_label": "对于",
+    "via": "score=2",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-018",
+    "sid_name": "介词",
+    "matches_no7z_id": "4-18",
+    "no7z_label": "作为",
+    "via": "score=2",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-019",
+    "sid_name": "连词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-020",
+    "sid_name": "连词",
+    "matches_no7z_id": "4-20",
+    "no7z_label": "连接分句或句子(此外/而/而是/既…)",
+    "via": "score=6",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-021",
+    "sid_name": "连词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-022",
+    "sid_name": "助词",
+    "matches_no7z_id": "4-72",
+    "no7z_label": "X就是了",
+    "via": "score=2",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-023",
+    "sid_name": "叹词",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-024",
+    "sid_name": "结构类型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-025",
+    "sid_name": "固定短语",
+    "matches_no7z_id": "4-24",
+    "no7z_label": "一A一B",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-026",
+    "sid_name": "固定短语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-027",
+    "sid_name": "固定短语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-028",
+    "sid_name": "固定短语",
+    "matches_no7z_id": "4-26",
+    "no7z_label": "来得及/来不及",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-029",
+    "sid_name": "固定短语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-030",
+    "sid_name": "固定短语",
+    "matches_no7z_id": "4-27",
+    "no7z_label": "说不定",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-031",
+    "sid_name": "固定短语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-032",
+    "sid_name": "固定短语",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-033",
+    "sid_name": "",
+    "matches_no7z_id": "4-65",
+    "no7z_label": "用“一+量词（+名词）+也…",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-034",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-035",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-036",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-037",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-038",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-039",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-040",
+    "sid_name": "",
+    "matches_no7z_id": "4-68",
+    "no7z_label": "动词+一X是一X",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-041",
+    "sid_name": "",
+    "matches_no7z_id": "4-69",
+    "no7z_label": "（没）有什么（好）X的",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-042",
+    "sid_name": "",
+    "matches_no7z_id": "4-70",
+    "no7z_label": "X是X，Y是Y",
+    "via": "score=7",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-043",
+    "sid_name": "",
+    "matches_no7z_id": "4-71",
+    "no7z_label": "X也得X，不X也得X",
+    "via": "score=7",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-044",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-045",
+    "sid_name": "",
+    "matches_no7z_id": "4-73",
+    "no7z_label": "还X呢",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-046",
+    "sid_name": "",
+    "matches_no7z_id": "4-74",
+    "no7z_label": "你X你的吧",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-047",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-048",
+    "sid_name": "",
+    "matches_no7z_id": "4-76",
+    "no7z_label": "说什么/怎么（着）也得X",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-049",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-050",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-051",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-052",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-053",
+    "sid_name": "句类",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-054",
+    "sid_name": "句类",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-055",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-056",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": "4-39",
+    "no7z_label": "被动句2(主语+被+动词+其…)",
+    "via": "score=3",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-057",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-058",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-059",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-060",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-061",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-062",
+    "sid_name": "特殊句型",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-063",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-064",
+    "sid_name": "",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-065",
+    "sid_name": "",
+    "matches_no7z_id": "4-64",
+    "no7z_label": "用双重否定表示强调",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-066",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-067",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-068",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-069",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-070",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-071",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-072",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-073",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-074",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-075",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-076",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-077",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-078",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-079",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-080",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-081",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-082",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-083",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-084",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-085",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-086",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-087",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-088",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-089",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-090",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-091",
+    "sid_name": "复句",
+    "matches_no7z_id": "4-59",
+    "no7z_label": "无标记",
+    "via": "score=5",
+    "count": 2
+  },
+  {
+    "sid": "hsk30-g4-092",
+    "sid_name": "复句",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-093",
+    "sid_name": "数的表示法",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-094",
+    "sid_name": "数的表示法",
+    "matches_no7z_id": null,
+    "no7z_label": null,
+    "via": "NO_MATCH",
+    "count": 0
+  },
+  {
+    "sid": "hsk30-g4-095",
+    "sid_name": "数的表示法",
+    "matches_no7z_id": "4-62",
+    "no7z_label": "小数、分数、百分数、倍数的…",
+    "via": "score=11",
+    "count": 2
+  }
+]
