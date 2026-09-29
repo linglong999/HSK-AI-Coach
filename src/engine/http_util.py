@@ -1,7 +1,7 @@
 """HTTP 层横切传输工具（serve.py 下沉）。
 
 只做纯 HTTP 传输，不碰业务状态：
-- send_json：写 JSON 响应 + CORS + 可选游客 vid cookie（P0.10）
+- send_json：写 JSON 响应 + 可选游客 vid cookie（P0.10）
 - send_error_json：统一异常包装（保留 traceback 于日志，响应只返 message）
 - send_static：web/ 静态托管，含路径穿越防护 + no-store
 
@@ -13,12 +13,11 @@ import os
 
 
 def send_json(h, obj, status=200):
-    """写 JSON 响应。访问见 **Allow-Origin: ***（本地开发，不做鉴权）。"""
+    """写 JSON 响应；跨域策略由当前 FastAPI 应用统一处理。"""
     body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
     h.send_response(status)
     h.send_header("Content-Type", "application/json; charset=utf-8")
     h.send_header("Content-Length", str(len(body)))
-    h.send_header("Access-Control-Allow-Origin", "*")
     # P0.10 游客 vid 下发（dialog 闸门暂存）
     vid_cookie = getattr(h, "_vid_cookie", None)
     if vid_cookie:

@@ -68,16 +68,16 @@ class FileCoach:
                 try:
                     expl = self.explainer.explain(
                         err, user_level=self.user_level, native_lang=self.native_lang)
-                except Exception as e:
-                    expl = {"_degraded": True, "explanation": f"讲解降级: {e}"}
+                except Exception:
+                    expl = {"_degraded": True, "explanation": "讲解降级"}
                 gwrite = None
                 if commit_graph:
                     try:
                         gwrite = self.graph.ingest_error(
                             {**err, "sentence": ctx},
                             f"{event_key or selection}#file{i}")
-                    except Exception as e:
-                        gwrite = {"status": f"write_failed:{e}"}
+                    except Exception:
+                        gwrite = {"status": "write_failed"}
                 result["errors"].append({"error": err, "explanation": expl,
                                          "graph_write": gwrite})
         else:

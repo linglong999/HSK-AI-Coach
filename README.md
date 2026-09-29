@@ -7,11 +7,11 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License: MIT"/></a>
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11"/>
-  <img src="https://img.shields.io/badge/deps-2%20runtime%20deps-4C9A2F?style=flat-square" alt="运行时依赖：requests + python-dotenv"/>
-  <img src="https://img.shields.io/badge/tests-640%20passed-brightgreen?style=flat-square" alt="640 tests"/>
+  <img src="https://img.shields.io/badge/deps-9%20runtime%20deps-4C9A2F?style=flat-square" alt="运行时依赖：见 pyproject.toml"/>
+  <img src="https://img.shields.io/badge/tests-regression%20gate-brightgreen?style=flat-square" alt="pytest 与 deterministic regression gate"/>
   <img src="https://img.shields.io/badge/LLM-DeepSeek%20%E7%AD%89%20OpenAI%20%E5%85%BC%E5%AE%B9-FF6B35?style=flat-square" alt="LLM providers"/>
   <img src="https://img.shields.io/badge/OCR-RapidOCR-4F8EF7?style=flat-square" alt="OCR: RapidOCR"/>
-  <img src="https://img.shields.io/badge/UI-0%20frontend%20deps-8E6BF3?style=flat-square" alt="UI: 原生单页"/>
+  <img src="https://img.shields.io/badge/UI-React%2018%20%2B%20Vite-8E6BF3?style=flat-square" alt="UI: React 18 + Vite + TypeScript"/>
 </p>
 <p align="center">
   <a href="#-快速开始">快速开始</a> · <a href="#-核心能力">核心能力</a> · <a href="#-效果核验">效果核验</a> · <a href="#-架构">架构</a>
@@ -22,13 +22,13 @@
 ## 📌 近期更新
 - **2026-09 · P0.7 OCR+RAG** — 接入 RapidOCR（本地推理、零 API 费），图片/PDF 一键转文本进纠错链；OCR 校正语料沉淀进检索索引，`RAG 回答带来源`。首轮真实引擎实测采集 68 组汉字误读对。
 - **2026-09 · 效果度量与数据闭环** — 新增 `engine/metrics.py` + 度量面板（续学率/通关率/满意度等 4 指标带口径文档），对话结束 1–5 星评分自动回写，指标随使用自动更新。
-- **2026-09 · 免费访客闸门 + BYOK** — 未配 Key 的游客额度闸门（并发安全、跨天重置）；界面内直接加任意 OpenAI 兼容供应商并免重启切换。
+- **2026-09 · 免费访客闸门 + BYOK** — 未配 Key 的游客额度闸门（并发安全、跨天重置）；界面内添加符合 URL 安全策略的 OpenAI 兼容供应商并免重启切换。
 - **2026-09 · 习得伙伴转向** — L1 母语迁移归因、生活场景对话、介入时机三档 + 个性化，从"纠错引擎"转向"让人愿意开口的陪练"。
 
 ## 📖 项目简介
 **HSK-AI-Coach** 是一个开源的 AI 中文学习陪练：输入一句中文或一段对话，它告诉你**错在哪、为什么错、该怎么说**，并把每次纠正沉淀进一张偏误图谱，过段时间主动拉你复习。核心闭环一句话：**偏误检测 → 讲清原因 → 让学习者自己复述检验 → 沉淀进复习计划**。设计原则是"能交流就不打断，卡住才出手"。
 
-运行时依赖极简：仅 `requests` + `python-dotenv` 两个成熟库（LLM HTTP 含流式 / .env 加载），事件账本与会话记忆用标准库 SQLite（`data/coach.db`）；每个能力都配可复跑的黄金评测集与真实模型实跑，不是"感觉效果不错"。
+Python 运行时依赖以 `pyproject.toml` 为准（当前 9 个直接依赖，包含 `FastAPI`、`uvicorn`、`pydantic`、`fsrs`、`openai` 等）；事件账本与会话记忆用标准库 SQLite（`data/coach.db`）。前端位于 `web/`，使用 React 18、Vite 与 TypeScript。每个能力都配可复跑的黄金评测集与真实模型实跑，不是"感觉效果不错"。
 
 ### ✨ 核心亮点
 - **偏误识别做到"宁可漏判，不误报"** — 干净句误报确定性护栏压到 **0%**
@@ -37,11 +37,11 @@
 - **介入时机三档（none/light/block）** — 流利时静默记录，卡壳/求助才出手，打断上限服务端强制
 - **教学语言分层** — 英文脚手架讲规则，中文载体装例句与词汇
 - **图片/文档直接进闭环** — RapidOCR 把照片/PDF 转文本，交给同一纠错链
-- **零配置跑通 + BYOK** — 未配 Key 有访客额度，界面内加任意 OpenAI 兼容供应商
+- **零配置跑通 + BYOK** — 未配 Key 有访客额度；界面内可添加外部 HTTPS 供应商，本机 Ollama 须显式开启；Windows 下 UI Key 由当前用户 DPAPI 加密，`.env` 仍为明文，见 [`SECURITY.md`](SECURITY.md)
 
 ## 🚀 快速开始
 ### 环境要求
-- **Python** >= 3.11（运行时依赖 `requests` + `python-dotenv`；用 `uv` 一键装齐：`uv sync`）
+- **Python** >= 3.10（CI 当前使用 3.11；用 `uv` 一键装齐运行时与 dev 依赖：`uv sync`）
 - **一个 LLM API Key**（默认 DeepSeek；不配 Key 也能跑确定性纠错 / 冒烟测试）
 
 ### 1. 克隆 & 配置
@@ -56,7 +56,9 @@ cp .env.example .env          # 填入 DEEPSEEK_API_KEY（https://platform.deeps
 uv run pytest tests -q       # dev 依赖 pytest；全 mock、免 Key、不花钱
 ```
 
-**640 项测试全部 PASS**（识别/讲解/图谱/复习调度/降级兜底/前端服务层/技能化/度量…；OCR 端到端在缺本地例外依赖时自动 skip）。
+最近一次全量验证的日期、数量和命令统一记录在 [`EVALUATION.md`](EVALUATION.md)，不把会随新增测试变化的数字硬编码在 README。测试覆盖识别/讲解/图谱/复习调度/降级兜底/前端服务层/技能化/度量；OCR 端到端在缺本地例外依赖时自动 skip。
+
+确定性教学评测另行运行：`uv run python -m datasets.eval.run_all --layer deterministic`。该门禁强制离线、不得创建模型连接，也不得读写真实用户图谱；真实模型语义评测属于 nightly/`llm_judge` 层。
 
 ### 3. 命令行跑两种用法
 ```bash
@@ -72,7 +74,7 @@ python -m examples.demo_file
 python -m engine.serve          # 浏览器打开 http://127.0.0.1:8612
 hsk-coach                       # 等价 CLI 入口（可编辑安装后可用）
 ```
-轻依赖 HTTP 服务（标准库 http.server + 原生 JS+SVG 单页）。左侧对话流呈现「偏误卡 → 讲解卡 → 学习成果卡」，侧栏进入「◈ 认知地图」看掌握度 × HSK 分布与复习队列。自由对话（`/api/dialog`）需配置 LLM Key，未配置时前端如实报错并给配置步骤（不静默降级）；仅用确定性纠错（`/api/process`）可不配 Key。
+HTTP 服务由 FastAPI + uvicorn 提供；生产前端构建产物来自 `web/` 的 React/Vite/TypeScript 应用。左侧对话流呈现「偏误卡 → 讲解卡 → 学习成果卡」，侧栏进入「◈ 认知地图」看掌握度 × HSK 分布与复习队列。自由对话（`/api/dialog`）需配置 LLM Key，未配置时前端如实报错并给配置步骤（不静默降级）；仅用确定性纠错（`/api/process`）可不配 Key。
 
 ### 5.（可选）本地 OCR
 图片/PDF 需要装例外依赖 `rapidocr_onnxruntime + pymupdf`；未安装时自动降级为"不解析图片"，不影响其它功能。
@@ -87,17 +89,13 @@ hsk-coach                       # 等价 CLI 入口（可编辑安装后可用�
 | 对话练习 | 自由聊天，或选一个场景卡（咖啡厅/问路…） | 边聊边静默记录，卡壳/求助时才纠 |
 | 复习提醒 | — | 按图谱待复习队列（到期/高优），过段时间主动提醒 |
 
-## 📊 效果核验（可复现）
-| 能力 | 关键指标 | 值 |
-|---|---:|---:|
-| 偏误识别（45 句黄金集） | F1 / 精确 / 召回 | **0.97 / 100% / 94.12%** |
-| | 干净句误报 / 对抗过度纠正 | **0% / 0** |
-| 文件讲解（41 条） | 偏误分流正确率 | **94.1%** |
-| 复述验证（60 条） | 判定一致性 / 通过准确率 | **88.2% / 94.4%** |
-| 图谱数据层 | 幂等/单调性/写接口 | **18/18 PASS** |
-| 自由对话（两轮真实实跑） | 技能轨迹命中 / 评估合格率 | **80–86.7% / 93.3–100%** |
+## 📊 效果核验与证据边界
 
-以上数字可由根目录评测脚本复跑（自由对话用 `python -m eval.run_eval_agent`，无 Key 时 `--mock --no-judge` 跑过程判据），逐轮"假设→改动→指标"记录见 [`datasets/eval/多轮实验记录_3.6.md`](datasets/eval/多轮实验记录_3.6.md)。
+截至 2026-09-29，本次已复跑的证据包括 `python -m pytest tests -q` 和 `python -m datasets.eval.run_all --layer deterministic`；后者 tutor 样例 **27/27**，其余五个确定性套件全部 PASS。最新代码回归数量见 [`EVALUATION.md`](EVALUATION.md)。前者是代码回归，后者是离线规则/语料门禁；都不是学习增益实验。
+
+历史识别报告使用 36 句自建黄金集（偏误 17 + clean 19），记录混池 F1 **0.970**、精确率 **1.000**、召回率 **0.941**；该结果来自旧版 `datasets/eval/eval_results.json` 离线重算，分集样本数与置信区间见 [`datasets/eval/eval_transparency.md`](datasets/eval/eval_transparency.md)。本次没有重跑真实模型识别评测，因此不把历史数字标为当前模型性能。标注是作者 self-review，未经二语教师仲裁。
+
+文件讲解、复述验证、自由对话等历史实验数字与过程记录见 [`datasets/eval/多轮实验记录_3.6.md`](datasets/eval/多轮实验记录_3.6.md)；供应商、模型和样本口径尚未统一复核，不在 README 作为当前成绩发布。各类证据的命令和可证明范围见 [`EVALUATION.md`](EVALUATION.md)。
 
 ## 🏗️ 架构
 ```
@@ -136,12 +134,13 @@ HSK-AI-Coach/
 │   ├── persona.py + scenario.py + intervention.py + graph/error_graph.py
 ├── web/index.html / metrics.html   前端壳（对话画布 + 认知地图 + 度量面板）
 ├── datasets/  knowledge_points / lexicon / 考纲 / OCR 校正 / 设计稿与评测脚本
-├── tests/                    640 个测试（免 Key 全 mock，pytest 驱动）
+├── tests/                    pytest 测试（免 Key 全 mock；最新结果见 EVALUATION.md）
 └── examples/                 命令行 demo
 ```
 
 ## 📚 数据与语料来源
-- 黄金评测集（45 句 / 复述 60 条）为自建，偏误样本为作者自审（self-review）标注，尚未经二语教师仲裁（见 `datasets/eval/README.md` 诚实声明）；复述验证集取材自 [MuCGEC](https://github.com/HillZhang1999/MuCGEC)（NAACL 2022）与 CGED（HSK 动态作文语料库）
+- 黄金识别评测集共 36 句（偏误 17 + clean 19），为自建样本；标注为作者 self-review，尚未经二语教师仲裁（见 `datasets/eval/README.md` 诚实声明）。历史指标来源、分集样本量、置信区间和计算方法见 [`datasets/eval/eval_transparency.md`](datasets/eval/eval_transparency.md)；不得把旧版识别数字当作 2026-09-29 当前模型结果或外部泛化性能
+- 复述验证集共 60 条，取材自 [MuCGEC](https://github.com/HillZhang1999/MuCGEC)（NAACL 2022）与 CGED（HSK 动态作文语料库）
 - 第三方原始语料不随仓库分发（见 `.gitignore`），版权归原作者，引擎内置的是**转换后**产物；词表真源已迁 **2025《HSK 考试大纲》3.0**（B8）：`datasets/lexicon_hsk3_2025.json` 由 `datasets/convert_lexicon_3.py` 取 [krmanik/HSK-3.0](https://github.com/krmanik/HSK-3.0) 2025 版 1-4 级词/认读字/书写字 txt 转换（词~1978、认读 1096、书写 400），**CC BY-SA 4.0**，并经 [elkmovie/hsk30](https://github.com/elkmovie/hsk30)（MIT）交叉核对；原 `lexicon_hsk1_4.json`（《GF0025-2021》，word 3208）**保留并行**供对照/滚回
 - 考纲语法点取自开源 HSK-3.0 数据，经人工审核转正并标注依赖边；OCR 校正语料来自真实引擎实测（RapidOCR 逐字扫 HSK30 认读字表）
 

@@ -34,7 +34,9 @@
 
 import argparse
 import base64
+import ipaddress
 import json
+import logging
 import os
 import secrets
 import threading
@@ -42,17 +44,23 @@ import time
 
 import anyio
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
+from urllib.parse import urlsplit
 
 from engine.dialog_service import DialogService
+from engine.ops_metrics import OpsMetrics
 from engine.invite import (OPENID_COOKIE, check_openid, parse_allowlist)  # B7 S5 邀请守卫
 from engine.visitor_gate import COOKIE_NAME, VisitorGate  # P0.10 游客配额闸门
 from engine.router import Router
 
 from config.paths import PROJECT_ROOT as _PROJECT_ROOT
 from config import settings as _cfg_settings  # B7 S5：读邀请白名单（测试 patch config.settings.X）
+
+
+_ops_logger = logging.getLogger("uvicorn.error")
 
 
 # 前端壳静态目录：serve.py 位于 engine/，前端壳在项目根前端/ 或 web/
@@ -123,11 +131,30 @@ def _extract_vid(request: Request, payload: dict, gate) -> tuple:
 
 
 def _json(obj, status=200, vid_cookie=None):
-    """保 send_json 语义：CORS 头 + 可选游客 vid cookie（P0.10）。"""
-    headers = {"Access-Control-Allow-Origin": "*"}
+    """写 JSON 响应；跨域来源由应用级 CORS allowlist 统一处理。"""
+    headers = {}
     if vid_cookie:
         headers["Set-Cookie"] = vid_cookie
     return JSONResponse(obj, status_code=status, headers=headers)
+
+
+def _is_allowed_write_origin(request: Request, cors_origins: list[str]) -> bool:
+    """阻断浏览器从恶意网页向本机 API 发起跨站写入；无 Origin 的 CLI 请求保持可用。"""
+    origin = request.headers.get("origin")
+    if not origin:
+        return request.headers.get("sec-fetch-site", "").lower() != "cross-site"
+    parsed = urlsplit(origin)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.path or parsed.query or parsed.fragment:
+        return False
+    if origin in cors_origins:
+        return True
+    host = request.headers.get("host", "")
+    try:
+        request_host = urlsplit(f"http://{host}").hostname
+    except ValueError:
+        return False
+    return bool(request_host and _is_loopback_host(request_host)
+                and origin == f"{request.url.scheme}://{host}")
 
 
 def _request_open_id(request: Request):
@@ -211,6 +238,40 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
     _legacy_dir = legacy_dir or os.path.join(_PROJECT_ROOT, "web_legacy")
 
     app = FastAPI()
+    ops_metrics = OpsMetrics()
+    cors_origins = [origin.strip() for origin in
+                    getattr(_cfg_settings, "CORS_ALLOW_ORIGINS", "").split(",")
+                    if origin.strip()]
+    if "*" in cors_origins:
+        raise ValueError("CORS_ALLOW_ORIGINS 不允许通配符 *")
+    if cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_methods=["GET", "POST", "DELETE"],
+            allow_headers=["Content-Type"],
+            allow_credentials=False,
+        )
+
+    @app.middleware("http")
+    async def _reject_non_loopback_host(request: Request, call_next):
+        """防 DNS 重绑定把恶意域名解析到本机后读取 /api/* 数据。"""
+        host = request.headers.get("host", "")
+        try:
+            hostname = urlsplit(f"http://{host}").hostname
+        except ValueError:
+            hostname = None
+        if not hostname or not _is_loopback_host(hostname):
+            return JSONResponse({"error": "invalid_host"}, status_code=403)
+        return await call_next(request)
+
+    @app.middleware("http")
+    async def _reject_cross_origin_writes(request: Request, call_next):
+        if (request.url.path.startswith("/api/")
+                and request.method in {"POST", "PUT", "PATCH", "DELETE"}
+                and not _is_allowed_write_origin(request, cors_origins)):
+            return JSONResponse({"error": "cross_origin_write_denied"}, status_code=403)
+        return await call_next(request)
 
     # B7 S5 · 邀请制守卫（白名单非空才启用；默认空 = 完全旁路，契约零变化）。
     # 未授权：页面请求 → 只出邀请页；/api/* → 403 invite_required（防绕过直取数据）。
@@ -256,11 +317,11 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
         try:
             status, out = _svc.generate(payload)
             return _json(out, status=status)
-        except Exception as e:
+        except Exception:  # noqa: BLE001
             # 生成引擎内部已结构化为 degraded；此处兜底防 HTTP 500
             return _json({
                 "ok": False, "status": "degraded",
-                "message": f"generate failed: {e}",
+                "message": "generate failed",
                 "unit": None, "diagnostics": [], "attempts": 0}, 500)
 
     @app.post("/api/dialog")
@@ -277,7 +338,7 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
         status, out = _svc.dialog(payload, vid=vid)
         if status != 200 or "trace" not in out:
             return _json(out, status=status, vid_cookie=vid_cookie)
-        headers = {"Access-Control-Allow-Origin": "*"}
+        headers = {}
         if vid_cookie:
             headers["Set-Cookie"] = vid_cookie
         return EventSourceResponse(_dialog_sse_events(out), headers=headers)
@@ -341,24 +402,28 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
             from engine.scenarios import list_scene_cards
             return _json({"scenes": list_scene_cards(),
                           "count": len(list_scene_cards())})
-        except Exception as e:  # noqa: BLE001 场景库不可用 → 空列表不报错
-            return _json({"scenes": [], "count": 0, "error": str(e)})
+        except Exception:  # noqa: BLE001 场景库不可用 → 空列表不报错
+            return _json({"scenes": [], "count": 0, "error": "scenarios_unavailable"})
 
     @app.get("/api/metrics")
     def api_metrics(request: Request):
         try:
             from engine.metrics import all_metrics
             return _json(all_metrics(_memory_root))
-        except Exception as e:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             return _json({"learners": {}, "generated_at": 0,
-                          "error": f"metrics failed: {e}"}, 500)
+                          "error": "metrics_failed"}, 500)
+
+    @app.get("/api/ops/summary")
+    def api_ops_summary(request: Request):
+        return _json(ops_metrics.snapshot())
 
     @app.get("/api/alignment")
     def api_alignment(request: Request):
         try:
             return _json(_alignment_summary())
-        except Exception as e:  # noqa: BLE001
-            return _json({"error": f"alignment failed: {e}"}, 500)
+        except Exception:  # noqa: BLE001
+            return _json({"error": "alignment_failed"}, 500)
 
     @app.get("/api/quiz")
     def api_quiz(request: Request):
@@ -378,9 +443,9 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
                 "count": len(questions),
                 "questions": questions,
             })
-        except Exception as e:  # noqa: BLE001 造题失败 → 空队列 500，前端自降级
+        except Exception:  # noqa: BLE001 造题失败 → 空队列 500，前端自降级
             return _json({"errors": [], "queue": [],
-                          "error": f"quiz failed: {e}"}, 500)
+                          "error": "quiz_failed"}, 500)
 
     @app.post("/api/quiz/answer")
     def api_quiz_answer(request: Request):
@@ -406,8 +471,8 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
                         event_key=event_key)
                     results.append({"kp_id": kp_id, "status": res.get("status"),
                                     "interval_days": res.get("interval_days")})
-                except Exception as e:  # noqa: BLE001
-                    results.append({"kp_id": kp_id, "status": "error", "msg": str(e)})
+                except Exception:  # noqa: BLE001
+                    results.append({"kp_id": kp_id, "status": "error", "msg": "review_failed"})
         return _json({"results": results, "count": len(results)})
 
     @app.get("/api/profile")
@@ -656,8 +721,8 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
         for f in files:
             try:
                 raw = base64.b64decode(str(f.get("data", "")), validate=False)
-            except Exception as e:  # noqa: BLE001
-                return _json({"error": f"base64 解码失败：{e}",
+            except Exception:  # noqa: BLE001
+                return _json({"error": "base64 解码失败",
                               "code": "invalid_data"}, 400)
             if str(f.get("name") or "").lower().endswith(".pdf"):
                 pdf_buf = raw
@@ -670,8 +735,8 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
                 text_parts.append(extract_text_from_images(img_bytes))
             if pdf_buf:
                 text_parts.append(extract_text_from_pdf(pdf_buf))
-        except OcrUnavailable as e:
-            return _json({"error": str(e), "code": "ocr_unavailable",
+        except OcrUnavailable:
+            return _json({"error": "OCR 不可用或文件无法识别", "code": "ocr_unavailable",
                           "message": "不支持图片/PDF（OCR 能力未安装，可先粘贴文本）"},
                          422)
         text = "\n\n".join(p for p in text_parts if p)
@@ -733,6 +798,12 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
         model = str(payload.get("model") or "").strip()
         if not (name and base_url and api_key and model):
             return _json({"error": "name/base_url/api_key/model 均为必填"}, 400)
+        try:
+            base_url = prov.validate_provider_url(
+                base_url, allow_local=_cfg_settings.ALLOW_LOCAL_PROVIDER_URLS,
+                resolve_dns=False)
+        except ValueError as exc:
+            return _json({"error": str(exc), "code": "invalid_provider_url"}, 400)
         with _lock:
             store = prov.load_store(_memory_root)
             p = prov.new_provider(name, base_url, api_key, model)
@@ -865,7 +936,44 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
                 resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         return resp
 
+    @app.middleware("http")
+    async def _record_api_health(request: Request, call_next):
+        if not request.url.path.startswith("/api/"):
+            return await call_next(request)
+        request_id = secrets.token_hex(8)
+        started = time.perf_counter()
+        status = 500
+        try:
+            try:
+                response = await call_next(request)
+            except Exception:  # noqa: BLE001 未处理异常统一脱敏，仍保留可关联的请求 ID
+                response = JSONResponse({"error": "internal_error"}, status_code=500)
+            status = response.status_code
+            response.headers["X-Request-ID"] = request_id
+            return response
+        finally:
+            route = request.scope.get("route")
+            route_name = getattr(route, "path", None) or "<rejected>"
+            if route_name != "/api/ops/summary":
+                elapsed_ms = (time.perf_counter() - started) * 1000
+                ops_metrics.record(request.method, route_name, status,
+                                   elapsed_ms)
+                _ops_logger.info(json.dumps({
+                    "request_id": request_id, "method": request.method,
+                    "route": route_name, "status": status,
+                    "latency_ms": round(elapsed_ms, 2)}, separators=(",", ":")))
+
     return app
+
+
+def _is_loopback_host(host: str) -> bool:
+    """当前无账户认证；CLI 只允许本机监听，避免误把用户数据暴露到局域网。"""
+    if host.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 def main():
@@ -877,12 +985,15 @@ def main():
     ap.add_argument("--lang", default="en", help="讲解/纠错语言：en(英壳+中例句,默认) 或 zh(全中文)")
     args = ap.parse_args()
 
+    if not _is_loopback_host(args.host):
+        ap.error("当前版本没有身份认证与租户隔离，只允许监听本机 loopback；公网部署需先完成 P1 安全验收")
+
     router = Router(learner_id=args.learner, native_lang=args.lang, user_level="HSK3")
     if not os.path.isdir(_INDEX_DIR):
         print(f"[serve] 前端壳目录不存在：{_INDEX_DIR}")
         print("[serve] 前端壳目录缺失，将仅提供 API（/api/process /api/dialog /api/graph）；静态壳见 web/（React 壳）与 web_legacy/（legacy 工具壳）")
     app = create_app(router, _INDEX_DIR, gate=VisitorGate(root="data"))
-    uvicorn.run(app, host=args.host, port=args.port)
+    uvicorn.run(app, host=args.host, port=args.port, access_log=False)
     print(f"HSK-AI-Coach 前端壳：http://{args.host}:{args.port}  (learner={args.learner})")
     print("  POST /api/dialog   自由对话（planner 唯一入口，需 LLM Key）")
     print("                      入参 text / learner_id / conversation_id")

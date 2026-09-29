@@ -1,8 +1,8 @@
 # ============================================================
-# engine/eval_metrics.py —— 识别评测「三集拆分 + bootstrap 置信区间」
+# engine/eval_metrics.py —— 识别评测「三集拆分 + Wilson 比例区间」
 # 纯标准库，零第三方。用于 report 3.1 偏误识别评测的指标时，不再把
 # 「种子偏误 / 干净对照 / 对抗」三类样本混成一个点估计，而是分集报告，
-# 并对每个比例给 percentile bootstrap 95% 置信区间。
+# 并对每个比例给 Wilson score 95% 区间；全对/全错时不伪造零宽度区间。
 #
 # 输入：逐条结果 rows，每条形如
 #   {"id": "HSK1-ERR-001", "golden_span": "一个猫"|None, "golden_type": "语法"|None,
@@ -15,7 +15,8 @@
 #   对抗集      子集再分：有偏误→命中率；应干净→overcorrection 率
 # ============================================================
 
-import random
+from math import sqrt
+from statistics import NormalDist
 from typing import Dict, List, Optional
 
 # 命中判定的子集划分
@@ -32,29 +33,28 @@ def subset_of(row: Dict) -> str:
 
 def rate_ci(num: int, den: int, *, seed: int = 0, n_boot: int = 2000,
             alpha: float = 0.05) -> Optional[Dict]:
-    """比例 num/den 的 percentile bootstrap 95% CI。
-    逐样本（den 个 0/1 结果）有放回重采样 n_boot 次，取 alpha/2 与 1-alpha/2 分位。
-    den<=0 返回 None（如实报缺）。样本量极小（den<8）时 CI 巨宽属正常，如实呈现。"""
+    """比例 num/den 的 Wilson score 区间；seed/n_boot 保留兼容旧调用。
+
+    den<=0 返回 None。区间只量化所给样本的二项比例不确定性；定向构造语料
+    不是随机样本，不能把该区间外推到所有学习者或任务。"""
     if den <= 0:
         return None
+    if not 0 <= num <= den:
+        raise ValueError("rate_ci 计数必须满足 0 <= num <= den")
+    if not 0 < alpha < 1:
+        raise ValueError("alpha 必须在 (0, 1) 内")
     point = num / den
-    successes = [1.0] * num + [0.0] * (den - num)
-    rng = random.Random(seed)
-    boot = []
-    for _ in range(n_boot):
-        acc = 0.0
-        for k in range(den):
-            acc += successes[rng.randrange(den)]
-        boot.append(acc / den)
-    boot.sort()
-    lo = boot[int(n_boot * alpha / 2)]
-    hi = boot[int(n_boot * (1 - alpha / 2)) - 1]
+    z = NormalDist().inv_cdf(1 - alpha / 2)
+    z2 = z * z
+    denom = 1 + z2 / den
+    center = (point + z2 / (2 * den)) / denom
+    margin = z * sqrt(point * (1 - point) / den + z2 / (4 * den * den)) / denom
+    lo, hi = max(0.0, center - margin), min(1.0, center + margin)
     return {
         "value": round(point, 4),
         "n": den,
         "ci": [round(lo, 4), round(hi, 4)],
-        "n_boot": n_boot,
-        "method": "percentile bootstrap 95%",
+        "method": f"Wilson score {round((1 - alpha) * 100, 2):g}%",
     }
 
 
@@ -66,7 +66,7 @@ def _span_f1(tp, fp, fn) -> Dict:
 
 
 def metrics_for_rows(rows: List[Dict], *, subset: str = "error") -> Dict:
-    """对一集样本算该集关心的指标 + bootstrap CI。
+    """对一集样本算该集关心的指标 + Wilson 区间。
 
     种子偏误集 / 对抗中的偏误项：recall + type_acc；
     干净对照集：clean_fp_rate。对抗应干净项：overcorrection 由外层按 status=FP 计数。"""
@@ -98,7 +98,7 @@ def _det_type_of(row: Dict) -> Optional[str]:
 def report(rows: List[Dict], *, n_boot: int = 2000, alpha: float = 0.05) -> Dict:
     """三集拆开的透明指标报告。
 
-    返回结构（每集给点估计 + bootstrap CI；无该集数据如实报缺）：
+    返回结构（每集给点估计 + Wilson 区间；无该集数据如实报缺）：
       auto_note   口径与局限
       subsets: {
         error:       {n, recall{value,ci}, type_acc{value,ci}}
@@ -108,8 +108,8 @@ def report(rows: List[Dict], *, n_boot: int = 2000, alpha: float = 0.05) -> Dict
       pooled: 原 run.py 的整体值（保留对照，非主结论）
     """
     auto_note = (
-        "指标按三集拆分报告，不再与干净/对抗混成一个点估计；每个比例给 percentile "
-        "bootstrap 95% CI。样本量小（<10 级），CI 偏宽属正常，应避免据此下强结论。"
+        "指标按三集拆分报告，不再与干净/对抗混成一个点估计；每个比例给 Wilson "
+        "score 95% 区间。样本为定向构造，区间不可外推总体；样本极小时避免下强结论。"
     )
     err_rows = [r for r in rows if subset_of(r) == "error"]
     clean_rows = [r for r in rows if subset_of(r) == "clean"]

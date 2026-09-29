@@ -101,11 +101,12 @@ class ProviderStoreTest(unittest.TestCase):
         self.assertEqual(loaded["providers"][0]["model"], "m")
         self.assertTrue(os.path.exists(os.path.join(self.root, "llm_providers.json")))
 
-    def test_corrupt_file_fail_open(self):
+    def test_corrupt_file_fails_closed(self):
         from engine import providers as prov
         with open(os.path.join(self.root, "llm_providers.json"), "w") as f:
             f.write("not json{{{")
-        self.assertEqual(prov.load_store(self.root)["providers"], [])
+        with self.assertRaises(RuntimeError):
+            prov.load_store(self.root)
 
     def test_resolve_chain_explicit_default_first(self):
         from engine import providers as prov
@@ -180,7 +181,7 @@ class ProvidersEndpointTest(unittest.TestCase):
 
     def test_02_add_first_becomes_default(self):
         st, d = _req(self.port, "POST", "/api/providers",
-                     {"name": "A", "base_url": "http://a/v1",
+                     {"name": "A", "base_url": "https://8.8.8.8/v1",
                       "api_key": "sk-aaaa11112222", "model": "model-a"})
         self.assertEqual(st, 200)
         self.assertTrue(d["ok"])
@@ -197,11 +198,11 @@ class ProvidersEndpointTest(unittest.TestCase):
         self.assertEqual(st, 200)
         self.assertEqual(d["provider"]["model"], "model-a")
         self.assertEqual(self.captured[-1]["config"]["model"], "model-a")
-        self.assertEqual(self.captured[-1]["config"]["base_url"], "http://a/v1")
+        self.assertEqual(self.captured[-1]["config"]["base_url"], "https://8.8.8.8/v1")
 
     def test_04_dialog_explicit_provider_override(self):
         st, d = _req(self.port, "POST", "/api/providers",
-                     {"name": "B", "base_url": "http://b/v1",
+                     {"name": "B", "base_url": "https://8.8.4.4/v1",
                       "api_key": "sk-bbbb33334444", "model": "model-b"})
         pid_b = d["provider"]["id"]
         self.captured.clear()
@@ -225,7 +226,7 @@ class ProvidersEndpointTest(unittest.TestCase):
 
     def test_07_test_endpoint_by_fields_and_id(self):
         st, d = _req(self.port, "POST", "/api/providers/test",
-                     {"base_url": "http://a/v1", "api_key": "k",
+                     {"base_url": "https://8.8.8.8/v1", "api_key": "k",
                       "model": "model-a"})
         self.assertEqual(st, 200)
         self.assertTrue(d["ok"])
@@ -314,7 +315,7 @@ class EnvCompatTest(unittest.TestCase):
         self.assertEqual(st, 404)
         # env 在场时添加供应商不抢占默认
         _req(self.port, "POST", "/api/providers",
-             {"name": "C", "base_url": "http://c/v1", "api_key": "k",
+             {"name": "C", "base_url": "https://1.1.1.1/v1", "api_key": "k",
               "model": "model-c"})
         st, d = _req(self.port, "GET", "/api/providers")
         self.assertEqual(d["default_id"], "env")

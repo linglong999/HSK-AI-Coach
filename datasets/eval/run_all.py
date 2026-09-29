@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import sys
+from unittest.mock import patch
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(_HERE))
@@ -47,14 +48,25 @@ NATURAL_BAND = 0.3             # 统计门控：naturalness_mean delta vs baseli
 # --- deterministic 层 suites ---------------------------------------------------
 
 def suite_tutor_l1_l3():
-    """tutor_quality 全 cases：L1 程序断言 + L3 红线（--mock-llm 规则化 L2，零 LLM）。
-    红线全在此层。gate：pass^k ≥90% 且无确定红线。"""
+    """全 cases 的离线 L1/L3 回归；真实模型评测另走 llm_judge 层。
+
+    识别走确定性构式回退，讲解走降级模板。图谱只在内存中使用，
+    避免评测读取或覆盖真实用户的 data/graph_default.json。
+    """
     from tutor_quality.run_tutor_judge import summarize
     from tutor_quality.judge import load_cases, judge_case
+    from engine.graph.error_graph import ErrorGraph
+    from engine.llm.client import JSONStrictError, LLMClient
     from engine.router import Router
     cases = load_cases()
-    router = Router()
-    results = [judge_case(c, router, mock_llm=True) for c in cases]
+    with (patch.object(ErrorGraph, "load", return_value=None),
+          patch.object(ErrorGraph, "save", return_value=None),
+          patch.object(LLMClient, "chat_json",
+                       side_effect=RuntimeError("deterministic eval: offline")),
+          patch.object(LLMClient, "chat_json_strict",
+                       side_effect=JSONStrictError("deterministic eval: offline"))):
+        router = Router()
+        results = [judge_case(c, router, mock_llm=True) for c in cases]
     s = summarize(results)
     _dump("tutor_l1_l3", s)
     return {"ok": bool(s["gate"] and not s["fail_ids"]),

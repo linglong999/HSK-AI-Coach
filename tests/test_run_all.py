@@ -69,7 +69,14 @@ class TestRunAllDeterministic(unittest.TestCase):
         run_all.set_judge_client(None)
 
     def test_deterministic_runs_zero_llm_exit0(self):
-        code, suites = run_all.run("deterministic")
+        # 即使本机配置了 Key，也不允许确定性闸门触网或读写真实图谱。
+        with mock.patch("engine.llm.client.LLMClient._openai",
+                        side_effect=AssertionError("离线回归不应创建模型连接")), \
+             mock.patch("engine.graph.store.GraphStore.load",
+                        side_effect=AssertionError("离线回归不应读取用户图谱")), \
+             mock.patch("engine.graph.store.GraphStore.save",
+                        side_effect=AssertionError("离线回归不应保存用户图谱")):
+            code, suites = run_all.run("deterministic")
         self.assertEqual(code, 0)
         self.assertTrue(all(v["ok"] for v in suites.values()))
 

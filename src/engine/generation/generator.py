@@ -106,17 +106,17 @@ class GenerationEngine:
             attempts = attempt + 1
             try:
                 parsed = client.chat_json_strict(_SYSTEM, user, temperature=0.2, retries=1)
-            except JSONStrictError as e:
+            except JSONStrictError:
                 # 解析坏 JSON：归类为解析失败诊断，继续自愈
                 diagnostics = [UnitDiagnostic(
                     "code_invalid_json", "root",
-                    "LLM 结构化输出无法解析为合法 JSON", evidence=str(e),
+                    "LLM 结构化输出无法解析为合法 JSON", evidence="invalid_json",
                     fixes=["要求按 schema 输出严格 JSON（无注释/尾逗号）"])]
                 continue
-            except Exception as e:  # 网络/Key 等底层失败：结构化降级，不裸抛
+            except Exception:  # 网络/Key 等底层失败：结构化降级，不裸抛
                 diagnostics = [UnitDiagnostic(
                     "code_llm_failed", "root",
-                    f"LLM 调用失败（待上层按需降级）: {e}", evidence=type(e).__name__,
+                    "LLM 调用失败（待上层按需降级）", evidence="llm_call_failed",
                     fixes=["检查 API Key/网络，或切换 provider"])]
                 break
 
@@ -168,8 +168,8 @@ class GenerationEngine:
             return "", {"used": False, "status": "no_tool"}
         try:
             res = tool("web_search", params={"query": fk, "max_results": 3})
-        except Exception as e:  # noqa: BLE001 工具异常不绝不阻塞生成
-            return "", {"used": False, "status": "error", "detail": str(e)}
+        except Exception:  # noqa: BLE001 工具异常不绝不阻塞生成
+            return "", {"used": False, "status": "error", "detail": "research_failed"}
         if not (isinstance(res, dict) and res.get("ok")):
             status = (res or {}).get("status", "error") if isinstance(res, dict) else "error"
             return "", {"used": False, "status": status}

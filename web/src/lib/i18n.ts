@@ -150,7 +150,7 @@ const zh = {
   langSub: '界面与讲解语言。教学层跟随此选择；中文句子、例句、词汇永远保持中文——那才是你要学的内容。',
   langEn: 'English', langZh: '中文', langToast: '语言 → {name}',
   llmH: '模型密钥（BYOK）',
-  llmNoteHtml: '统一 <b>OpenAI 兼容协议</b>：DeepSeek / Qwen / GLM / Kimi / 本地 Ollama 均可。添加后<b>即时生效</b>，无需重启服务；Key 存于本机 <b>data/llm_providers.json</b>（已 gitignore，不会上传）。<b>DeepSeek 已按 M6 评测校准</b>，其他模型未评测——协议遵循度可能下降。',
+  llmNoteHtml: '统一 <b>OpenAI 兼容协议</b>：DeepSeek / Qwen / GLM / Kimi 可用 HTTPS；本地 Ollama 需在 .env 显式开启 ALLOW_LOCAL_PROVIDER_URLS=true 并重启。添加后<b>即时生效</b>；Windows 下 UI Key 用当前用户 DPAPI 加密存于 <b>data/llm_providers.json</b>，换设备须重新填写；.env 仍是明文。<b>DeepSeek 已按 M6 评测校准</b>，其他模型未评测。',
   llmLoading: '加载中…', llmAdd: '＋ 添加供应商', llmName: '名称（如 GLM-4）', llmModel: '模型名（如 glm-4-plus）',
   llmUrl: 'Base URL（如 https://open.bigmodel.cn/api/paas/v4）', llmKey: 'API Key（仅存本机）',
   llmBtnAdd: '添加', llmBtnTest: '先测试连通', llmHint: '模型名手动填写，请参考各供应商官方文档；「先测试连通」验证后再保存。',
@@ -370,7 +370,7 @@ const en: Record<string, string> = {
   langEn: 'English', langZh: '中文', langToast: 'Language → {name}',
   /* 模型密钥 */
   llmH: 'Model keys (BYOK)',
-  llmNoteHtml: 'Unified<b>OpenAI-compatible protocol</b>: DeepSeek / Qwen / GLM / Kimi / local Ollama all work. Takes effect<b>immediately</b> after adding, no restart; keys are stored locally in<b>data/llm_providers.json</b> (gitignored, never uploaded).<b>DeepSeek is calibrated per M6 evaluation</b>; other models are unevaluated — protocol compliance may drop.',
+  llmNoteHtml: 'Unified <b>OpenAI-compatible protocol</b>: DeepSeek / Qwen / GLM / Kimi use HTTPS. For local Ollama, set ALLOW_LOCAL_PROVIDER_URLS=true in .env and restart. New providers take effect <b>immediately</b>. On Windows, UI keys in <b>data/llm_providers.json</b> use per-user DPAPI encryption; re-enter them on another device. .env remains plaintext. <b>DeepSeek is calibrated per M6 evaluation</b>; other models are unevaluated.',
   llmLoading: 'Loading…', llmAdd: '＋ Add provider', llmName: 'Name (e.g. GLM-4)', llmModel: 'Model name (e.g. glm-4-plus)',
   llmUrl: 'Base URL (e.g. https://open.bigmodel.cn/api/paas/v4)', llmKey: 'API Key (stored locally only)',
   llmBtnAdd: 'Add', llmBtnTest: 'Test connectivity first', llmHint: 'Type the model name manually, per provider docs; "Test connectivity first" validates before saving.',

@@ -1,7 +1,7 @@
 # ============================================================
 # HSK-AI-Coach · CI 回归保护（P0.9）
-# 0.31 起运行时依赖 requests + python-dotenv（主流化决策，解除零依赖约束）。
-# 作用：本地改动推上远程 / 开 PR 后自动回归，保护 P0.2-P0.4 等核心 schema 改动。
+# 运行时依赖与开发依赖以 pyproject.toml/uv.lock 为准；CI 不再宣称只有两个运行时依赖。
+# 作用：本地改动推上远程 / 开 PR 后自动回归，分别保护代码测试与教学确定性评测门禁。
 # 注意：本文件必须保持 LF 行尾（禁止 CRLF）——GitHub runner 的 bash 会把
 #       多行 run: 脚本里的 CR 当成命令一部分，导致 then 等关键字语法报错。
 # ============================================================
@@ -39,39 +39,50 @@ jobs:
           # --frozen 要求 uv.lock 与 pyproject 严格一致（锁文件已提交）。
           uv sync --frozen -q
 
-      - name: Run pipeline (pytest)
+      - name: Run code tests (pytest)
         shell: bash
         run: |
-          # 用 pytest 收集运行；缺例外依赖（rapidocr/pymupdf）的端到端用例
+          # 代码回归：pytest 收集并运行；缺例外依赖（rapidocr/pymupdf）的端到端用例
           # 由 pytestmark.skipif 正常 skip，不再因 import pytest 在收集阶段崩溃。
           # 失败时保留退出码上抛（CI 标红），同时把完整输出落盘供排查。
           uv run pytest tests -q \
             > pytest_verbose.log 2>&1 || { ec=$?; echo "== pytest exit code: $ec =="; exit $ec; }
 
-      - name: Run B6 deterministic regression (PR gate, zero-LLM)
+      - name: Run deterministic teaching evaluation (PR gate, zero-LLM)
         shell: bash
         run: |
-          # B6-A④：PR gate 只跑影响路径的轻量 subset——deterministic 层（L1/L3 红线全护 +
-          # 语料加载 + D-6 断言，mock 模式零 LLM 成本）。失败即标红阻塞 PR。
-          uv run python -m datasets.eval.run_all --layer deterministic
+          # 教学确定性评测门禁：deterministic 层强制离线，不创建模型连接，且不读写真实用户图谱。
+          # 它与 pytest 是两类不同证据；失败即标红阻塞 PR，并单独保存日志。
+          uv run python -m datasets.eval.run_all --layer deterministic \
+            > deterministic_regression.log 2>&1 || { ec=$?; echo "== deterministic gate exit code: $ec =="; exit $ec; }
 
       - name: Emit failure annotations
         if: failure()
         shell: bash
         run: |
-          # 把失败/错误/断言摘要暴露到 GitHub annotations（无需下载 artifact 即可读）。
-          # 逐行取出失败相关的行，每一条作为 ::error:: 输出到日志与 check-run。
-          grep -nE "FAILED|AssertionError|ModuleNotFoundError|ImportError|Traceback|passed|failed|error" \
-            pytest_verbose.log || true
-          awk '/^FAILED/{print "::error::"$0}' pytest_verbose.log || true
+          # 把代码测试与教学门禁的失败摘要分别暴露到 annotations。
+          if [ -f pytest_verbose.log ]; then
+            echo "== pytest failure summary =="
+            grep -nE "FAILED|AssertionError|ModuleNotFoundError|ImportError|Traceback|passed|failed|error" \
+              pytest_verbose.log || true
+            awk '/^FAILED/{print "::error::pytest: "$0}' pytest_verbose.log || true
+          fi
+          if [ -f deterministic_regression.log ]; then
+            echo "== deterministic teaching gate summary =="
+            grep -nE "FAIL|AssertionError|Traceback|PASS|NOT_RUN|error|exit code" \
+              deterministic_regression.log || true
+            awk '/FAIL|AssertionError|Traceback/{print "::error::deterministic: "$0}' deterministic_regression.log || true
+          fi
           echo "== end failure annotations =="
 
-      - name: Upload pytest log on failure
+      - name: Upload test and teaching-gate logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: pytest-verbose-log
-          path: pytest_verbose.log
+          name: code-and-teaching-gate-logs
+          path: |
+            pytest_verbose.log
+            deterministic_regression.log
           if-no-files-found: error
 
   # B7 S4：React 产品壳构建（验收 1231/1243 "构建产物进 CI"）。web/ 用 Vite+TS，
@@ -99,7 +110,7 @@ jobs:
         working-directory: web
         run: npm run build
 
-  # B6-A④：全量回归放 nightly（不每条 PR 跑全套，防 CI 过慢 flaky）。
+  # 全量教学回归放 nightly（不每条 PR 跑全套，防 CI 过慢 flaky）。
   # 跑 run_all --layer nightly = deterministic 全量 + llm_judge 语义质量 + 统计门控。
   # 注：L2 语义门控需注入 judge LLM client（set_judge_client）方生效；未注入时 llm_judge
   #    suite 记 NOT_RUN 不误阻塞，deterministic 红线/d6 门控仍全效。

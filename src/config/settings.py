@@ -38,8 +38,12 @@ class Settings(BaseSettings):
     # ---------------- 引擎参数 ----------------
     # 偏误识别置信度阈值：低于该值不强制纠正，标记为"待确认"
     CONFIDENCE_THRESHOLD: float = 0.85
-    # 是否打印调试日志
-    DEBUG: bool = True
+    # 是否打印调试日志；默认关闭，生产环境不得依赖调试输出
+    DEBUG: bool = False
+    # 逗号分隔的跨域来源 allowlist；空表示不允许跨域（同源访问不受影响）
+    CORS_ALLOW_ORIGINS: str = ""
+    # 本机 Ollama 等回环 HTTP 供应商需显式开启；绝不用于公网模式
+    ALLOW_LOCAL_PROVIDER_URLS: bool = False
 
     # ---------------- 邀请制内测（B7 S5） ----------------
     # 逗号分隔的 open_id 白名单；空 = 邀请闸门关闭（默认，不拦截任何请求）。
@@ -68,6 +72,8 @@ QWEN_BASE_URL = settings.QWEN_BASE_URL
 QWEN_MODEL = settings.QWEN_MODEL
 CONFIDENCE_THRESHOLD = settings.CONFIDENCE_THRESHOLD
 DEBUG = settings.DEBUG
+CORS_ALLOW_ORIGINS = settings.CORS_ALLOW_ORIGINS
+ALLOW_LOCAL_PROVIDER_URLS = settings.ALLOW_LOCAL_PROVIDER_URLS
 INVITE_ALLOWLIST = settings.INVITE_ALLOWLIST
 
 

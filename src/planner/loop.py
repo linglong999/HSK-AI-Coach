@@ -220,18 +220,18 @@ class Planner:
             raw = self._llm_call(messages)
             try:
                 items = parse_json_array(raw)
-            except ParseError as e:
+            except ParseError:
                 # 自纠一次（与 ④a 参数校验失败喂回同构）：LLM 偶发跳过 JSON
                 # 协议直答（实测多轮长讲解场景），喂回格式错误给一次重试机会
                 if parse_retries < 1:
                     parse_retries += 1
                     if native_lang and native_lang.lower() != "zh":
                         retry_msg = (f"[format_error] Your previous output could not be "
-                                     f"parsed as a JSON array ({e}). Re-output strictly in "
+                                     "parsed as a JSON array. Re-output strictly in "
                                      f"the rule-2 format, with no text outside the JSON.")
                     else:
                         retry_msg = (f"[format_error] 你的上一条输出无法解析为 JSON 数组"
-                                     f"（{e}）。请严格按规则 2 的格式重新输出，不要输出"
+                                     "。请严格按规则 2 的格式重新输出，不要输出"
                                      f"任何 JSON 以外的文字。")
                     messages.append({"role": "user", "content": retry_msg})
                     continue
@@ -242,7 +242,7 @@ class Planner:
                     text_acc.append(stripped)
                     protocol_degraded = True
                     break
-                return _fail("parse", str(e))
+                return _fail("parse", "invalid_json_array")
 
             # 本轮是否还有待续 action（决定是否终止）
             has_pending_action = False
@@ -378,8 +378,8 @@ class Planner:
             result = skill.run(corrected)
             result["ok"] = True
             return result
-        except Exception as e:  # noqa: BLE001
-            return skill_error_reply(name, str(e))
+        except Exception:  # noqa: BLE001
+            return skill_error_reply(name, "skill_execution_failed")
 
     def _format_tool_result(self, name: str, res: Dict[str, Any]) -> Dict[str, Any]:
         # 用 role=user 回喂（不用 role=tool）：DeepSeek/OpenAI 协议要求 tool

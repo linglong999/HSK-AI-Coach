@@ -618,17 +618,17 @@ class DialogService:
                         wb.ledger.record("observation_error", kp,
                                          signature=err.get("fragment", ""),
                                          evidence=user_input)
-                    except Exception as e:  # noqa: BLE001
+                    except Exception:  # noqa: BLE001
                         notices.append({"stage": "ledger_write",
-                                        "reason": str(e), "fatal": False})
+                                        "reason": "ledger_write_failed", "fatal": False})
             elif name == "verify_retell" and result.get("verdict") == "pass":
                 kps = round_kps or DialogService._unconfirmed_recent_kps(wb.ledger)
                 for kp in dict.fromkeys(kps):
                     try:
                         wb.on_confirmed(kp, evidence="复述验证通过")
-                    except Exception as e:  # noqa: BLE001
+                    except Exception:  # noqa: BLE001
                         notices.append({"stage": "ledger_write",
-                                        "reason": str(e), "fatal": False})
+                                        "reason": "ledger_write_failed", "fatal": False})
         return notices
 
     @staticmethod

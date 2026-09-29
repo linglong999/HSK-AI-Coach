@@ -156,10 +156,10 @@ class DialogRun:
                 pre_scan = self._identify_skill.run(
                     {"text": user_input, "native_lang": native_lang,
                      "level": level_label, "provider_config": scan_config})
-            except Exception as e:  # noqa: BLE001 预扫失败不阻断对话
+            except Exception:  # noqa: BLE001 预扫失败不阻断对话
                 pre_scan = None
                 scan_notices.append({"stage": "pre_scan",
-                                     "reason": str(e), "fatal": False})
+                                     "reason": "pre_scan_failed", "fatal": False})
         max_conf, error_flag = 1.0, None
         if isinstance(pre_scan, dict):
             confs = [float(e.get("confidence") or 0.0)
@@ -180,9 +180,9 @@ class DialogRun:
                         "observation_error", kp,
                         signature=err.get("fragment", ""),
                         evidence=user_input)
-                except Exception as e:  # noqa: BLE001
+                except Exception:  # noqa: BLE001
                     scan_notices.append({"stage": "ledger_write",
-                                         "reason": str(e), "fatal": False})
+                                         "reason": "ledger_write_failed", "fatal": False})
         if too_long:
             level, reason = "none", "material"   # 材料句：不介入不分档
         else:
@@ -290,9 +290,9 @@ class DialogRun:
                             kp, state,
                             evidence=f"signal={rec.get('signal','')} "
                                      f"positive={rec.get('positive_count',0)}")
-                    except Exception as e:  # noqa: BLE001 记账失败不阻断
+                    except Exception:  # noqa: BLE001 记账失败不阻断
                         notices.append({"stage": "avoidance_ledger",
-                                        "reason": str(e), "fatal": False})
+                                        "reason": "avoidance_ledger_failed", "fatal": False})
                     node = nodes_map.get(kp)
                     if node is not None:
                         try:
@@ -302,9 +302,9 @@ class DialogRun:
                             node.last_avoidance_at = str(int(time.time()))
                         except Exception:  # noqa: BLE001 快照失败不阻断
                             pass
-            except Exception as e:  # noqa: BLE001 观测失败不阻断对话
+            except Exception:  # noqa: BLE001 观测失败不阻断对话
                 notices.append({"stage": "avoidance_observe",
-                                "reason": str(e), "fatal": False})
+                                "reason": "avoidance_observe_failed", "fatal": False})
 
         # ---- ② 元认知自评（高危险时机 + 学习者已给 self_level） ----
         meta_event = None
@@ -367,9 +367,9 @@ class DialogRun:
             facts = build_profile_facts(self._router.graph, self._wb.ledger)
             if facts:
                 self._mem.update_profile(common_errors=facts)
-        except Exception as e:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             m8_notices.append({"stage": "profile_writeback",
-                               "reason": str(e), "fatal": False})
+                               "reason": "profile_writeback_failed", "fatal": False})
         # 写回记忆：user 必记（B3 meta_event 并入 metadata，静默不阻断）；
         # assistant 回复非空才记（fallback 文案也记，多轮不断档）
         reply = str(res.get("text") or "")

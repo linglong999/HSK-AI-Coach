@@ -155,8 +155,8 @@ class Router:
             elif rd_raw:
                 _notice("recognize", str(rd_raw))
             kps_in_sentence = []
-        except Exception as e:
-            _notice("recognize", str(e), fatal=True)
+        except Exception:
+            _notice("recognize", "recognize_failed", fatal=True)
             try:
                 self.graph.save()
             except Exception:
@@ -171,9 +171,9 @@ class Router:
             try:
                 graph_write = self.graph.ingest_error(
                     {**err, "sentence": user_text, "level": self.user_level}, ev_key)
-            except Exception as e:
-                _notice("graph_write", str(e), error_index=i)
-                graph_write = {"status": f"write_failed:{e}"}
+            except Exception:
+                _notice("graph_write", "graph_write_failed", error_index=i)
+                graph_write = {"status": "write_failed"}
             item = {"error": ordered_error(err), "explanation": None,
                     "graph_write": graph_write, "verification": None}
 
@@ -202,8 +202,8 @@ class Router:
                     expl["overscope_violations"] = guard_r["violations"]
                     expl.setdefault("explanation", "")
                 item["explanation"] = expl if isinstance(expl, dict) else {"_degraded": True}
-            except Exception as e:
-                _notice("explain", str(e), error_index=i)
+            except Exception:
+                _notice("explain", "explain_failed", error_index=i)
                 item["explanation"] = {"_degraded": True, "explanation": "",
                                        "key_points": []}
             kp = err.get("knowledge_point_id")
@@ -217,27 +217,27 @@ class Router:
             try:
                 self.graph.ingest_error({**u, "sentence": user_text, "uncertain": True},
                                         f"{event_key or user_text}#unc{i}")
-            except Exception as e:
-                _notice("graph_write", str(e), error_index=i)
+            except Exception:
+                _notice("graph_write", "graph_write_failed", error_index=i)
 
         # 4. 同句 ≥2 已确认偏误 → 混淆边（2.4 §6）
         try:
             self.graph.link_errors_in_sentence(kps_in_sentence,
                                                f"{event_key or user_text}#sentence")
-        except Exception as e:
-            _notice("confusion_edge", str(e))
+        except Exception:
+            _notice("confusion_edge", "confusion_edge_failed")
 
         result["has_error"] = bool(result["errors"])
         result["graph_size"] = len(self.graph)
         try:
             result["review_queue"] = self.graph.get_review_queue()
-        except Exception as e:
+        except Exception:
             result["review_queue"] = []
-            _notice("review_queue", str(e))
+            _notice("review_queue", "review_queue_failed")
         try:
             self.graph.save()
-        except Exception as e:
-            _notice("graph_save", str(e))
+        except Exception:
+            _notice("graph_save", "graph_save_failed")
         result["meta"]["end_ts"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         result["meta"]["elapsed_ms"] = int((time.time() - start) * 1000)
         return result

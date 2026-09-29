@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# tests/test_eval_metrics.py —— 三集拆分 + bootstrap CI 的回归测试
+# tests/test_eval_metrics.py —— 三集拆分 + Wilson 区间的回归测试
 import unittest
 
 from engine.eval_metrics import subset_of, rate_ci, metrics_for_rows, report
@@ -53,6 +53,21 @@ class TestRateCi(unittest.TestCase):
         a = rate_ci(30, 40, seed=7)
         b = rate_ci(30, 40, seed=7)
         self.assertEqual(a, b)
+
+    def test_boundary_intervals_are_not_zero_width(self):
+        zero = rate_ci(0, 17)
+        perfect = rate_ci(2, 2)
+        self.assertEqual(zero["ci"][0], 0.0)
+        self.assertGreater(zero["ci"][1], 0.0)
+        self.assertLess(perfect["ci"][0], 1.0)
+        self.assertEqual(perfect["ci"][1], 1.0)
+        self.assertIn("Wilson", zero["method"])
+
+    def test_invalid_counts_rejected(self):
+        with self.assertRaises(ValueError):
+            rate_ci(3, 2)
+        with self.assertRaises(ValueError):
+            rate_ci(-1, 2)
 
 
 class TestReport(unittest.TestCase):

@@ -53,6 +53,10 @@ class LLMClient:
                 "未配置 API Key。请设置环境变量 DEEPSEEK_API_KEY （或 QWEN_API_KEY），"
                 "或在 .env 文件中填写。本项目为开源项目，API Key 由用户自行提供。"
             )
+        if self._http_client is None:
+            from engine.providers import validate_provider_url
+            base_url = validate_provider_url(
+                base_url, allow_local=settings.ALLOW_LOCAL_PROVIDER_URLS)
         client = OpenAI(
             base_url=base_url.rstrip("/") or None,
             api_key=api_key,

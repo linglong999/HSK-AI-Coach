@@ -312,9 +312,9 @@ class Recognizer:
                 ck["config"] = config
             raw = self.client.chat_json(SYSTEM_PROMPT.format(knowledge_tree_portal=self.portal),
                                         user_prompt, **ck)
-        except Exception as e:
+        except Exception:
             # 4.2 降级兜底：LLM 识别不可用 → 确定性规则回退（超纲词候选 + 构式诊断补漏）
-            return self._rule_fallback(text, beyond, reason=str(e), level=level)
+            return self._rule_fallback(text, beyond, reason="llm_unavailable", level=level)
         errors = raw.get("errors", [])
 
         # 置信度决策序列（2.1 §五）：先初分类，再标注命中校验
