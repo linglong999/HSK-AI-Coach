@@ -67,6 +67,45 @@ CREATE TABLE IF NOT EXISTS migrations (
   path TEXT PRIMARY KEY,
   ts   INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS study_sessions (
+  study_session_id TEXT PRIMARY KEY,
+  protocol_version TEXT NOT NULL,
+  scene_type TEXT NOT NULL,
+  status TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  consented_at INTEGER,
+  started_at INTEGER,
+  completed_at INTEGER,
+  completion_reason TEXT NOT NULL DEFAULT '',
+  withdrawn_at INTEGER,
+  retention_until INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS study_consent (
+  study_session_id TEXT PRIMARY KEY,
+  consent_version TEXT NOT NULL,
+  consented_at INTEGER NOT NULL,
+  consent_hash TEXT NOT NULL,
+  FOREIGN KEY (study_session_id) REFERENCES study_sessions(study_session_id)
+    ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS study_events (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  study_session_id TEXT NOT NULL,
+  event_key       TEXT NOT NULL,
+  event_type      TEXT NOT NULL,
+  payload_json    TEXT NOT NULL,
+  created_at      INTEGER NOT NULL,
+  UNIQUE (study_session_id, event_key),
+  FOREIGN KEY (study_session_id) REFERENCES study_sessions(study_session_id)
+    ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_study_events_session_time
+  ON study_events(study_session_id, created_at, id);
+CREATE INDEX IF NOT EXISTS idx_study_events_type
+  ON study_events(event_type);
 """
 
 
@@ -81,6 +120,11 @@ def connect(root: str = "data") -> sqlite3.Connection:
     conn.execute("PRAGMA busy_timeout=10000")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.executescript(_SCHEMA)
+    study_columns = {row[1] for row in conn.execute(
+        "PRAGMA table_info(study_sessions)").fetchall()}
+    if "completion_reason" not in study_columns:
+        conn.execute("ALTER TABLE study_sessions ADD COLUMN completion_reason TEXT NOT NULL DEFAULT ''")
+        conn.commit()
     return conn
 
 

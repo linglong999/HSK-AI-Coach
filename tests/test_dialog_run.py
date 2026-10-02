@@ -112,7 +112,7 @@ class DialogRunBase(unittest.TestCase):
         self.tracker = InterventionTracker()
 
     def _run(self, ctx=None, planner=None, identify=None, provider=None,
-             mem=None):
+             mem=None, study_event=None):
         return DialogRun(
             router=self.router,
             planner=planner or self.planner,
@@ -123,6 +123,7 @@ class DialogRunBase(unittest.TestCase):
             normalize_user_level=DialogService._normalize_user_level,
             writeback_ledger_events=DialogService._writeback_ledger_events,
             assistant_payload=DialogService._assistant_payload,
+            study_event=study_event,
         ).run(ctx or _ctx(), provider)
 
 
@@ -159,6 +160,50 @@ class HappyPathTest(DialogRunBase):
         self.assertEqual(msgs[1]["metadata"]["cards"][0]["name"],
                          "identify_errors")
         self.assertTrue(self.mem.has_session("default"))
+
+    def test_a1_study_events_follow_dialog_stages(self):
+        from engine.study import StudyTracker
+
+        tracker = StudyTracker(root=self.tmp, id_factory=lambda: "A1-dialog")
+        study_id = tracker.create_session()
+        tracker.consent(study_id, "consent-v1")
+
+        def record(event_type, payload, event_key):
+            tracker.record(study_id, event_type, payload, event_key)
+
+        status, _ = self._run(study_event=record)
+        self.assertEqual(status, 200)
+        summary = tracker.export_summary(study_id)["sessions"][0]
+        self.assertEqual(summary["event_count"], 6)
+        self.assertEqual(
+            list(summary["event_types"]),
+            ["input_observed", "intervention_decided", "writeback_completed",
+             "review_queue_observed", "feedback_presented", "dialog_completed"],
+        )
+
+
+class LazyStudyEmissionTest(unittest.TestCase):
+    def test_disabled_recorder_never_calls_builder(self):
+        from unittest.mock import Mock
+
+        runner = DialogRun.__new__(DialogRun)
+        runner._study_event = None
+        builder = Mock(side_effect=AssertionError("must stay lazy"))
+        runner._emit_study("input_observed", builder, "input")
+        builder.assert_not_called()
+
+    def test_builder_and_callback_failures_are_swallowed(self):
+        from unittest.mock import Mock
+
+        runner = DialogRun.__new__(DialogRun)
+        callback = Mock(side_effect=RuntimeError("callback failed"))
+        runner._study_event = callback
+        builder = Mock(side_effect=ValueError("builder failed"))
+        runner._emit_study("input_observed", builder, "input")
+        builder.assert_called_once_with()
+        callback.assert_not_called()
+        runner._emit_study("input_observed", lambda: {"text_chars": 1}, "input")
+        callback.assert_called_once_with("input_observed", {"text_chars": 1}, "input")
 
 
 class SkipScanTest(DialogRunBase):

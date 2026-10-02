@@ -144,6 +144,7 @@ class DialogService:
         self._meta_ask = {}             # conversation_id -> dict（B3 每任务自评≤1 标记）
         self._target_constructions = {} # conversation_id -> list[kp_id]（B3 该用未用目标，骨架期空）
         self._identify_skill = None     # 预扫识别技能（共享 router.recognizer+graph）
+        self._study_tracker = None      # A1 可选试用记录（按请求匿名编号激活）
 
     # ---------- 对外只读：HTTP 层遗留 handler 借用共享实例 ----------
 
@@ -156,6 +157,12 @@ class DialogService:
 
     def get_writeback(self, learner_id: str):
         return self._get_writeback(learner_id)
+
+    def get_study_tracker(self):
+        if self._study_tracker is None:
+            from engine.study import StudyTracker
+            self._study_tracker = StudyTracker(root=self._memory_root)
+        return self._study_tracker
 
     # ---------- 入口方法（全部返回 (status, payload)） ----------
 
@@ -268,6 +275,22 @@ class DialogService:
             provider, err = self._resolve_dialog_provider(ctx["provider_id"])
             if err is not None:
                 return err
+            study_event = None
+            if ctx.get("study_session_id"):
+                from engine.study import StudyError
+                import secrets
+                study = self.get_study_tracker()
+                try:
+                    if not study.is_recordable(ctx["study_session_id"]):
+                        return 400, {"error": "试用尚未同意或已结束/撤回",
+                                     "code": "study_not_recordable"}
+                except StudyError:
+                    return 400, {"error": "无效试用编号", "code": "invalid_study_session"}
+                round_id = secrets.token_hex(12)
+
+                def study_event(event_type, payload, stage_key):
+                    study.record(ctx["study_session_id"], event_type, payload,
+                                 event_key=f"{round_id}:{stage_key}")
             # B7 S2：回合用量收集器入坑 → DialogRun 全链（含 planner 多次 LLM 调用）
             # 经 llm_call 包装回报；run 后取走折算+记账（失败/零产出不扣）。
             from engine.quota import begin_round, end_round
@@ -289,6 +312,7 @@ class DialogService:
                     normalize_user_level=DialogService._normalize_user_level,
                     writeback_ledger_events=DialogService._writeback_ledger_events,
                     assistant_payload=DialogService._assistant_payload,
+                    study_event=study_event,
                 ).run(ctx, provider)
             finally:
                 usage = end_round()
@@ -322,6 +346,7 @@ class DialogService:
             "native_lang": ui_lang,  # 局部别名：下游调用兼容旧字段
             "learner_l1": learner_l1,
             "scene_id": str((payload.get("scene_id") or "")).strip(),
+            "study_session_id": str((payload.get("study_session_id") or "")).strip(),
             # B3：学习者本轮元认知自评档（certain/half/uncertain，可选，非本回合默 None）
             "meta_self_level": (str(payload.get("meta_self_level") or "").strip()
                                 or None),
@@ -463,6 +488,79 @@ class DialogService:
             return 404, {"error": f"会话不存在: {cid}",
                          "code": "session_not_found"}
         return 200, {"ok": True, "conversation_id": cid}
+
+    # ---------- A1 单机试用 ----------
+
+    def study_create(self, payload: dict):
+        scene_type = str(payload.get("scene_type") or "general").strip()
+        protocol_version = str(payload.get("protocol_version") or "").strip()
+        try:
+            from engine.study import PROTOCOL_VERSION
+            with self._lock:
+                study_id = self.get_study_tracker().create_session(
+                    protocol_version=protocol_version or PROTOCOL_VERSION,
+                    scene_type=scene_type)
+        except (ValueError, TypeError) as exc:
+            return 400, {"error": str(exc), "code": "invalid_study_session"}
+        return 200, {"study_session_id": study_id,
+                     "protocol_version": protocol_version or PROTOCOL_VERSION,
+                     "scene_type": scene_type, "status": "created"}
+
+    def study_consent(self, payload: dict):
+        study_id = str(payload.get("study_session_id") or "").strip()
+        version = str(payload.get("consent_version") or "").strip()
+        if not study_id or not version:
+            return 400, {"error": "缺少 study_session_id 或 consent_version",
+                         "code": "invalid_study_consent"}
+        try:
+            with self._lock:
+                self.get_study_tracker().consent(study_id, version)
+        except ValueError as exc:
+            return 400, {"error": str(exc), "code": "invalid_study_consent"}
+        return 200, {"study_session_id": study_id, "status": "consented"}
+
+    def study_summary(self, payload: dict):
+        study_id = str(payload.get("study_session_id") or "").strip() or None
+        try:
+            with self._lock:
+                return 200, self.get_study_tracker().export_summary(study_id)
+        except ValueError as exc:
+            return 400, {"error": str(exc), "code": "invalid_study_session"}
+
+    def study_complete(self, payload: dict):
+        study_id = str(payload.get("study_session_id") or "").strip()
+        if not study_id:
+            return 400, {"error": "缺少 study_session_id",
+                         "code": "missing_study_session_id"}
+        try:
+            with self._lock:
+                self.get_study_tracker().complete(
+                    study_id, str(payload.get("reason") or ""))
+        except ValueError as exc:
+            return 400, {"error": str(exc), "code": "invalid_study_session"}
+        return 200, {"study_session_id": study_id, "status": "completed"}
+
+    def study_withdraw(self, payload: dict):
+        study_id = str(payload.get("study_session_id") or "").strip()
+        if not study_id:
+            return 400, {"error": "缺少 study_session_id",
+                         "code": "missing_study_session_id"}
+        try:
+            with self._lock:
+                return 200, self.get_study_tracker().withdraw(study_id)
+        except ValueError as exc:
+            return 400, {"error": str(exc), "code": "invalid_study_session"}
+
+    def study_delete(self, payload: dict):
+        study_id = str(payload.get("study_session_id") or "").strip()
+        if not study_id:
+            return 400, {"error": "缺少 study_session_id",
+                         "code": "missing_study_session_id"}
+        try:
+            with self._lock:
+                return 200, self.get_study_tracker().delete(study_id)
+        except ValueError as exc:
+            return 400, {"error": str(exc), "code": "invalid_study_session"}
 
     # ---------- 共享实例懒建/缓存 ----------
 

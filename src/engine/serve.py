@@ -388,6 +388,55 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
         status, out = _svc.session_delete(payload)
         return _json(out, status=status)
 
+    # ---------------- A1 单机试用（匿名记录/汇总/删除） ----------------
+
+    @app.post("/api/study/create")
+    def api_study_create(request: Request):
+        payload, err = _read_json_body(request)
+        if err is not None:
+            return _json(err, 400)
+        status, out = _svc.study_create(payload)
+        return _json(out, status=status)
+
+    @app.post("/api/study/consent")
+    def api_study_consent(request: Request):
+        payload, err = _read_json_body(request)
+        if err is not None:
+            return _json(err, 400)
+        status, out = _svc.study_consent(payload)
+        return _json(out, status=status)
+
+    @app.get("/api/study/summary")
+    def api_study_summary(request: Request):
+        status, out = _svc.study_summary({
+            "study_session_id": request.query_params.get("study_session_id", "")
+        })
+        return _json(out, status=status)
+
+    @app.post("/api/study/complete")
+    def api_study_complete(request: Request):
+        payload, err = _read_json_body(request)
+        if err is not None:
+            return _json(err, 400)
+        status, out = _svc.study_complete(payload)
+        return _json(out, status=status)
+
+    @app.post("/api/study/withdraw")
+    def api_study_withdraw(request: Request):
+        payload, err = _read_json_body(request)
+        if err is not None:
+            return _json(err, 400)
+        status, out = _svc.study_withdraw(payload)
+        return _json(out, status=status)
+
+    @app.post("/api/study/delete")
+    def api_study_delete(request: Request):
+        payload, err = _read_json_body(request)
+        if err is not None:
+            return _json(err, 400)
+        status, out = _svc.study_delete(payload)
+        return _json(out, status=status)
+
     # ---------------- GET 数据端点（各端点模块级降级，不统一包装） ----------------
 
     @app.get("/api/graph")

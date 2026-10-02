@@ -8,6 +8,8 @@
 # LoadSessionContext / 游客闸门 / ResolveProvider 是入口阶段，留在
 # DialogService（依赖 payload 归一与 ProviderResolver 注入缝）。
 
+from typing import Callable
+
 
 class DialogRun:
     """单次 dialog 主链的编排器。可独立单测：直接注入 fake 依赖即可跑通，
@@ -16,7 +18,8 @@ class DialogRun:
     def __init__(self, router, planner, identify_skill, mem, wb, tracker,
                  normalize_user_level, writeback_ledger_events,
                  assistant_payload, deep_dived_kps=None,
-                 target_constructions=None, meta_ask_state=None):
+                 target_constructions=None, meta_ask_state=None,
+                 study_event=None):
         self._router = router
         self._planner = planner
         self._identify_skill = identify_skill
@@ -35,40 +38,187 @@ class DialogRun:
         self._normalize_user_level = normalize_user_level
         self._writeback_ledger_events = writeback_ledger_events
         self._assistant_payload = assistant_payload
+        # A1：可选的匿名试用事件回调；缺省时主链完全保持原行为。
+        self._study_event = study_event
+
+    def _emit_study(self, event_type: str, build_payload: Callable[[], dict],
+                    event_key: str) -> None:
+        if self._study_event is None:
+            return
+        try:
+            self._study_event(event_type, build_payload(), event_key)
+        except Exception:  # noqa: BLE001 试用记录失败不阻断对话
+            pass
 
     def run(self, ctx, provider):
         """执行主链（约定：调用方已持 DialogService._lock）。
         ctx：LoadSessionContext 产物；provider：ResolveProvider 产物
         （mock 注入路径为 None）。返回 (status, payload)。"""
-        history = self._mem.to_llm_history(ctx["conversation_id"])
-        directives = self._assemble_directives(
-            ctx["native_lang"], ctx["learner_l1"], ctx["scene_id"])
-        pre = self._pre_scan_intervene(
-            ctx["user_input"], ctx["native_lang"],
-            directives["level_label"], directives["level_int"],
-            directives["cap"], provider)
-        res = self._planner.run(
-            ctx["user_input"], history=history,
-            learner_id=ctx["learner_id"],
-            profile_summary=directives["profile_summary"],
-            native_lang=ctx["native_lang"],
-            user_level=directives["level_label"],
-            scene_brief=directives["scene_brief"],
-            persona_brief=directives["persona_brief"],
-            style_directive=directives["style_directive"],
-            intervention_directive=pre["intervention_directive"])
-        # B3 接入点：PreScanIntervene 后、WritebackLedger 前聚合一次（识别结果已出、
-        # 账本写入前）——自评事件+Node 快照+route_bias+observe_avoidance，全程静默
-        # （仅进账本/图谱/调度权重，绝不进 intervention/directive）。
-        self._b3 = self._b3_observe(pre, ctx["user_input"], ctx)
-        wb_out = self._writeback_round(
-            res, pre, ctx["user_input"], ctx["conversation_id"],
-            history, provider, ctx["native_lang"], b3=self._b3)
-        graph_snapshot = self._router.graph.graph_snapshot()
-        out = self._build_dialog_response(
-            ctx["learner_id"], ctx["conversation_id"], provider, res, pre,
-            wb_out, directives["cap"], graph_snapshot)
-        return 200, out
+        stage = "pre_scan"
+        try:
+            history = self._mem.to_llm_history(ctx["conversation_id"])
+            directives = self._assemble_directives(
+                ctx["native_lang"], ctx["learner_l1"], ctx["scene_id"])
+
+            def build_input_payload():
+                from engine.study import reference
+                return {"conversation_ref": reference(ctx["conversation_id"]),
+                        "text_chars": len(ctx["user_input"]),
+                        "scene_type": str(ctx.get("scene_id") or "general")[:80]}
+
+            self._emit_study("input_observed", build_input_payload, "input")
+            pre = self._pre_scan_intervene(
+                ctx["user_input"], ctx["native_lang"],
+                directives["level_label"], directives["level_int"],
+                directives["cap"], provider)
+
+            def build_intervention_payload():
+                from engine.study import reference
+                pre_scan = pre.get("pre_scan")
+                return {"conversation_ref": reference(ctx["conversation_id"]),
+                        "level": pre["level"], "reason": pre["reason"],
+                        "error_count": len((pre_scan or {}).get("errors") or [])
+                        if isinstance(pre_scan, dict) else 0,
+                        "uncertain_count": len((pre_scan or {}).get("uncertain") or [])
+                        if isinstance(pre_scan, dict) else 0,
+                        "scanned": isinstance(pre_scan, dict)}
+
+            self._emit_study("intervention_decided", build_intervention_payload,
+                             "intervention")
+            stage = "planner"
+            res = self._planner.run(
+                ctx["user_input"], history=history,
+                learner_id=ctx["learner_id"],
+                profile_summary=directives["profile_summary"],
+                native_lang=ctx["native_lang"],
+                user_level=directives["level_label"],
+                scene_brief=directives["scene_brief"],
+                persona_brief=directives["persona_brief"],
+                style_directive=directives["style_directive"],
+                intervention_directive=pre["intervention_directive"])
+            # B3 接入点：PreScanIntervene 后、WritebackLedger 前聚合一次（识别结果已出、
+            # 账本写入前）——自评事件+Node 快照+route_bias+observe_avoidance，全程静默
+            # （仅进账本/图谱/调度权重，绝不进 intervention/directive）。
+            stage = "writeback"
+            self._b3 = self._b3_observe(pre, ctx["user_input"], ctx)
+            wb_out = self._writeback_round(
+                res, pre, ctx["user_input"], ctx["conversation_id"],
+                history, provider, ctx["native_lang"], b3=self._b3)
+            trace = res.get("trace") or []
+
+            def build_writeback_payload():
+                from engine.study import reference
+                return {"conversation_ref": reference(ctx["conversation_id"]),
+                        "retell_pass_count": sum(
+                            1 for item in trace
+                            if isinstance(item, dict) and item.get("name") == "verify_retell"
+                            and isinstance(item.get("result"), dict)
+                            and item["result"].get("verdict") == "pass"),
+                        "error_count": len((pre.get("pre_scan") or {}).get("errors") or [])
+                        if isinstance(pre.get("pre_scan"), dict) else 0,
+                        "notice_count": len(wb_out.get("notices") or [])}
+
+            self._emit_study("writeback_completed", build_writeback_payload,
+                             "writeback")
+            self._emit_study_learning_result(trace, ctx["conversation_id"])
+            stage = "response"
+            graph_snapshot = self._router.graph.graph_snapshot()
+
+            def build_queue_payload():
+                from engine.study import reference
+                conversation_ref = reference(ctx["conversation_id"])
+                queue_count = 0
+                try:
+                    queue_count = len(self._router.graph.get_review_queue())
+                except Exception:  # noqa: BLE001 复习队列观测失败不阻断对话
+                    pass
+                return {"conversation_ref": conversation_ref,
+                        "queue_count": queue_count}
+
+            self._emit_study("review_queue_observed", build_queue_payload,
+                             "review_queue")
+            out = self._build_dialog_response(
+                ctx["learner_id"], ctx["conversation_id"], provider, res, pre,
+                wb_out, directives["cap"], graph_snapshot)
+
+            def build_feedback_payload():
+                from engine.study import reference
+                strategies = self._study_strategies(pre.get("strategies") or {})
+                return {"conversation_ref": reference(ctx["conversation_id"]),
+                        "strategies": strategies,
+                        "strategy_count": len(strategies)}
+
+            self._emit_study("feedback_presented", build_feedback_payload,
+                             "feedback")
+
+            def build_completed_payload():
+                from engine.study import reference
+                return {"conversation_ref": reference(ctx["conversation_id"]),
+                        "status": "ok", "fallback": bool(res.get("fallback", False)),
+                        "steps": int(res.get("steps") or 0),
+                        "degraded_count": len(out.get("degraded") or [])}
+
+            self._emit_study("dialog_completed", build_completed_payload,
+                             "completed")
+            return 200, out
+        except Exception as exc:
+            def build_failed_payload():
+                from engine.study import reference
+                return {"conversation_ref": reference(ctx["conversation_id"]),
+                        "stage": stage, "reason": type(exc).__name__}
+
+            self._emit_study("dialog_failed", build_failed_payload, "failed")
+            raise
+
+    @staticmethod
+    def _study_strategies(strategies):
+        """把内部错误对象/偏好元组压缩为无原文的试用策略摘要。"""
+        rows = []
+        deep = strategies.get("deep_dive")
+        light = strategies.get("light_marks") or []
+        prefs = strategies.get("preferences") or []
+        targets = ([deep] if deep else []) + list(light)
+        for index, target in enumerate(targets):
+            if not isinstance(target, dict):
+                continue
+            pref = prefs[index] if index < len(prefs) else None
+            rows.append({
+                "kp_id": str(target.get("knowledge_point_id") or "")[:120],
+                "mode": str(pref[1] if isinstance(pref, (list, tuple)) and len(pref) > 1
+                               else "")[:80],
+                "hint_level": "strong" if target is deep else "light",
+                "reason_code": str(pref[2] if isinstance(pref, (list, tuple)) and len(pref) > 2
+                                    else "")[:120],
+            })
+        return [row for row in rows if row["kp_id"]]
+
+    def _emit_study_learning_result(self, trace, conversation_id):
+        if self._study_event is None:
+            return
+        for index, item in enumerate(trace):
+            if not isinstance(item, dict) or item.get("name") != "verify_retell":
+                continue
+            result = item.get("result")
+            if not isinstance(result, dict):
+                continue
+            verdict = result.get("verdict")
+            if not isinstance(verdict, str) or verdict not in {"pass", "partial", "fail"}:
+                continue
+            event_type = {"pass": "learning_confirmed",
+                          "partial": "learning_pending",
+                          "fail": "learning_rejected"}[verdict]
+
+            def build_learning_payload(result=result, verdict=verdict):
+                from engine.study import reference
+                return {"conversation_ref": reference(conversation_id),
+                        "verdict": verdict,
+                        "covered_points": int(result.get("covered_points") or 0),
+                        "total_points": int(result.get("total_points") or 0),
+                        "degraded": bool(result.get("degraded", False)),
+                        "source": "verify_retell"}
+
+            self._emit_study(event_type, build_learning_payload,
+                             f"learning_result:{index}")
 
     # ---------- 阶段方法 ----------
 

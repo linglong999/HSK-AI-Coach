@@ -170,6 +170,29 @@ class MaterialSentenceTest(DialogSmokeBase):
         self.assertEqual(iv["used"], 0)           # observe 未调用，不打断计数
 
 
+class StudyIntegrationTest(DialogSmokeBase):
+    def test_dialog_records_a1_events_only_after_consent(self):
+        tracker = self.svc.get_study_tracker()
+        study_id = tracker.create_session(scene_type="language_difficulty")
+        status, out = self.svc.dialog({"text": USER_INPUT,
+                                       "study_session_id": study_id})
+        self.assertEqual(status, 400)
+        self.assertEqual(out["code"], "study_not_recordable")
+
+        tracker.consent(study_id, "consent-v1")
+        status, out = self.svc.dialog({"text": USER_INPUT,
+                                       "study_session_id": study_id,
+                                       "conversation_id": "study-c1"})
+        self.assertEqual(status, 200)
+        summary = tracker.export_summary(study_id)["sessions"][0]
+        self.assertEqual(summary["event_count"], 6)
+        self.assertEqual(summary["event_types"]["dialog_completed"], 1)
+        self.assertEqual(list(summary["event_types"]), [
+            "input_observed", "intervention_decided", "writeback_completed",
+            "review_queue_observed", "feedback_presented", "dialog_completed",
+        ])
+
+
 class MultiRoundHistoryTest(DialogSmokeBase):
     def test_second_round_sees_first_round_history(self):
         self.svc.dialog({"text": "第一句。", "conversation_id": "c1"})

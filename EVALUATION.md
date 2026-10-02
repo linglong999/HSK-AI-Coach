@@ -12,13 +12,15 @@
 
 ## 当前可复现数字
 
-- 2026-09-29：P0 验收为 `1067 passed, 7 skipped, 32 warnings`；P1 单机收口后为 `1113 passed, 7 skipped, 32 warnings`；P2 仓库内准备后为 `1119 passed, 7 skipped, 32 warnings`；P3 单机诊断和备份范围收口后最新回归为 `1125 passed, 7 skipped, 32 warnings in 35.47s`，命令均为 `python -m pytest tests -q`。
+- 2026-10-02：P1-fix A1 学习确认与数据边界收紧后最新回归为 `1164 passed, 7 skipped, 32 warnings in 30.88s`，命令为项目 CPython 3.12 + 显式 `PYTHONPATH` 的等价 pytest 命令（本机 `uv` 不在 PATH）；P1-fix 定向回归为 `52 passed`。
+- 2026-09-29 历史基线仍保留：P0 `1067 passed`、既有 P1 `1113 passed`、P2 仓库准备 `1119 passed`、既有 P3 单机诊断/备份 `1125 passed`；这些数字对应各自日期和代码状态，不能替代当前结果。
 - deterministic 套件：`tutor_l1_l3` 为 27/27，其余 `golden_corpus`、`retell_corpus`、`cged_corpus`、`skill_corpus`、`d6_assertions` 均 PASS。
 - 识别黄金集：36 条，偏误 17、clean 19；指标透明度和置信区间见 `datasets/eval/eval_transparency.md`。
 - 历史识别指标来自旧版 `datasets/eval/eval_results.json` 的离线重算，不是 2026-09-29 的真实模型重新运行结果。当前 README 只将其标为历史记录。
 - 识别标签为作者 self-review，非二语教师仲裁；小样本指标不代表行业基准或学习增益。
 - P2 教师仲裁目前仅有[协议草案](datasets/eval/teacher_arbitration_protocol.md)和[待审队列](datasets/eval/teacher_arbitration_queue.md)；尚无教师独立标注结果，不能升级为“经教师仲裁”。
 - P2 [分层盘点](datasets/eval/strata_baseline_2026-09-29.md)显示现有识别语料缺全部母语字段，复述语料缺显式等级/母语/偏误类型；旧版预测结果与当前金标版本不匹配，不能发布当前分层准确率。历史比例区间已在 [`eval_transparency.md`](datasets/eval/eval_transparency.md) 更正为 Wilson score，避免 0 次误报被写成零不确定性。
+- 后续迭代 P1 已增加 A1 结构化试用事件、协议状态机和本地删除/汇总入口；该证据只证明单机记录链路和数据边界测试通过，不证明学习者理解、模型性能或学习增益。
 
 ## 发布规则
 
