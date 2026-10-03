@@ -142,6 +142,7 @@ class DialogService:
         self._interventions = {}        # conversation_id -> InterventionTracker
         self._deep_dived = {}           # conversation_id -> set[kp_id]（B2 跨回合深攻去重）
         self._meta_ask = {}             # conversation_id -> dict（B3 每任务自评≤1 标记）
+        self._retell_state = {}         # conversation_id -> {"current": target | None}
         self._target_constructions = {} # conversation_id -> list[kp_id]（B3 该用未用目标，骨架期空）
         self._identify_skill = None     # 预扫识别技能（共享 router.recognizer+graph）
         self._study_tracker = None      # A1 可选试用记录（按请求匿名编号激活）
@@ -307,6 +308,7 @@ class DialogService:
                     target_constructions=self._get_target_constructions(
                         ctx["conversation_id"]),
                     meta_ask_state=self._get_meta_ask(ctx["conversation_id"]),
+                    retell_state=self._get_retell_state(ctx["conversation_id"]),
                     # 纯静态助手注入（构造时取类属性：测试 patch DialogService._xxx
                     # 对 dialog 主链同样生效，稳定挂点不破坏）
                     normalize_user_level=DialogService._normalize_user_level,
@@ -657,6 +659,13 @@ class DialogService:
             self._meta_ask[conversation_id] = d
         return d
 
+    def _get_retell_state(self, conversation_id: str) -> dict:
+        d = self._retell_state.get(conversation_id)
+        if d is None:
+            d = {"current": None}
+            self._retell_state[conversation_id] = d
+        return d
+
     def _get_identify_skill(self):
         """预扫识别技能（0.22 方向3 D3.4：识别触发移到 dialog 主链——每轮产出句
         先走 identify（喂图谱，event_key 幂等与 planner 路径同构）再分档介入）。
@@ -686,18 +695,9 @@ class DialogService:
     @staticmethod
     def _writeback_ledger_events(wb, trace, user_input: str,
                                  skip_text: str = "") -> list:
-        """M8 两段式·账本侧（从 planner trace 编排）：
-        - 识别命中（identify_errors ok）→ ledger observation_error（惯犯判定数据源）
-        - 复述验证 pass（verify_retell verdict=pass）→ on_confirmed 记 concept_confirmed
-        图谱侧写入已在技能内完成（identify→ingest_error / verify→ingest_verdict），
-        此处只补事件账本；单条失败降级不阻塞对话。
-        确认对象：同轮识别的 KP 优先；跨轮（上轮识别讲解、本轮复述通过）时
-        从账本推导"最近观察过且其后无确认"的 KP 兜底（复述验证的是最近讲解，
-        讲解对象即最近未确认偏误；宁紧勿滥，倒序最多 3 个）。
-        skip_text（0.22 方向3）：预扫已对同句记过账，planner 若重复
-        identify 同一句则跳过（防 observation_error 双计→惯犯虚高）。"""
+        """只处理识别 → observation_error；复述确认由
+        DialogRun._apply_retell_outcomes 负责。"""
         notices = []
-        round_kps = []
         for t in trace or []:
             if not t.get("ok"):
                 continue
@@ -711,7 +711,6 @@ class DialogService:
                     kp = err.get("knowledge_point_id")
                     if not kp:
                         continue
-                    round_kps.append(kp)
                     try:
                         wb.ledger.record("observation_error", kp,
                                          signature=err.get("fragment", ""),
@@ -719,33 +718,7 @@ class DialogService:
                     except Exception:  # noqa: BLE001
                         notices.append({"stage": "ledger_write",
                                         "reason": "ledger_write_failed", "fatal": False})
-            elif name == "verify_retell" and result.get("verdict") == "pass":
-                kps = round_kps or DialogService._unconfirmed_recent_kps(wb.ledger)
-                for kp in dict.fromkeys(kps):
-                    try:
-                        wb.on_confirmed(kp, evidence="复述验证通过")
-                    except Exception:  # noqa: BLE001
-                        notices.append({"stage": "ledger_write",
-                                        "reason": "ledger_write_failed", "fatal": False})
         return notices
-
-    @staticmethod
-    def _unconfirmed_recent_kps(ledger, limit: int = 3) -> list:
-        """账本推导：最近观察过、且其后无确认事件的 KP（按观察顺序倒序）。
-        供跨轮确认侧兜底；事件顺序用列表下标判定（同秒 ts 不可靠）。"""
-        events = ledger.recent()
-        last_obs, last_conf = {}, {}
-        for i, e in enumerate(events):
-            kp = e.get("kp_id")
-            if not kp:
-                continue
-            if e.get("kind") in ("observation_error", "repeated_error"):
-                last_obs[kp] = i
-            elif e.get("kind") == "concept_confirmed":
-                last_conf[kp] = i
-        pending = [kp for kp, i in last_obs.items() if i > last_conf.get(kp, -1)]
-        pending.sort(key=lambda kp: last_obs[kp], reverse=True)
-        return pending[:limit]
 
     @staticmethod
     def _build_why(pre_scan, provider, native_lang, client=None):

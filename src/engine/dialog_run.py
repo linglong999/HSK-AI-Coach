@@ -8,6 +8,7 @@
 # LoadSessionContext / 游客闸门 / ResolveProvider 是入口阶段，留在
 # DialogService（依赖 payload 归一与 ProviderResolver 注入缝）。
 
+import hashlib
 from typing import Callable
 
 
@@ -19,7 +20,7 @@ class DialogRun:
                  normalize_user_level, writeback_ledger_events,
                  assistant_payload, deep_dived_kps=None,
                  target_constructions=None, meta_ask_state=None,
-                 study_event=None):
+                 study_event=None, retell_state=None):
         self._router = router
         self._planner = planner
         self._identify_skill = identify_skill
@@ -32,6 +33,8 @@ class DialogRun:
         #     元认知自评"每任务≤1"标记（会话级，DialogService 缓存传入）。
         self._target_constructions = list(target_constructions or [])
         self._meta_ask_state = meta_ask_state or {}
+        self._retell_state = (retell_state if retell_state is not None
+                              else {"current": None})
         # B3 本轮观测产物（自评事件/路由偏置/回避 trace），供写回消费与 B4/B2 读
         self._b3 = {}
         # 纯静态助手（DialogService 稳定挂点，注入以保持解耦与可测性）
@@ -40,6 +43,7 @@ class DialogRun:
         self._assistant_payload = assistant_payload
         # A1：可选的匿名试用事件回调；缺省时主链完全保持原行为。
         self._study_event = study_event
+        self._retell_notices = []
 
     def _emit_study(self, event_type: str, build_payload: Callable[[], dict],
                     event_key: str) -> None:
@@ -120,7 +124,7 @@ class DialogRun:
 
             self._emit_study("writeback_completed", build_writeback_payload,
                              "writeback")
-            self._emit_study_learning_result(trace, ctx["conversation_id"])
+            self._emit_study_learning_result(wb_out, ctx["conversation_id"])
             stage = "response"
             graph_snapshot = self._router.graph.graph_snapshot()
 
@@ -192,33 +196,142 @@ class DialogRun:
             })
         return [row for row in rows if row["kp_id"]]
 
-    def _emit_study_learning_result(self, trace, conversation_id):
+    def _emit_study_learning_result(self, wb_out, conversation_id):
         if self._study_event is None:
             return
-        for index, item in enumerate(trace):
-            if not isinstance(item, dict) or item.get("name") != "verify_retell":
-                continue
-            result = item.get("result")
-            if not isinstance(result, dict):
-                continue
-            verdict = result.get("verdict")
-            if not isinstance(verdict, str) or verdict not in {"pass", "partial", "fail"}:
-                continue
+        for item in wb_out.get("retell_outcomes") or []:
+            verdict = item.get("verdict")
             event_type = {"pass": "learning_confirmed",
                           "partial": "learning_pending",
                           "fail": "learning_rejected"}[verdict]
 
-            def build_learning_payload(result=result, verdict=verdict):
+            def build_learning_payload(item=item, verdict=verdict):
                 from engine.study import reference
                 return {"conversation_ref": reference(conversation_id),
                         "verdict": verdict,
-                        "covered_points": int(result.get("covered_points") or 0),
-                        "total_points": int(result.get("total_points") or 0),
-                        "degraded": bool(result.get("degraded", False)),
-                        "source": "verify_retell"}
+                        "covered_points": int(item.get("covered_points") or 0),
+                        "total_points": int(item.get("total_points") or 0),
+                        "degraded": bool(item.get("degraded", False)),
+                        "source": "verify_retell",
+                        "kp_id": item.get("kp_id", ""),
+                        "target_source": item.get("target_source", "none"),
+                        "graph_applied": bool(item.get("graph_applied", False))}
 
             self._emit_study(event_type, build_learning_payload,
-                             f"learning_result:{index}")
+                             f"learning_result:{item['index']}")
+
+    @staticmethod
+    def _retell_target_from_error(error, set_in_round=True):
+        return {"kp_id": error.get("knowledge_point_id"),
+                "fragment": error.get("fragment") or "",
+                "type": error.get("type") or "",
+                "uncertain": bool(error.get("uncertain", False)),
+                "set_in_round": set_in_round}
+
+    def _retell_notice(self):
+        if not any(n.get("stage") == "retell_writeback"
+                   and n.get("reason") == "retell_writeback_failed"
+                   for n in self._retell_notices):
+            self._retell_notices.append({"stage": "retell_writeback",
+                                         "reason": "retell_writeback_failed",
+                                         "fatal": False})
+
+    def _apply_retell_outcomes(self, trace, pre, conversation_id):
+        self._retell_notices = []
+        valid_kps = set()
+        pre_scan = pre.get("pre_scan") if isinstance(pre, dict) else None
+        if isinstance(pre_scan, dict):
+            for error in pre_scan.get("errors") or []:
+                if isinstance(error, dict) and error.get("knowledge_point_id"):
+                    valid_kps.add(error["knowledge_point_id"])
+        for item in trace or []:
+            if not isinstance(item, dict) or not item.get("ok"):
+                continue
+            if item.get("name") != "identify_errors":
+                continue
+            result = item.get("result") or {}
+            for error in result.get("errors") or []:
+                if isinstance(error, dict) and error.get("knowledge_point_id"):
+                    valid_kps.add(error["knowledge_point_id"])
+        valid_kps.update(self._deep_dived_kps)
+        initial = self._retell_state.get("current")
+        if isinstance(initial, dict) and initial.get("kp_id"):
+            valid_kps.add(initial["kp_id"])
+        current = dict(initial) if isinstance(initial, dict) else None
+        outcomes = []
+        graph_called = False
+        for index, item in enumerate(trace or []):
+            if not isinstance(item, dict) or not item.get("ok"):
+                continue
+            if item.get("name") == "explain_error":
+                error = (item.get("params") or {}).get("error")
+                if (isinstance(error, dict) and error.get("knowledge_point_id")
+                        and error["knowledge_point_id"] in valid_kps):
+                    current = self._retell_target_from_error(error, True)
+                continue
+            if item.get("name") != "verify_retell":
+                continue
+            result = item.get("result") or {}
+            verdict = result.get("verdict")
+            if verdict not in {"pass", "partial", "fail"}:
+                continue
+            target = dict(current) if isinstance(current, dict) else None
+            outcome = {"index": index, "verdict": verdict,
+                       "covered_points": int(result.get("covered_points") or 0),
+                       "total_points": int(result.get("total_points") or 0),
+                       "degraded": bool(result.get("degraded", False)),
+                       "kp_id": target.get("kp_id", "") if target else "",
+                       "target_source": ("same_round" if target and target.get("set_in_round")
+                                         else "previous_round" if target else "none"),
+                       "graph_applied": False}
+            if target and verdict in {"pass", "fail"}:
+                restatement = str((item.get("params") or {}).get("restatement") or "")
+                digest = hashlib.sha256(restatement.encode("utf-8")).hexdigest()[:16]
+                graph_called = True
+                try:
+                    graph_result = self._router.graph.ingest_verdict(
+                        bias_ref={"knowledge_point_id": target["kp_id"],
+                                  "fragment": target["fragment"], "type": target["type"]},
+                        verdict=verdict, uncertain=target["uncertain"],
+                        event_key=f"retell:{conversation_id}:{target['kp_id']}:{digest}")
+                    outcome["graph_applied"] = not (
+                        isinstance(graph_result, dict)
+                        and graph_result.get("status") == "idempotent_skip")
+                except Exception:  # noqa: BLE001
+                    self._retell_notice()
+                if verdict == "pass":
+                    try:
+                        self._wb.on_confirmed(target["kp_id"], evidence="复述验证通过")
+                    except Exception:  # noqa: BLE001
+                        self._retell_notice()
+                current = None
+            outcomes.append(outcome)
+        strategies = (pre.get("strategies") or {}) if isinstance(pre, dict) else {}
+        if current is None or not current.get("set_in_round", False):
+            deep = strategies.get("deep_dive")
+            if isinstance(deep, dict) and deep.get("knowledge_point_id"):
+                current = self._retell_target_from_error(deep, True)
+            else:
+                marks = strategies.get("light_marks") or []
+                unique = []
+                for mark in marks:
+                    if not isinstance(mark, dict) or not mark.get("knowledge_point_id"):
+                        continue
+                    if mark["knowledge_point_id"] not in {m["knowledge_point_id"] for m in unique}:
+                        unique.append(mark)
+                if len(unique) == 1:
+                    current = self._retell_target_from_error(unique[0], True)
+                elif len(unique) >= 2:
+                    current = None
+        if current is not None:
+            current["set_in_round"] = False
+        self._retell_state["current"] = current
+        if graph_called:
+            try:
+                self._router.graph.save()
+            except Exception:  # noqa: BLE001
+                self._retell_notice()
+        return outcomes
 
     # ---------- 阶段方法 ----------
 
@@ -508,10 +621,13 @@ class DialogRun:
         from engine.memory.summarize import build_profile_facts
         pre_scan = pre["pre_scan"]
         reason = pre["reason"]
-        # M8 两段式·账本侧：识别命中→observation_error；复述 pass→concept_confirmed
+        # M8 两段式·账本侧：识别命中→observation_error；复述结果由目标模块处理
         m8_notices = pre["scan_notices"] + self._writeback_ledger_events(
             self._wb, res.get("trace", []), user_input,
             skip_text=(user_input if isinstance(pre_scan, dict) else ""))
+        retell_outcomes = self._apply_retell_outcomes(
+            res.get("trace", []), pre, conversation_id)
+        m8_notices.extend(self._retell_notices)
         # M8 汇合 M5：常错点结构化 facts 写回长期记忆 profile 块
         try:
             facts = build_profile_facts(self._router.graph, self._wb.ledger)
@@ -544,7 +660,8 @@ class DialogRun:
                                        "fallback": bool(res.get("fallback", False)),
                                        **meta})
         self._observe_uptake()   # B2：反馈采纳观测（先于写回返回，账本已含确认链）
-        return {"notices": m8_notices, "why_items": why_items, "reply": reply}
+        return {"notices": m8_notices, "why_items": why_items, "reply": reply,
+                "retell_outcomes": retell_outcomes}
 
     def _observe_uptake(self):
         """B2 F5：uptake 观测（跨轮，基于账本自身推导）。

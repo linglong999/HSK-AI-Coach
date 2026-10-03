@@ -31,9 +31,9 @@ EVENT_FIELDS = {
         "conversation_ref", "level", "reason", "error_count", "uncertain_count", "scanned",
     },
     "feedback_presented": {"conversation_ref", "strategies", "strategy_count"},
-    "learning_confirmed": {"conversation_ref", "verdict", "covered_points", "total_points", "degraded", "source"},
-    "learning_pending": {"conversation_ref", "verdict", "covered_points", "total_points", "degraded", "source"},
-    "learning_rejected": {"conversation_ref", "verdict", "covered_points", "total_points", "degraded", "source"},
+    "learning_confirmed": {"conversation_ref", "verdict", "covered_points", "total_points", "degraded", "source", "kp_id", "target_source", "graph_applied"},
+    "learning_pending": {"conversation_ref", "verdict", "covered_points", "total_points", "degraded", "source", "kp_id", "target_source", "graph_applied"},
+    "learning_rejected": {"conversation_ref", "verdict", "covered_points", "total_points", "degraded", "source", "kp_id", "target_source", "graph_applied"},
     "writeback_completed": {
         "conversation_ref", "retell_pass_count", "error_count", "notice_count",
     },
@@ -308,14 +308,18 @@ class StudyTracker:
         if len(encoded) > 8192:
             raise StudyError("试用事件过大")
         # 结构化字段的最小类型检查，避免把任意原始对象伪装成事件。
-        for key in ("conversation_ref", "scene_type", "level", "reason", "verdict", "source", "status", "stage"):
+        for key in ("conversation_ref", "scene_type", "level", "reason", "verdict", "source", "status", "stage", "kp_id", "target_source"):
             if key in clean and (not isinstance(clean[key], str) or len(clean[key]) > 160):
                 raise StudyError(f"试用事件字段 {key} 类型或长度无效")
+        if "kp_id" in clean and len(clean["kp_id"]) > 120:
+            raise StudyError("试用事件字段 kp_id 长度无效")
         for key in ("text_chars", "error_count", "uncertain_count", "strategy_count", "covered_points", "total_points", "retell_pass_count", "notice_count", "queue_count", "steps", "degraded_count"):
             if key in clean and (type(clean[key]) is not int or clean[key] < 0):
                 raise StudyError(f"试用事件字段 {key} 必须是非负整数")
         if "verdict" in clean and clean["verdict"] not in {"pass", "partial", "fail"}:
             raise StudyError("试用事件字段 verdict 必须是 pass / partial / fail")
+        if "target_source" in clean and clean["target_source"] not in {"same_round", "previous_round", "none"}:
+            raise StudyError("试用事件字段 target_source 无效")
         for key in ("degraded", "fallback", "scanned"):
             if key in clean and not isinstance(clean[key], bool):
                 raise StudyError(f"试用事件字段 {key} 必须是 bool")

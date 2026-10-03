@@ -202,6 +202,13 @@ class VerifyConfirmLedgerTest(unittest.TestCase):
         _cleanup_graph(cls.LEARNER)
 
     def _run_verify_round(self, conv):
+        # 先用同一 conversation 建立反馈目标，再运行复述验证轮；
+        # 新目标契约不再从同轮识别结果猜测确认对象。
+        _identify_round(self.llm, text="很多要放在名词前，你用自己的话复述一遍。")
+        st, out = _post(self.port, "/api/dialog", {
+            "text": "我想买苹果很多。", "learner_id": self.LEARNER,
+            "conversation_id": conv})
+        self.assertEqual(st, 200)
         verify_action = ('[{"type":"action","name":"verify_retell","params":{'
                          '"explanation":"语序讲解","key_points":[{"id":"k1","text":"很多在名词前"}],'
                          '"restatement":"很多要放在名词前面"}}]')

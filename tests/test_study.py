@@ -125,6 +125,30 @@ def test_learning_payload_uses_coverage_not_kp_ids(tmp_path, verdict, event_type
         tracker.record(study_id, event_type, {**payload, "kp_ids": []}, "learning-2")
 
 
+def test_learning_payload_rejects_kp_id_over_120_chars(tmp_path):
+    tracker = StudyTracker(root=str(tmp_path), id_factory=lambda: "A1-kp-length")
+    study_id = tracker.create_session()
+    tracker.consent(study_id, "consent-v1")
+    payload = {"conversation_ref": "conv-ref", "verdict": "pass",
+               "covered_points": 1, "total_points": 1, "degraded": False,
+               "source": "verify_retell", "kp_id": "k" * 121,
+               "target_source": "same_round", "graph_applied": True}
+    with pytest.raises(StudyError):
+        tracker.record(study_id, "learning_confirmed", payload, "learning-kp-long")
+
+
+def test_learning_payload_rejects_invalid_target_source(tmp_path):
+    tracker = StudyTracker(root=str(tmp_path), id_factory=lambda: "A1-target-source")
+    study_id = tracker.create_session()
+    tracker.consent(study_id, "consent-v1")
+    payload = {"conversation_ref": "conv-ref", "verdict": "pass",
+               "covered_points": 1, "total_points": 1, "degraded": False,
+               "source": "verify_retell", "kp_id": "kp-x",
+               "target_source": "guessed", "graph_applied": True}
+    with pytest.raises(StudyError):
+        tracker.record(study_id, "learning_confirmed", payload, "learning-source-invalid")
+
+
 @pytest.mark.parametrize("event_type,payload", [
     ("input_observed", {**_input_payload(), "text_sha256": "a" * 64}),
     ("learning_confirmed", {"verdict": "rejected"}),

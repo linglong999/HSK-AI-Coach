@@ -17,6 +17,11 @@ class StudyFlowTest(DialogSmokeBase):
     def _planner_result(self, verdict="pass"):
         return {"text": REPLY, "steps": 2, "fallback": False,
                 "used_skills": ["verify_retell"], "trace": [{
+                    "name": "explain_error", "ok": True,
+                    "params": {"error": {"knowledge_point_id": "kp-study",
+                                           "fragment": "片段", "type": "语法"}},
+                    "result": {},
+                }, {
                     "name": "verify_retell", "ok": True,
                     "result": {"verdict": verdict, "covered_points": 2,
                                "total_points": 3, "degraded": False},
@@ -57,7 +62,7 @@ class StudyFlowTest(DialogSmokeBase):
         self.assertFalse(confirmed["degraded"])
         self.assertEqual(confirmed["source"], "verify_retell")
         self.assertNotIn("kp_ids", confirmed)
-        self.assertTrue(events[3][1].endswith(":learning_result:0"))
+        self.assertTrue(events[3][1].endswith(":learning_result:1"))
         self.assertEqual(events[2][2]["retell_pass_count"], 1)
         self.assertEqual(events[4][2]["queue_count"], len(queue))
         raw_rows = tracker._conn.execute(
@@ -92,11 +97,11 @@ class StudyFlowTest(DialogSmokeBase):
         tracker, study_id = self._consented_session()
         result = self._planner_result()
         result["trace"] = [
-            {"name": "verify_retell", "result": {"verdict": "partial"}},
-            {"name": "verify_retell", "result": {"verdict": "reject"}},
-            {"name": "verify_retell", "result": {"verdict": "fail", "degraded": True}},
-            {"name": "verify_retell", "result": {}},
-            {"name": "verify_retell", "result": {"verdict": "pass"}},
+            {"name": "verify_retell", "ok": True, "params": {}, "result": {"verdict": "partial"}},
+            {"name": "verify_retell", "ok": True, "params": {}, "result": {"verdict": "reject"}},
+            {"name": "verify_retell", "ok": True, "params": {}, "result": {"verdict": "fail", "degraded": True}},
+            {"name": "verify_retell", "ok": True, "params": {}, "result": {}},
+            {"name": "verify_retell", "ok": True, "params": {}, "result": {"verdict": "pass"}},
         ]
         with patch.object(self.svc._get_planner(None), "run", return_value=result):
             self.assertEqual(self._dialog(study_id)[0], 200)
