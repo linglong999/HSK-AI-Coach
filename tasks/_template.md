@@ -45,6 +45,14 @@ def example(arg: str) -> dict: ...
 - [ ] `uv run python -m datasets.eval.run_all --layer deterministic` 全部 PASS
 - [ ] <!-- 具体行为断言，例如：`uv run pytest tests/test_xxx.py -k yyy -q` 通过，并验证了 …… -->
 
+### 突变自检（Codex 交卡前完成，见 AGENTS.md 执行对话第 6 条）
+
+<!-- Claude 列出本卡的安全闸。每一条都写清楚：要破坏哪里（文件、哪个检查）、预期哪个测试会失败。没有安全闸的小卡写“无” -->
+
+| # | 临时破坏 | 预期失败的测试 |
+|---|---|---|
+| M1 | | |
+
 ## 不要做
 
 - 不修改「文件边界」以外的文件
