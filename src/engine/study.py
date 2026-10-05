@@ -433,6 +433,11 @@ class StudyTracker:
             for item in strategies:
                 if set(item) - {"mode", "hint_level", "reason_code", "kp_id"}:
                     raise StudyError("strategies 包含未允许字段")
+                from engine.feedback_selector import FEEDBACK_MODES, HINT_LEVELS
+                if "mode" in item and item["mode"] not in FEEDBACK_MODES:
+                    raise StudyError("strategies mode 无效")
+                if "hint_level" in item and item["hint_level"] not in HINT_LEVELS:
+                    raise StudyError("strategies hint_level 无效")
         return clean
 
 

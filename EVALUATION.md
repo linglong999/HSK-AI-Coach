@@ -12,7 +12,7 @@
 
 ## 当前可复现数字
 
-- 2026-10-04：P1.7 试用者分区与整体清除后最新回归为 `1201 passed, 7 skipped, 32 warnings in 36.78s`，命令为项目 CPython 3.12 + 显式 `PYTHONPATH` 的等价 pytest 命令（本机 `uv` 不在 PATH）；P1.7 定向回归为 `64 passed, 1 warning in 12.40s`。
+- 2026-10-05：P3.1 打回返工后最新回归为 `1234 passed, 7 skipped, 32 warnings in 63.86s`；P3.1 定向回归为 `43 passed`（规则、文案、T1 A1 调用链及异常隔离）。
 - 2026-09-29 历史基线仍保留：P0 `1067 passed`、既有 P1 `1113 passed`、P2 仓库准备 `1119 passed`、既有 P3 单机诊断/备份 `1125 passed`；这些数字对应各自日期和代码状态，不能替代当前结果。
 - deterministic 套件：`tutor_l1_l3` 为 27/27，其余 `golden_corpus`、`retell_corpus`、`cged_corpus`、`skill_corpus`、`d6_assertions` 均 PASS。
 - 识别黄金集：36 条，偏误 17、clean 19；指标透明度和置信区间见 `datasets/eval/eval_transparency.md`。

@@ -2,6 +2,7 @@
 
 import json
 from unittest.mock import patch
+from types import SimpleNamespace
 
 from engine.dialog_run import DialogRun
 from tests.test_dialog_run_smoke import DialogSmokeBase, REPLY, USER_INPUT
@@ -12,6 +13,7 @@ class StudyFlowTest(DialogSmokeBase):
         super().setUp()
         self.router.learner_id = "a1-smoke"
         self.svc.get_study_tracker().create_session(learner_id="a1-smoke")
+        self.router.graph.get_kp = lambda kp: {"node": {"mastery": 0.9}}
 
     def _consented_session(self):
         tracker = self.svc.get_study_tracker()
@@ -78,6 +80,61 @@ class StudyFlowTest(DialogSmokeBase):
         for row in raw_rows:
             self.assertNotIn(USER_INPUT, row[0])
             self.assertNotIn("text_sha256", row[0])
+
+    def test_structured_feedback_a1_matches_decisions_and_context_signals(self):
+        tracker = self.svc.get_study_tracker()
+        planner = self.svc._get_planner(None)
+
+        def run_case(text, sid, cid, *, scene_id="", tracker_result=None):
+            captured = []
+            original = DialogRun._select_and_log_strategies
+
+            def wrapped(run, *args, **kwargs):
+                result = original(run, *args, **kwargs)
+                captured.append(result)
+                return result
+
+            with patch.object(planner, "run", return_value=self._planner_result()), \
+                    patch.object(DialogRun, "_select_and_log_strategies", new=wrapped):
+                if tracker_result is not None:
+                    run_tracker = self.svc._get_tracker(cid)
+                    with patch.object(run_tracker, "observe", return_value=tracker_result):
+                        status, _ = self.svc.dialog({"text": text, "conversation_id": cid,
+                                                     "study_session_id": sid, "scene_id": scene_id})
+                else:
+                    status, _ = self.svc.dialog({"text": text, "conversation_id": cid,
+                                                 "study_session_id": sid, "scene_id": scene_id})
+            self.assertEqual(status, 200)
+            self.assertTrue(captured and captured[-1].get("decisions"))
+            events = self._events(tracker, sid)
+            feedback = [payload for kind, _, payload in events if kind == "feedback_presented"][-1]
+            self.assertEqual(feedback["strategies"], [
+                {"kp_id": d["target_kp"][:120], "mode": d["mode"],
+                 "hint_level": d["hint_level"], "reason_code": d["reason_code"]}
+                for d in captured[-1]["decisions"] if d["target_kp"]
+            ])
+            return captured[-1]["decisions"]
+
+        scene_sid = tracker.create_session(learner_id="a1-smoke")
+        tracker.consent(scene_sid, "consent-v1")
+        scene_decisions = run_case(USER_INPUT, scene_sid, "scene-c1", scene_id="market")
+        self.assertEqual(scene_decisions[0]["reason_code"], "SCENE_LOW_IMPACT")
+
+        help_sid = tracker.create_session(learner_id="a1-smoke")
+        tracker.consent(help_sid, "consent-v1")
+        with patch("engine.intervention.detect_help_intent", return_value=False):
+            help_decisions = run_case("请帮我解释这个错误", help_sid, "help-c1",
+                                      tracker_result=("block", "help"))
+        self.assertEqual(help_decisions[0]["reason_code"], "HELP_REQUESTED")
+
+        mastery_sid = tracker.create_session(learner_id="a1-smoke")
+        tracker.consent(mastery_sid, "consent-v1")
+        mastery_scan = dict(self.router.recognizer.recognize(USER_INPUT))
+        mastery_scan["errors"] = [dict(mastery_scan["errors"][0], knowledge_point_id="mastery-kp")]
+        with patch.object(self.router.recognizer, "recognize", return_value=mastery_scan):
+            mastery_decisions = run_case(USER_INPUT, mastery_sid, "mastery-c1",
+                                         tracker_result=("light", "streak"))
+        self.assertEqual(mastery_decisions[0]["reason_code"], "SLIP_ON_MASTERED")
 
     def _assert_verdict(self, verdict, expected):
         tracker, study_id = self._consented_session()

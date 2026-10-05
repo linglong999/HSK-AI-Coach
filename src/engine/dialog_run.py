@@ -74,7 +74,7 @@ class DialogRun:
             pre = self._pre_scan_intervene(
                 ctx["user_input"], ctx["native_lang"],
                 directives["level_label"], directives["level_int"],
-                directives["cap"], provider)
+                directives["cap"], provider, scene_id=ctx.get("scene_id", ""))
 
             def build_intervention_payload():
                 from engine.study import reference
@@ -176,25 +176,19 @@ class DialogRun:
 
     @staticmethod
     def _study_strategies(strategies):
-        """把内部错误对象/偏好元组压缩为无原文的试用策略摘要。"""
+        """把结构化 decisions 压缩为无原文的试用策略摘要。"""
         rows = []
-        deep = strategies.get("deep_dive")
-        light = strategies.get("light_marks") or []
-        prefs = strategies.get("preferences") or []
-        targets = ([deep] if deep else []) + list(light)
-        for index, target in enumerate(targets):
-            if not isinstance(target, dict):
+        for decision in strategies.get("decisions") or []:
+            if not isinstance(decision, dict):
                 continue
-            pref = prefs[index] if index < len(prefs) else None
-            rows.append({
-                "kp_id": str(target.get("knowledge_point_id") or "")[:120],
-                "mode": str(pref[1] if isinstance(pref, (list, tuple)) and len(pref) > 1
-                               else "")[:80],
-                "hint_level": "strong" if target is deep else "light",
-                "reason_code": str(pref[2] if isinstance(pref, (list, tuple)) and len(pref) > 2
-                                    else "")[:120],
-            })
-        return [row for row in rows if row["kp_id"]]
+            kp_id = str(decision.get("target_kp") or "")[:120]
+            if not kp_id:
+                continue
+            rows.append({"kp_id": kp_id,
+                         "mode": str(decision.get("mode") or "")[:80],
+                         "hint_level": str(decision.get("hint_level") or "")[:20],
+                         "reason_code": str(decision.get("reason_code") or "")[:120]})
+        return rows
 
     def _emit_study_learning_result(self, wb_out, conversation_id):
         if self._study_event is None:
@@ -398,7 +392,7 @@ class DialogRun:
         }
 
     def _pre_scan_intervene(self, user_input, native_lang, level_label,
-                            level_int, cap, provider=None):
+                            level_int, cap, provider=None, scene_id=""):
         """阶段 · PreScanIntervene：介入判定（确定性分档，D3.4 主链重构）。
         预扫：每轮产出句先走 identify（喂图谱+迁移假设，句子→图谱链不变），
         再用组合信号分档（求助/空/含义不清/连续错率 + 打断上限）。
@@ -459,7 +453,8 @@ class DialogRun:
         # 时机层已定(level)，策略层在此只细分工反馈形态；encourage/none 档策略段为空或仅轻点。
         strategies = self._select_and_log_strategies(
             pre_scan, level_int, level, native_lang,
-            scanned=bool(pre_scan), user_input=user_input) if too_long is not True else {}
+            scanned=bool(pre_scan), user_input=user_input, reason=reason,
+            scene_active=bool(scene_id)) if too_long is not True else {}
         if strategies.get("section"):
             intervention_directive = (
                 intervention_directive.rstrip() + "\n\n" + strategies["section"])
@@ -473,7 +468,7 @@ class DialogRun:
         }
 
     def _select_and_log_strategies(self, pre_scan, level_int, level, native_lang,
-                                   scanned, user_input):
+                                   scanned, user_input, *, reason="", scene_active=False):
         """B2：策略选择（F2/F3 纯函数）→ 归类 + 向账本记 feedback_presented。
         仅当预扫产出了 errors 且 level 非 encourage 时才产段；none 档深攻=空但可轻点。
         too_long/material 档（level="none" 且 pre_scan 为 None/材料句）→ 无策略段。
@@ -487,16 +482,25 @@ class DialogRun:
             select_feedback_strategies, compile_strategy_section)
         # 复发数注入：账本该 kp 累计撞错（F2 优先级 ②），驱动深攻选点
         recurrence = {}
-        try:
-            for e in errors:
-                kp = e.get("knowledge_point_id")
-                if kp:
-                    recurrence[kp] = self._wb.ledger.repeated_count(kp)
-        except Exception:  # noqa: BLE001 账本不可用 → 复发全按 0，不阻断
-            recurrence = {}
+        mastery = {}
+        for e in errors:
+            kp = e.get("knowledge_point_id")
+            if not kp:
+                continue
+            try:
+                recurrence[kp] = self._wb.ledger.repeated_count(kp)
+            except Exception:  # noqa: BLE001 账本不可用时该点按 0，不影响其他点
+                recurrence[kp] = 0
+            try:
+                node = (self._router.graph.get_kp(kp) or {}).get("node") or {}
+                mastery[kp] = float(node.get("mastery") or 0.0)
+            except Exception:  # noqa: BLE001 单个 KP mastery 读取失败按 0.0
+                mastery[kp] = 0.0
         strategies = select_feedback_strategies(
             errors, level_int, level, recurrence_map=recurrence,
-            deep_dived_kps=self._deep_dived_kps)
+            deep_dived_kps=self._deep_dived_kps,
+            intervention_reason=reason, scene_active=scene_active,
+            mastery_map=mastery)
         section = compile_strategy_section(strategies, native_lang)
         # 深攻点进会话级去重集；深攻/轻标呈现均向账本记 feedback_presented
         deep = strategies.get("deep_dive") or {}
