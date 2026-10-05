@@ -10,6 +10,7 @@ def test_study_http_lifecycle(tmp_path):
     created = client.post("/api/study/create", json={"scene_type": "survival"})
     assert created.status_code == 200
     study_id = created.json()["study_session_id"]
+    assert created.json()["learner_id"].startswith("a1-")
 
     consented = client.post("/api/study/consent", json={
         "study_session_id": study_id,

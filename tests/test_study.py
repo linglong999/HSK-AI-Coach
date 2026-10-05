@@ -184,8 +184,8 @@ def test_list_expired_strict_boundary_sort_fields_and_no_deletion(tmp_path):
     tracker.create_session()
     clock[0] = 86400 + 500
     expected = [
-        {"study_session_id": earlier, "status": "created", "retention_until": 86500},
-        {"study_session_id": later, "status": "consented", "retention_until": 86700},
+        {"study_session_id": earlier, "status": "created", "retention_until": 86500, "learner_id": tracker.status(earlier)["learner_id"]},
+        {"study_session_id": later, "status": "consented", "retention_until": 86700, "learner_id": tracker.status(later)["learner_id"]},
     ]
     assert tracker.list_expired() == expected
     assert tracker.list_expired(now=clock[0]) == expected
@@ -201,6 +201,6 @@ def test_cli_expired_outputs_json_with_matching_count(tmp_path, monkeypatch, cap
     assert _main(["expired", "--root", str(tmp_path)]) == 0
     output = json.loads(capsys.readouterr().out)
     assert output == {"now": 86501, "count": 1, "sessions": [
-        {"study_session_id": study_id, "status": "created", "retention_until": 86500},
+        {"study_session_id": study_id, "status": "created", "retention_until": 86500, "learner_id": tracker.status(study_id)["learner_id"]},
     ]}
     assert tracker.status(study_id)["status"] == "created"

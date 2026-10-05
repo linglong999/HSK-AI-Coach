@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS migrations (
 
 CREATE TABLE IF NOT EXISTS study_sessions (
   study_session_id TEXT PRIMARY KEY,
+  learner_id TEXT NOT NULL DEFAULT '',
   protocol_version TEXT NOT NULL,
   scene_type TEXT NOT NULL,
   status TEXT NOT NULL,
@@ -122,9 +123,12 @@ def connect(root: str = "data") -> sqlite3.Connection:
     conn.executescript(_SCHEMA)
     study_columns = {row[1] for row in conn.execute(
         "PRAGMA table_info(study_sessions)").fetchall()}
+    if "learner_id" not in study_columns:
+        conn.execute("ALTER TABLE study_sessions ADD COLUMN learner_id TEXT NOT NULL DEFAULT ''")
     if "completion_reason" not in study_columns:
         conn.execute("ALTER TABLE study_sessions ADD COLUMN completion_reason TEXT NOT NULL DEFAULT ''")
-        conn.commit()
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_study_sessions_learner ON study_sessions(learner_id)")
+    conn.commit()
     return conn
 
 

@@ -8,9 +8,14 @@ from tests.test_dialog_run_smoke import DialogSmokeBase, REPLY, USER_INPUT
 
 
 class StudyFlowTest(DialogSmokeBase):
+    def setUp(self):
+        super().setUp()
+        self.router.learner_id = "a1-smoke"
+        self.svc.get_study_tracker().create_session(learner_id="a1-smoke")
+
     def _consented_session(self):
         tracker = self.svc.get_study_tracker()
-        study_id = tracker.create_session(scene_type="language_difficulty")
+        study_id = tracker.create_session(scene_type="language_difficulty", learner_id="a1-smoke")
         tracker.consent(study_id, "consent-v1")
         return tracker, study_id
 
@@ -118,7 +123,7 @@ class StudyFlowTest(DialogSmokeBase):
 
     def test_unconsented_session_returns_400_and_records_nothing(self):
         tracker = self.svc.get_study_tracker()
-        study_id = tracker.create_session()
+        study_id = tracker.create_session(learner_id="a1-smoke")
         status, out = self._dialog(study_id)
         self.assertEqual(status, 400)
         self.assertEqual(out["code"], "study_not_recordable")

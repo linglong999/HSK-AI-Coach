@@ -33,6 +33,7 @@
 # ============================================================
 
 import argparse
+from typing import Optional
 import base64
 import ipaddress
 import json
@@ -217,7 +218,7 @@ def _dialog_sse_events(out: dict):
 
 def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=None,
                memory_root: str = "data",
-               gate=None, legacy_dir=None):
+               gate=None, legacy_dir=None, study_session_id: str = ""):
     """构造 FastAPI app，闭包捕获 Router（每个请求共享同一图谱实例）。
     路由函数全部 def（sync）→ Starlette 丢线程池执行，每请求一线程 ≈
     ThreadingHTTPServer 语义，RLock 串行化闭环保持。禁 async def 路由（防事件循环改锁语义）。
@@ -228,7 +229,8 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
 
     lock = threading.RLock()
     svc = DialogService(router=router, lock=lock, generation=generation,
-                        dialog_llm=dialog_llm, memory_root=memory_root, gate=gate)
+                        dialog_llm=dialog_llm, memory_root=memory_root, gate=gate,
+                        study_session_id=study_session_id)
 
     _lock = lock
     _svc = svc
@@ -1025,25 +1027,59 @@ def _is_loopback_host(host: str) -> bool:
         return False
 
 
+def _resolve_study_mode(study_session_id: str, learner: Optional[str], root: str = "data") -> str:
+    from engine.study import StudyTracker, StudyError, RECORDABLE_STATES
+    tracker = StudyTracker(root=root)
+    try:
+        row = tracker.status(study_session_id)
+    except StudyError as exc:
+        raise ValueError("试用编号不存在或不合法") from exc
+    finally:
+        tracker._conn.close()
+    if row["status"] not in RECORDABLE_STATES:
+        raise ValueError("试用尚未同意或已结束/撤回")
+    bound = row["learner_id"]
+    if not bound:
+        raise ValueError("试用未绑定学习者分区")
+    if learner and learner != bound:
+        raise ValueError("学习者与试用绑定的分区不一致")
+    return bound
+
+
 def main():
     import uvicorn
     ap = argparse.ArgumentParser(description="HSK-AI-Coach 前端壳服务（FastAPI+uvicorn）")
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8612)))
-    ap.add_argument("--learner", default="demo", help="学习者 id → data/graph_<id>.json")
+    ap.add_argument("--learner", default=None, help="学习者 id → data/graph_<id>.json")
+    ap.add_argument("--study", default="", help="以指定匿名编号启动试用模式")
     ap.add_argument("--lang", default="en", help="讲解/纠错语言：en(英壳+中例句,默认) 或 zh(全中文)")
     args = ap.parse_args()
 
     if not _is_loopback_host(args.host):
         ap.error("当前版本没有身份认证与租户隔离，只允许监听本机 loopback；公网部署需先完成 P1 安全验收")
 
-    router = Router(learner_id=args.learner, native_lang=args.lang, user_level="HSK3")
+    learner = args.learner or "demo"
+    if args.study:
+        try:
+            learner = _resolve_study_mode(args.study, args.learner)
+        except ValueError as exc:
+            ap.error(str(exc))
+    router = Router(learner_id=learner, native_lang=args.lang, user_level="HSK3")
     if not os.path.isdir(_INDEX_DIR):
         print(f"[serve] 前端壳目录不存在：{_INDEX_DIR}")
         print("[serve] 前端壳目录缺失，将仅提供 API（/api/process /api/dialog /api/graph）；静态壳见 web/（React 壳）与 web_legacy/（legacy 工具壳）")
-    app = create_app(router, _INDEX_DIR, gate=VisitorGate(root="data"))
-    uvicorn.run(app, host=args.host, port=args.port, access_log=False)
-    print(f"HSK-AI-Coach 前端壳：http://{args.host}:{args.port}  (learner={args.learner})")
+    from engine.study import mark_active, clear_active
+    if args.study:
+        mark_active("data", learner, args.study)
+    try:
+        app = create_app(router, _INDEX_DIR, gate=VisitorGate(root="data"),
+                         study_session_id=args.study)
+        uvicorn.run(app, host=args.host, port=args.port, access_log=False)
+    finally:
+        if args.study:
+            clear_active("data", learner)
+    print(f"HSK-AI-Coach 前端壳：http://{args.host}:{args.port}  (learner={learner})")
     print("  POST /api/dialog   自由对话（planner 唯一入口，需 LLM Key）")
     print("                      入参 text / learner_id / conversation_id")
     print("                      多轮记忆服务端持久化：同 conversation_id 延续上下文")

@@ -13,7 +13,9 @@ import json
 import re
 import secrets
 import sqlite3
+import sys
 import time
+import os
 from typing import Any, Callable, Dict, Iterable, Optional
 
 from engine.memory import store
@@ -23,6 +25,7 @@ PROTOCOL_VERSION = "A1-2026-09-30-v1"
 DEFAULT_RETENTION_DAYS = 90
 SESSION_STATES = frozenset({"created", "consented", "active", "completed", "withdrawn"})
 RECORDABLE_STATES = frozenset({"consented", "active"})
+STUDY_LEARNER_RE = re.compile(r"^a1-[A-Za-z0-9_-]{1,60}$")
 
 # 事件是可审计的产品行为，而不是原始日志。每种事件只接受这里列出的字段。
 EVENT_FIELDS = {
@@ -61,6 +64,32 @@ def reference(value: str) -> str:
     return hashlib.sha256(str(value).encode("utf-8")).hexdigest()[:24]
 
 
+def _active_path(root: str, learner_id: str) -> str:
+    return os.path.join(root, f"a1_active_{learner_id}.json")
+
+
+def mark_active(root: str, learner_id: str, study_session_id: str) -> str:
+    if not STUDY_LEARNER_RE.fullmatch(str(learner_id or "")):
+        raise StudyError("learner_id 格式无效")
+    os.makedirs(root, exist_ok=True)
+    path = _active_path(root, learner_id)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"learner_id": learner_id, "study_session_id": study_session_id,
+                   "started_at": int(time.time())}, f, ensure_ascii=False)
+    return path
+
+
+def clear_active(root: str, learner_id: str) -> None:
+    try:
+        os.remove(_active_path(root, learner_id))
+    except FileNotFoundError:
+        pass
+
+
+def is_active(root: str, learner_id: str) -> bool:
+    return os.path.exists(_active_path(root, learner_id))
+
+
 class StudyTracker:
     """A1 匿名试用状态、事件、聚合和删除的唯一接口。"""
 
@@ -76,24 +105,91 @@ class StudyTracker:
         self._retention_days = retention_days
 
     def create_session(self, protocol_version: str = PROTOCOL_VERSION,
-                       scene_type: str = "general") -> str:
+                       scene_type: str = "general", learner_id: Optional[str] = None) -> str:
         protocol = self._text(protocol_version, "protocol_version", 80)
         scene = self._text(scene_type, "scene_type", 80)
         study_id = self._text(self._id_factory(), "study_session_id", 80)
         if not _EVENT_KEY_RE.fullmatch(study_id):
             raise ValueError("study_session_id 含非法字符")
+        learner = learner_id or ("a1-" + secrets.token_hex(8))
+        if not isinstance(learner, str) or not STUDY_LEARNER_RE.fullmatch(learner):
+            raise StudyError("learner_id 格式无效")
+        bound = self._conn.execute(
+            "SELECT 1 FROM study_sessions WHERE learner_id=? LIMIT 1", (learner,)
+        ).fetchone()
+        if bound is None:
+            counts = self.learner_data_counts(learner)
+            if any(counts[k] for k in ("ledger_events", "sessions", "messages", "profiles")) or counts["files"]:
+                raise StudyError("该学习者已有非试用数据，不能绑定为试用分区")
         now = self._now()
         try:
             self._conn.execute(
                 "INSERT INTO study_sessions"
-                " (study_session_id, protocol_version, scene_type, status,"
-                "  created_at, retention_until) VALUES (?,?,?,?,?,?)",
-                (study_id, protocol, scene, "created", now,
+                " (study_session_id, learner_id, protocol_version, scene_type, status,"
+                "  created_at, retention_until) VALUES (?,?,?,?,?,?,?)",
+                (study_id, learner, protocol, scene, "created", now,
                  now + self._retention_days * 86400))
             self._conn.commit()
         except sqlite3.IntegrityError as exc:
             raise StudyError("study_session_id 已存在") from exc
         return study_id
+
+    def learner_data_counts(self, learner_id: str) -> dict:
+        learner = str(learner_id or "")
+        counts = {"learner_id": learner, "ledger_events": 0, "sessions": 0,
+                  "messages": 0, "profiles": 0, "study_sessions": 0, "files": []}
+        for key, table in (("ledger_events", "ledger_events"), ("sessions", "sessions"),
+                           ("messages", "messages"), ("profiles", "profiles")):
+            counts[key] = int(self._conn.execute(
+                f"SELECT COUNT(*) FROM {table} WHERE learner_id=?", (learner,)).fetchone()[0])
+        counts["study_sessions"] = int(self._conn.execute(
+            "SELECT COUNT(*) FROM study_sessions WHERE learner_id=?", (learner,)).fetchone()[0])
+        candidates = [f"graph_{learner}.json", f"graph_{learner}.json.tmp"]
+        from engine.metrics import _file
+        candidates.append(os.path.basename(_file(self.root, "feedback", learner)))
+        counts["files"] = sorted(name for name in candidates if os.path.exists(os.path.join(self.root, name)))
+        return counts
+
+    def purge_learner(self, learner_id: str, force: bool = False) -> dict:
+        learner = str(learner_id or "")
+        if not STUDY_LEARNER_RE.fullmatch(learner):
+            raise StudyError("learner_id 格式无效")
+        rows = self._conn.execute("SELECT study_session_id, status FROM study_sessions WHERE learner_id=?", (learner,)).fetchall()
+        if not rows:
+            raise StudyError("没有绑定该学习者的试用会话")
+        if any(row["status"] in {"consented", "active"} for row in rows):
+            raise StudyError("试用仍在进行，不能清除")
+        if not force and is_active(self.root, learner):
+            raise StudyError("试用服务仍在运行，不能清除")
+        ids = [row["study_session_id"] for row in rows]
+        marks = {"ledger_events": 0, "messages": 0, "sessions": 0, "profiles": 0,
+                 "study_sessions": len(ids), "study_events": 0}
+        try:
+            self._conn.execute("BEGIN")
+            for key, table in (("ledger_events", "ledger_events"), ("messages", "messages"),
+                               ("sessions", "sessions"), ("profiles", "profiles")):
+                marks[key] = int(self._conn.execute(f"SELECT COUNT(*) FROM {table} WHERE learner_id=?", (learner,)).fetchone()[0])
+            marks["study_events"] = int(self._conn.execute(
+                "SELECT COUNT(*) FROM study_events WHERE study_session_id IN (SELECT study_session_id FROM study_sessions WHERE learner_id=?)", (learner,)).fetchone()[0])
+            for table in ("ledger_events", "messages", "sessions", "profiles"):
+                self._conn.execute(f"DELETE FROM {table} WHERE learner_id=?", (learner,))
+            self._conn.execute("DELETE FROM study_sessions WHERE learner_id=?", (learner,))
+            self._conn.commit()
+        except Exception:
+            self._conn.rollback()
+            raise
+        deleted_files, file_errors = [], []
+        for name in self.learner_data_counts(learner)["files"]:
+            try:
+                os.remove(os.path.join(self.root, name))
+                deleted_files.append(name)
+            except OSError:
+                file_errors.append(name)
+        if force:
+            clear_active(self.root, learner)
+        return {"learner_id": learner, "deleted": marks,
+                "deleted_files": sorted(deleted_files), "file_errors": sorted(file_errors),
+                "not_covered": ["backups"]}
 
     def consent(self, study_session_id: str, consent_version: str) -> None:
         study_id = self._id(study_session_id)
@@ -216,6 +312,10 @@ class StudyTracker:
         row = self._session(study_id)
         if row is None:
             return {"study_session_id": study_id, "deleted": False, "deleted_events": 0}
+        learner = row["learner_id"]
+        counts = self.learner_data_counts(learner)
+        if any(counts[k] for k in ("ledger_events", "sessions", "messages", "profiles")) or counts["files"]:
+            raise StudyError("该试用者分区仍有数据，请先执行 purge")
         count = int(self._conn.execute(
             "SELECT COUNT(*) FROM study_events WHERE study_session_id=?", (study_id,)
         ).fetchone()[0])
@@ -230,7 +330,7 @@ class StudyTracker:
             where = " WHERE s.study_session_id=?"
             params = (self._id(study_session_id),)
         rows = self._conn.execute(
-            "SELECT s.study_session_id, s.protocol_version, s.scene_type, s.status,"
+            "SELECT s.study_session_id, s.learner_id, s.protocol_version, s.scene_type, s.status,"
             " s.created_at, s.consented_at, s.started_at, s.completed_at, s.withdrawn_at,"
             " s.completion_reason,"
             " s.retention_until, e.event_type, e.created_at AS event_at"
@@ -242,6 +342,7 @@ class StudyTracker:
             sid = row["study_session_id"]
             item = grouped.setdefault(sid, {
                 "study_session_id": sid,
+                "learner_id": row["learner_id"] or "",
                 "protocol_version": row["protocol_version"],
                 "scene_type": row["scene_type"],
                 "status": row["status"],
@@ -267,7 +368,7 @@ class StudyTracker:
         """列出保留期限已过的试用会话，不执行删除。"""
         cutoff = self._now() if now is None else int(now)
         rows = self._conn.execute(
-            "SELECT study_session_id, status, retention_until "
+            "SELECT study_session_id, status, retention_until, learner_id "
             "FROM study_sessions WHERE retention_until < ? "
             "ORDER BY retention_until ASC, study_session_id ASC",
             (cutoff,),
@@ -276,6 +377,7 @@ class StudyTracker:
             "study_session_id": row["study_session_id"],
             "status": row["status"],
             "retention_until": int(row["retention_until"]),
+            "learner_id": row["learner_id"] or "",
         } for row in rows]
 
     def _session(self, study_id: str):
@@ -336,18 +438,23 @@ class StudyTracker:
 
 def _main(argv: Optional[Iterable[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="A1 单机试用汇总与删除")
-    parser.add_argument("command", choices=("create", "consent", "complete", "summary", "withdraw", "delete", "expired"))
+    parser.add_argument("command", choices=("create", "consent", "complete", "summary", "withdraw", "delete", "expired", "inspect", "purge"))
     parser.add_argument("study_session_id", nargs="?")
     parser.add_argument("--consent-version", default="")
     parser.add_argument("--protocol-version", default=PROTOCOL_VERSION)
     parser.add_argument("--scene-type", default="general")
     parser.add_argument("--reason", default="")
     parser.add_argument("--root", default="data")
+    parser.add_argument("--learner-id", default="")
+    parser.add_argument("--force", action="store_true")
     args = parser.parse_args(list(argv) if argv is not None else None)
+    if args.command in {"inspect", "purge"} and args.study_session_id:
+        parser.error("inspect/purge 不接受 study_session_id 位置参数")
     tracker = StudyTracker(root=args.root)
     if args.command == "create":
-        study_id = tracker.create_session(args.protocol_version, args.scene_type)
-        print(json.dumps({"study_session_id": study_id, "status": "created"},
+        study_id = tracker.create_session(args.protocol_version, args.scene_type, args.learner_id or None)
+        learner = tracker.status(study_id)["learner_id"]
+        print(json.dumps({"study_session_id": study_id, "status": "created", "learner_id": learner},
                          ensure_ascii=False, indent=2))
         return 0
     if args.command == "consent":
@@ -373,6 +480,20 @@ def _main(argv: Optional[Iterable[str]] = None) -> int:
         print(json.dumps({"now": now, "count": len(sessions), "sessions": sessions},
                          ensure_ascii=False, indent=2))
         return 0
+    if args.command == "inspect":
+        if not args.learner_id:
+            parser.error("inspect 需要 --learner-id")
+        print(json.dumps(tracker.learner_data_counts(args.learner_id), ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "purge":
+        if not args.learner_id:
+            parser.error("purge 需要 --learner-id")
+        try:
+            print(json.dumps(tracker.purge_learner(args.learner_id, force=args.force), ensure_ascii=False, indent=2))
+            return 0
+        except StudyError as exc:
+            parser._print_message(f"{exc}\n", sys.stderr)
+            return 2
     if args.command == "withdraw":
         if not args.study_session_id:
             parser.error("withdraw 需要 study_session_id")

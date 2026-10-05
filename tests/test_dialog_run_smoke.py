@@ -171,9 +171,14 @@ class MaterialSentenceTest(DialogSmokeBase):
 
 
 class StudyIntegrationTest(DialogSmokeBase):
+    def setUp(self):
+        super().setUp()
+        self.router.learner_id = "a1-smoke"
+        self.svc.get_study_tracker().create_session(learner_id="a1-smoke")
+
     def test_dialog_records_a1_events_only_after_consent(self):
         tracker = self.svc.get_study_tracker()
-        study_id = tracker.create_session(scene_type="language_difficulty")
+        study_id = tracker.create_session(scene_type="language_difficulty", learner_id="a1-smoke")
         status, out = self.svc.dialog({"text": USER_INPUT,
                                        "study_session_id": study_id})
         self.assertEqual(status, 400)

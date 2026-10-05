@@ -124,7 +124,8 @@ class DialogService:
     })
 
     def __init__(self, router, lock=None, generation=None, dialog_llm=None,
-                 memory_root: str = "data", gate=None, provider_resolver=None):
+                 memory_root: str = "data", gate=None, provider_resolver=None,
+                 study_session_id: str = ""):
         self._router = router
         self._lock = lock if lock is not None else threading.RLock()
         self._generation = generation
@@ -146,6 +147,7 @@ class DialogService:
         self._target_constructions = {} # conversation_id -> list[kp_id]（B3 该用未用目标，骨架期空）
         self._identify_skill = None     # 预扫识别技能（共享 router.recognizer+graph）
         self._study_tracker = None      # A1 可选试用记录（按请求匿名编号激活）
+        self._default_study_session_id = study_session_id
 
     # ---------- 对外只读：HTTP 层遗留 handler 借用共享实例 ----------
 
@@ -270,12 +272,6 @@ class DialogService:
             ctx, err = self._load_session_context(payload)
             if err is not None:
                 return err
-            err = self._consume_visitor_quota(vid, ctx["conversation_id"])
-            if err is not None:
-                return err
-            provider, err = self._resolve_dialog_provider(ctx["provider_id"])
-            if err is not None:
-                return err
             study_event = None
             if ctx.get("study_session_id"):
                 from engine.study import StudyError
@@ -285,6 +281,11 @@ class DialogService:
                     if not study.is_recordable(ctx["study_session_id"]):
                         return 400, {"error": "试用尚未同意或已结束/撤回",
                                      "code": "study_not_recordable"}
+                    bound = study.status(ctx["study_session_id"])["learner_id"]
+                    if (bound == "" or bound != ctx["learner_id"]
+                            or bound != self._router.learner_id):
+                        return 400, {"error": "试用编号与当前学习者分区不一致",
+                                     "code": "study_learner_mismatch"}
                 except StudyError:
                     return 400, {"error": "无效试用编号", "code": "invalid_study_session"}
                 round_id = secrets.token_hex(12)
@@ -292,6 +293,12 @@ class DialogService:
                 def study_event(event_type, payload, stage_key):
                     study.record(ctx["study_session_id"], event_type, payload,
                                  event_key=f"{round_id}:{stage_key}")
+            err = self._consume_visitor_quota(vid, ctx["conversation_id"])
+            if err is not None:
+                return err
+            provider, err = self._resolve_dialog_provider(ctx["provider_id"])
+            if err is not None:
+                return err
             # B7 S2：回合用量收集器入坑 → DialogRun 全链（含 planner 多次 LLM 调用）
             # 经 llm_call 包装回报；run 后取走折算+记账（失败/零产出不扣）。
             from engine.quota import begin_round, end_round
@@ -338,6 +345,12 @@ class DialogService:
         ui_lang = str((payload.get("ui_lang") or payload.get("native_lang") or "")).strip().lower() or \
             str(getattr(self._router, "native_lang", "") or "")
         learner_l1 = str((payload.get("learner_l1") or "unknown")).strip().lower()
+        sid = str((payload.get("study_session_id") or "")).strip()
+        if self._default_study_session_id:
+            if sid and sid != self._default_study_session_id:
+                return None, (400, {"error": "试用编号与服务试用模式不一致",
+                                    "code": "study_session_mismatch"})
+            sid = self._default_study_session_id
         # ui_lang 与 learner_l1 独立：选中文界面 ≠ 中文母语；
         # learner_l1 缺省 = "unknown"（不污染 L1 统计）。
         return {
@@ -348,7 +361,7 @@ class DialogService:
             "native_lang": ui_lang,  # 局部别名：下游调用兼容旧字段
             "learner_l1": learner_l1,
             "scene_id": str((payload.get("scene_id") or "")).strip(),
-            "study_session_id": str((payload.get("study_session_id") or "")).strip(),
+            "study_session_id": sid,
             # B3：学习者本轮元认知自评档（certain/half/uncertain，可选，非本回合默 None）
             "meta_self_level": (str(payload.get("meta_self_level") or "").strip()
                                 or None),
@@ -501,10 +514,11 @@ class DialogService:
             with self._lock:
                 study_id = self.get_study_tracker().create_session(
                     protocol_version=protocol_version or PROTOCOL_VERSION,
-                    scene_type=scene_type)
+                    scene_type=scene_type, learner_id=payload.get("learner_id"))
         except (ValueError, TypeError) as exc:
             return 400, {"error": str(exc), "code": "invalid_study_session"}
         return 200, {"study_session_id": study_id,
+                     "learner_id": self.get_study_tracker().status(study_id)["learner_id"],
                      "protocol_version": protocol_version or PROTOCOL_VERSION,
                      "scene_type": scene_type, "status": "created"}
 
