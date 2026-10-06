@@ -107,6 +107,24 @@ CREATE INDEX IF NOT EXISTS idx_study_events_session_time
   ON study_events(study_session_id, created_at, id);
 CREATE INDEX IF NOT EXISTS idx_study_events_type
   ON study_events(event_type);
+
+CREATE TABLE IF NOT EXISTS memory_items (
+  memory_id     TEXT PRIMARY KEY,
+  learner_id    TEXT NOT NULL,
+  kind          TEXT NOT NULL,
+  status        TEXT NOT NULL,
+  content_json  TEXT NOT NULL DEFAULT '{}',
+  source_json   TEXT NOT NULL DEFAULT '{}',
+  dedup_key     TEXT NOT NULL,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL,
+  confirmed_at  INTEGER,
+  last_recalled_at INTEGER,
+  recall_count  INTEGER NOT NULL DEFAULT 0,
+  last_actor    TEXT NOT NULL DEFAULT '',
+  UNIQUE (learner_id, dedup_key)
+);
+CREATE INDEX IF NOT EXISTS idx_memory_items_lookup ON memory_items(learner_id, kind, status);
 """
 
 

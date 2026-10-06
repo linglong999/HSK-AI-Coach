@@ -119,7 +119,7 @@ class StudyTracker:
         ).fetchone()
         if bound is None:
             counts = self.learner_data_counts(learner)
-            if any(counts[k] for k in ("ledger_events", "sessions", "messages", "profiles")) or counts["files"]:
+            if any(counts[k] for k in ("ledger_events", "sessions", "messages", "profiles", "memory_items")) or counts["files"]:
                 raise StudyError("该学习者已有非试用数据，不能绑定为试用分区")
         now = self._now()
         try:
@@ -137,9 +137,11 @@ class StudyTracker:
     def learner_data_counts(self, learner_id: str) -> dict:
         learner = str(learner_id or "")
         counts = {"learner_id": learner, "ledger_events": 0, "sessions": 0,
-                  "messages": 0, "profiles": 0, "study_sessions": 0, "files": []}
+                  "messages": 0, "profiles": 0, "memory_items": 0,
+                  "study_sessions": 0, "files": []}
         for key, table in (("ledger_events", "ledger_events"), ("sessions", "sessions"),
-                           ("messages", "messages"), ("profiles", "profiles")):
+                           ("messages", "messages"), ("profiles", "profiles"),
+                           ("memory_items", "memory_items")):
             counts[key] = int(self._conn.execute(
                 f"SELECT COUNT(*) FROM {table} WHERE learner_id=?", (learner,)).fetchone()[0])
         counts["study_sessions"] = int(self._conn.execute(
@@ -163,15 +165,17 @@ class StudyTracker:
             raise StudyError("试用服务仍在运行，不能清除")
         ids = [row["study_session_id"] for row in rows]
         marks = {"ledger_events": 0, "messages": 0, "sessions": 0, "profiles": 0,
+                 "memory_items": 0,
                  "study_sessions": len(ids), "study_events": 0}
         try:
             self._conn.execute("BEGIN")
             for key, table in (("ledger_events", "ledger_events"), ("messages", "messages"),
-                               ("sessions", "sessions"), ("profiles", "profiles")):
+                               ("sessions", "sessions"), ("profiles", "profiles"),
+                               ("memory_items", "memory_items")):
                 marks[key] = int(self._conn.execute(f"SELECT COUNT(*) FROM {table} WHERE learner_id=?", (learner,)).fetchone()[0])
             marks["study_events"] = int(self._conn.execute(
                 "SELECT COUNT(*) FROM study_events WHERE study_session_id IN (SELECT study_session_id FROM study_sessions WHERE learner_id=?)", (learner,)).fetchone()[0])
-            for table in ("ledger_events", "messages", "sessions", "profiles"):
+            for table in ("ledger_events", "messages", "sessions", "profiles", "memory_items"):
                 self._conn.execute(f"DELETE FROM {table} WHERE learner_id=?", (learner,))
             self._conn.execute("DELETE FROM study_sessions WHERE learner_id=?", (learner,))
             self._conn.commit()
@@ -314,7 +318,7 @@ class StudyTracker:
             return {"study_session_id": study_id, "deleted": False, "deleted_events": 0}
         learner = row["learner_id"]
         counts = self.learner_data_counts(learner)
-        if any(counts[k] for k in ("ledger_events", "sessions", "messages", "profiles")) or counts["files"]:
+        if any(counts[k] for k in ("ledger_events", "sessions", "messages", "profiles", "memory_items")) or counts["files"]:
             raise StudyError("该试用者分区仍有数据，请先执行 purge")
         count = int(self._conn.execute(
             "SELECT COUNT(*) FROM study_events WHERE study_session_id=?", (study_id,)

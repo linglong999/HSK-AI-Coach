@@ -77,6 +77,43 @@ def test_new_partition_with_existing_real_data_is_rejected(tracker, tmp_path):
     assert snapshot(tracker, "a1-x") == before
 
 
+def test_memory_items_partition_counts_purge_and_binding_guard(tracker, tmp_path):
+    from engine.memory.long_term import LongTermMemory
+    a = LongTermMemory("a1-x", root=str(tmp_path), id_factory=lambda: "mem-a")
+    d = LongTermMemory("demo", root=str(tmp_path), id_factory=lambda: "mem-d")
+    a.add_candidate("life_event", {"summary": "A"}, {})
+    did = d.add_candidate("life_event", {"summary": "D"}, {})
+    before_demo = tracker._conn.execute(
+        "SELECT * FROM memory_items WHERE learner_id='demo'").fetchall()
+    assert tracker.learner_data_counts("a1-x")["memory_items"] == 1
+    with pytest.raises(StudyError, match="已有非试用数据"):
+        tracker.create_session(learner_id="a1-x")
+    tracker._conn.execute("INSERT INTO study_sessions (study_session_id, learner_id, protocol_version, scene_type, status, created_at, retention_until) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                          ("purge-memory", "a1-x", "v1", "general", "completed", 1, 2))
+    tracker._conn.commit()
+    result = tracker.purge_learner("a1-x")
+    assert result["deleted"]["memory_items"] == 1
+    assert tracker.learner_data_counts("a1-x")["memory_items"] == 0
+    after_demo = tracker._conn.execute(
+        "SELECT * FROM memory_items WHERE learner_id='demo'").fetchall()
+    assert [tuple(row) for row in after_demo] == [tuple(row) for row in before_demo]
+    assert d.get(did)["status"] == "candidate"
+
+
+def test_delete_protects_memory_items_partition(tracker, tmp_path):
+    from engine.memory.long_term import LongTermMemory
+    sid = tracker.create_session(learner_id="a1-x")
+    memory = LongTermMemory("a1-x", root=str(tmp_path), id_factory=lambda: "mem-delete")
+    memory.add_candidate("life_event", {"summary": "Keep"}, {})
+    before = [tuple(row) for row in tracker._conn.execute(
+        "SELECT * FROM memory_items WHERE learner_id='a1-x'").fetchall()]
+    with pytest.raises(StudyError, match="仍有数据"):
+        tracker.delete(sid)
+    after = [tuple(row) for row in tracker._conn.execute(
+        "SELECT * FROM memory_items WHERE learner_id='a1-x'").fetchall()]
+    assert after == before
+
+
 def test_real_old_table_migration_adds_column_then_index(tmp_path):
     conn = sqlite3.connect(tmp_path / "coach.db")
     conn.execute("""CREATE TABLE study_sessions (

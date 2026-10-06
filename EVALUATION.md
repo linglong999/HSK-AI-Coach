@@ -12,7 +12,7 @@
 
 ## 当前可复现数字
 
-- 2026-10-05：P3.1 打回返工后最新回归为 `1234 passed, 7 skipped, 32 warnings in 63.86s`；P3.1 定向回归为 `43 passed`（规则、文案、T1 A1 调用链及异常隔离）。
+- 2026-10-06：P4.1 打回返工后最新回归为 `1244 passed, 7 skipped, 32 warnings in 69.32s`；P4.1 定向回归为 `33 passed, 1 warning`。
 - 2026-09-29 历史基线仍保留：P0 `1067 passed`、既有 P1 `1113 passed`、P2 仓库准备 `1119 passed`、既有 P3 单机诊断/备份 `1125 passed`；这些数字对应各自日期和代码状态，不能替代当前结果。
 - deterministic 套件：`tutor_l1_l3` 为 27/27，其余 `golden_corpus`、`retell_corpus`、`cged_corpus`、`skill_corpus`、`d6_assertions` 均 PASS。
 - 识别黄金集：36 条，偏误 17、clean 19；指标透明度和置信区间见 `datasets/eval/eval_transparency.md`。
