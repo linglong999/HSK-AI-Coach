@@ -80,7 +80,7 @@ const zh = {
   rvBadge: '↓ 待复习 · ',
   delTitle: '删除本卡片（不影响图谱）', delToast: '已移除卡片（不影响图谱）',
   nSessions: '{n}', newSessPending: '新会话 · 未开始', nMsgs: '{n} 条',
-  restored: '已恢复会话（{n} 条消息）· 成果卡不随会话持久，此处为文本记录',
+  restored: '已恢复会话（{n} 条消息）',
   newSessionToast: '已新建会话',
   reviewPrompt: '我该复习什么了？请拉取我的复习队列，并对最需要复习的知识点给我一道针对性练习。',
   reviewBadge: '▶ 开始复习',
@@ -288,7 +288,7 @@ const en: Record<string, string> = {
   rvBadge: '↓ Due · ',
   delTitle: 'Delete this card (does not affect the graph)', delToast: 'Card removed (graph unchanged)',
   nSessions: '{n}', newSessPending: 'New session · not started', nMsgs: '{n} msgs',
-  restored: 'Session restored ({n} messages) · result cards are not persisted with the session; this is a text record',
+  restored: 'Session restored ({n} messages)',
   newSessionToast: 'New session created',
   /* 复习 */
   reviewPrompt: 'What should I review? Pull my review queue and give me a targeted exercise for the most-due point.',

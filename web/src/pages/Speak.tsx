@@ -166,7 +166,7 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
     toast: showToast,
   }
 
-  // 会话切换 → 重置画布并从 /api/conversation 深链恢复文本/why（卡片不随会话持久，why 折叠可重建）
+  // 会话切换 → 按实时顺序恢复 user / recog / trace / assistant+why
   // Doc 阅读材料 outbox 在恢复完成后消费，避免恢复 effect 覆盖刚 append 的用户气泡（badge 丢失）
   useEffect(() => {
     let alive = true
@@ -176,15 +176,34 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
     ;(async () => {
       try {
         await api('/api/graph').then(setGraph).catch(() => {})
-        const c = await api<{ messages?: Array<{ role?: string; content?: string; text?: string; why?: any[] }> }>('/api/conversation?id=' + encodeURIComponent(convId))
+        const c = await api<{ messages?: Array<{ role?: string; content?: string; text?: string; why?: any[]; cards?: any[]; identified?: { errors?: any[]; uncertain?: any[] } }> }>('/api/conversation?id=' + encodeURIComponent(convId))
         const msgs = c?.messages || []
         if (alive && msgs.length) {
           const restored: Line[] = []
-          for (const m of msgs) {
-            if (m.role === 'user') { restored.push({ role: 'user', text: String(m.content ?? '') }); continue }
+          const consumed = new Set<number>()
+          for (let i = 0; i < msgs.length; i++) {
+            const m = msgs[i]
+            if (m.role !== 'assistant') continue
+            let userIndex = -1
+            for (let j = i - 1; j >= 0; j--) {
+              if (msgs[j].role === 'user' && !consumed.has(j)) { userIndex = j; break }
+            }
+            if (userIndex >= 0) {
+              consumed.add(userIndex)
+              const userText = String(msgs[userIndex].content ?? msgs[userIndex].text ?? '')
+              restored.push({ role: 'user', text: userText })
+              const identified = m.identified || {}
+              if ((identified.errors?.length || 0) || (identified.uncertain?.length || 0)) {
+                restored.push({ role: 'recog', text: userText, errors: identified.errors || [], uncertain: identified.uncertain || [] })
+              }
+              for (const card of (Array.isArray(m.cards) ? m.cards : [])) {
+                if (card?.name !== 'identify_errors') restored.push({ role: 'trace', name: card?.name, res: card?.result })
+              }
+            }
             const why = Array.isArray(m.why) ? m.why : []
             restored.push({ role: 'assistant', text: String(m.content ?? m.text ?? ''), why })
           }
+          msgs.forEach((m, i) => { if (m.role === 'user' && !consumed.has(i)) restored.push({ role: 'user', text: String(m.content ?? m.text ?? '') }) })
           setLines(restored)
         }
       } catch { /* 恢复失败不阻塞 */ }

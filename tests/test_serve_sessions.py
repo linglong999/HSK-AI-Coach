@@ -32,9 +32,12 @@ from ._serve_common import make_server, stop_server
 
 class FakeRecognizer:
     def recognize(self, text, level=3, native_lang=""):
+        if "苹果很多" not in text:
+            return {"errors": [], "uncertain": [], "degraded": []}
         return {
             "errors": [{
                 "fragment": "苹果很多", "correction": "很多苹果",
+                "offset": {"start": 5, "end": 9},
                 "type": "语法-语序", "type_confident": True, "confidence": 0.9,
                 "knowledge_point_id": "kp-order-many", "uncertain": False,
             }],
@@ -262,6 +265,57 @@ class CardsPersistenceTest(unittest.TestCase):
             if m["role"] == "user":
                 self.assertNotIn("cards", m)
                 self.assertNotIn("why", m)
+
+    def test_conversation_returns_identified_only_for_assistant(self):
+        st, _ = _post(self.port, "/api/dialog",
+                      {"text": "我想买苹果很多。", "conversation_id": self.cid + "-identified"})
+        self.assertEqual(st, 200)
+        st, conv = _get(self.port, "/api/conversation?id=" + self.cid + "-identified")
+        self.assertEqual(st, 200)
+        assistants = [m for m in conv["messages"] if m["role"] == "assistant"]
+        self.assertTrue(assistants)
+        identified = next(m["identified"] for m in assistants if "identified" in m)
+        self.assertTrue(identified["errors"])
+        self.assertEqual(identified["errors"][0]["fragment"], "苹果很多")
+        self.assertEqual(identified["errors"][0]["offset"], {"start": 5, "end": 9})
+        for m in conv["messages"]:
+            if m["role"] == "user":
+                self.assertNotIn("identified", m)
+
+    def test_conversation_omits_identified_when_no_errors(self):
+        cid = self.cid + "-clean"
+        st, _ = _post(self.port, "/api/dialog",
+                      {"text": "这是正常句子。", "conversation_id": cid})
+        self.assertEqual(st, 200)
+        st, conv = _get(self.port, "/api/conversation?id=" + cid)
+        self.assertEqual(st, 200)
+        assistants = [m for m in conv["messages"] if m["role"] == "assistant"]
+        self.assertTrue(assistants)
+        for m in assistants:
+            self.assertNotIn("identified", m)
+
+    def test_user_identified_metadata_is_filtered(self):
+        from fastapi.testclient import TestClient
+        from engine.dialog_service import DialogService
+
+        with tempfile.TemporaryDirectory() as root:
+            router = FakeRouter()
+            memory = LearnerMemory(router.learner_id, root=root)
+            metadata = {"identified": {"errors": [{"fragment": "苹果很多",
+                                                  "offset": {"start": 5, "end": 9}}],
+                                       "uncertain": []}}
+            memory.append("user-metadata", "user", "我想买苹果很多。", metadata=metadata)
+            self.assertEqual(memory.get_history("user-metadata")[0]["metadata"], metadata)
+            try:
+                with mock.patch.object(DialogService, "get_memory", return_value=memory), \
+                        TestClient(create_app(router, root, memory_root=root),
+                                   base_url="http://127.0.0.1") as client:
+                    response = client.get("/api/conversation?id=user-metadata")
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.json()["messages"], [
+                        {"role": "user", "content": "我想买苹果很多。"}])
+            finally:
+                memory._conn.close()
 
 
 class LearnerMemoryPinDeleteTest(unittest.TestCase):

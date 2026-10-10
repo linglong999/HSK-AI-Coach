@@ -5,11 +5,8 @@
 import { useState } from 'react'
 import { collectMarks, splitSegments, pickDeepMark, type Mark, type Segment } from '../lib/annotate'
 
-const esc = (s: any) => String(s == null ? '' : s)
-  .replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
-
 function Tag({ mark }: { mark: Mark }) {
-  return <span className={`atag ${mark.typeClass}`}>{esc(mark.type || '偏误')}</span>
+  return <span className={`atag ${mark.typeClass}`}>{mark.type || '偏误'}</span>
 }
 
 export default function AnnotatedSentence({
@@ -42,7 +39,7 @@ export default function AnnotatedSentence({
           <div className="annot-label">原句校读 <i>· 朱笔批注</i></div>
           <div className="annot-sent" lang="zh">
             {segs.map((s, i) => {
-              if (s.kind === 'plain') return <span key={i}>{esc(text.slice(s.start, s.end))}</span>
+              if (s.kind === 'plain') return <span key={i}>{text.slice(s.start, s.end)}</span>
               const m = s.mark!
               const isOpen = open.has(m.start)
               return (
@@ -53,8 +50,8 @@ export default function AnnotatedSentence({
                     onClick={() => toggle(m)}
                     title="点击展开解释"
                   >
-                    <span className="acorr">{esc(m.fragment)}<b>→</b>{esc(m.correction || '?')}</span>
-                    {esc(m.fragment)}
+                    <span className="acorr">{m.fragment}<b>→</b>{m.correction || '?'}</span>
+                    {m.fragment}
                   </button>
                 </span>
               )
@@ -70,15 +67,15 @@ export default function AnnotatedSentence({
             <div key={m.start} className={`arow ${open.has(m.start) ? 'open' : ''}`}>
               <button type="button" className="asum" onClick={() => toggle(m)}>
                 <Tag mark={m} />
-                <span className="afrag">{esc(m.fragment)}<b>→</b>{esc(m.correction || '?')}</span>
+                <span className="afrag">{m.fragment}<b>→</b>{m.correction || '?'}</span>
               </button>
               {open.has(m.start) && (
                 <div className="adetail">
                   {m.explanation
-                    ? <p>{esc(m.explanation)}</p>
+                    ? <p>{m.explanation}</p>
                     : <p className="muted-note">详见教练批语。</p>}
                   {m.kpId ? (
-                    <span className="akp" title="在地图上定位" onClick={() => onLocate?.(m.kpId)}>{esc(m.kpId)}</span>
+                    <span className="akp" title="在地图上定位" onClick={() => onLocate?.(m.kpId)}>{m.kpId}</span>
                   ) : null}
                 </div>
               )}
@@ -92,7 +89,7 @@ export default function AnnotatedSentence({
         <div className="annot-uc">
           <span className="uc-lbl">待确认</span>
           {uncertainMarks.map((m) => (
-            <span key={m.start} className="uc-item">{esc(m.fragment)}{m.correction ? ` → ${esc(m.correction)}` : ''}</span>
+            <span key={m.start} className="uc-item">{m.fragment}{m.correction ? ` → ${m.correction}` : ''}</span>
           ))}
         </div>
       )}

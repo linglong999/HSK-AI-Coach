@@ -838,4 +838,10 @@ class DialogService:
                 and (pre_scan.get("errors") or [])
                 and reason not in ("material",)):
             why = DialogService._build_why(pre_scan, provider, native_lang)
-        return {"cards": cards, "why": why}
+        identified = {}
+        if isinstance(pre_scan, dict):
+            identified = {
+                "errors": pre_scan.get("errors") or [],
+                "uncertain": pre_scan.get("uncertain") or [],
+            }
+        return {"cards": cards, "why": why, "identified": identified}

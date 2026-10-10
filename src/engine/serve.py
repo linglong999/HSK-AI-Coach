@@ -581,7 +581,7 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
     @app.get("/api/conversation")
     def api_conversation(request: Request):
         """只读单会话消息历史（0.19：URL 深链 ?conversation=<id> 恢复会话）。
-        透传 user/assistant 的 {role, content}；assistant 消息额外白名单透传 cards/why
+        透传 user/assistant 的 {role, content}；assistant 消息额外白名单透传 cards/why/identified
         （0.27 成果卡随会话持久），其余 metadata 内部项一律不暴露。"""
         qs = request.query_params
         conversation_id = (qs.get("id") or "default").strip()
@@ -600,6 +600,9 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
                     item["cards"] = md["cards"]
                 if md.get("why"):
                     item["why"] = md["why"]
+                identified = md.get("identified") or {}
+                if identified.get("errors") or identified.get("uncertain"):
+                    item["identified"] = identified
             visible.append(item)
         return _json({
             "conversation_id": conversation_id,
