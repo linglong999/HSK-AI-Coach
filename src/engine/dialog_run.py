@@ -182,8 +182,6 @@ class DialogRun:
             if not isinstance(decision, dict):
                 continue
             kp_id = str(decision.get("target_kp") or "")[:120]
-            if not kp_id:
-                continue
             rows.append({"kp_id": kp_id,
                          "mode": str(decision.get("mode") or "")[:80],
                          "hint_level": str(decision.get("hint_level") or "")[:20],
@@ -418,11 +416,22 @@ class DialogRun:
                 scan_notices.append({"stage": "pre_scan",
                                      "reason": "pre_scan_failed", "fatal": False})
         max_conf, error_flag = 1.0, None
+        diagnosed = False
         if isinstance(pre_scan, dict):
+            errors = pre_scan.get("errors") or []
+            diagnosed = any(
+                isinstance(e, dict)
+                and e.get("source") == "construction_diagnostics"
+                and e.get("verdict") == "error"
+                for e in errors)
             confs = [float(e.get("confidence") or 0.0)
-                     for e in (pre_scan.get("errors") or [])
-                     + (pre_scan.get("uncertain") or [])
-                     if isinstance(e, dict)]
+                     for e in errors
+                     if isinstance(e, dict)
+                     and not (e.get("source") == "construction_diagnostics"
+                              and e.get("verdict") == "error")]
+            confs.extend(float(e.get("confidence") or 0.0)
+                         for e in (pre_scan.get("uncertain") or [])
+                         if isinstance(e, dict))
             max_conf = max(confs) if confs else 1.0
             error_flag = bool(pre_scan.get("errors")
                               or pre_scan.get("uncertain"))
@@ -445,7 +454,7 @@ class DialogRun:
         else:
             level, reason = self._tracker.observe(
                 user_input, max_conf=max_conf,
-                error_flag=error_flag, cap=cap)
+                error_flag=error_flag, cap=cap, diagnosed=diagnosed)
         intervention_directive = build_intervention_directive(
             level, reason, native_lang, recognition=pre_scan,
             hsk_level=level_int)

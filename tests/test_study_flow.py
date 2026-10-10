@@ -136,6 +136,21 @@ class StudyFlowTest(DialogSmokeBase):
                                          tracker_result=("light", "streak"))
         self.assertEqual(mastery_decisions[0]["reason_code"], "SLIP_ON_MASTERED")
 
+    def test_feedback_presented_keeps_strategy_without_kp(self):
+        tracker, study_id = self._consented_session()
+        planner = self.svc._get_planner(None)
+        scan = {"errors": [{"fragment": "拜访", "type": "词汇",
+                             "verdict": "error", "confidence": 0.9}],
+                "uncertain": [], "degraded": []}
+        with patch.object(self.router.recognizer, "recognize", return_value=scan), \
+                patch.object(planner, "run", return_value=self._planner_result()):
+            status, _ = self._dialog(study_id, cid="f2-no-kp")
+        self.assertEqual(status, 200)
+        feedback = [payload for kind, _, payload in self._events(tracker, study_id)
+                    if kind == "feedback_presented"][-1]
+        self.assertEqual(feedback["strategy_count"], 1)
+        self.assertEqual(feedback["strategies"][0]["kp_id"], "")
+
     def _assert_verdict(self, verdict, expected):
         tracker, study_id = self._consented_session()
         planner = self.svc._get_planner(None)

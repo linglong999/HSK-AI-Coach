@@ -116,6 +116,25 @@ class DecideInterventionTest(unittest.TestCase):
             decide_intervention("我想买苹果很多。", max_conf=0.9),
             ("none", "fluent"))
 
+    def test_diagnosed_priority_order(self):
+        self.assertEqual(decide_intervention("我把书看不完", diagnosed=True,
+                                             interrupt_used=3, cap=3), ("none", "cap"))
+        self.assertEqual(decide_intervention("我把书看不完", diagnosed=True,
+                                             recent_error_flags=[True, True, True]),
+                         ("block", "diagnosed"))
+        self.assertEqual(decide_intervention("怎么说？", diagnosed=True),
+                         ("block", "help"))
+        self.assertEqual(decide_intervention("太难了，我学不会", diagnosed=True),
+                         ("encourage", "frustrated"))
+        self.assertEqual(decide_intervention("我把书看不完", diagnosed=True,
+                                             max_conf=0.1),
+                         ("block", "diagnosed"))
+        self.assertEqual(decide_intervention("嗯…", diagnosed=True),
+                         ("block", "diagnosed"))
+        self.assertEqual(decide_intervention("我把书看不完", diagnosed=False,
+                                             max_conf=0.1),
+                         ("block", "unclear"))
+
 
 # ---------------- Tracker 状态机 ----------------
 
@@ -182,6 +201,12 @@ class InterventionDirectiveTest(unittest.TestCase):
         self.assertIn("light touch", light_d)
         block_d = build_intervention_directive("block", "unclear", "en")
         self.assertIn("step in", block_d)
+
+    def test_diagnosed_directive_mentions_feedback_strategy(self):
+        zh = build_intervention_directive("block", "diagnosed", "zh")
+        en = build_intervention_directive("block", "diagnosed", "en")
+        self.assertIn("按 [FeedbackStrategy]", zh)
+        self.assertIn("follow the [FeedbackStrategy]", en)
 
     def test_priority_over_rule3(self):
         # 段头必须声明优先于全局规则3（技能选用建议）

@@ -1,0 +1,785 @@
+{
+  "version": "p34-v1",
+  "cases": [
+    {
+      "id": "R1",
+      "origin": "p2_self",
+      "note": "把字句否定位次，诊断判错，首次",
+      "input": {
+        "text": "我把这本书不能看完。",
+        "max_conf": 0.4,
+        "recent_error_flags": [],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": true,
+        "errors": [
+          {
+            "fragment": "把",
+            "type": "语法",
+            "verdict": "error",
+            "confidence": 0.4,
+            "knowledge_point_id": "kp-ba-sentence",
+            "source": "construction_diagnostics",
+            "construction_diagnostics": {
+              "verdict": "error"
+            }
+          }
+        ],
+        "hsk_level": 3,
+        "recurrence_map": {},
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {}
+      },
+      "expect": {
+        "level": "block",
+        "reason": "diagnosed",
+        "decisions": [
+          {
+            "target_kp": "kp-ba-sentence",
+            "mode": "explicit_correction",
+            "reason_code": "DEEP_DIVE"
+          }
+        ]
+      }
+    },
+    {
+      "id": "R2",
+      "origin": "p2_self",
+      "note": "拜访→参观，词汇，无 kp，流利",
+      "input": {
+        "text": "我拜访了博物馆。",
+        "max_conf": 0.9,
+        "recent_error_flags": [],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": false,
+        "errors": [
+          {
+            "fragment": "拜访",
+            "type": "词汇",
+            "verdict": "error",
+            "confidence": 0.9
+          }
+        ],
+        "hsk_level": 3,
+        "recurrence_map": {},
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {}
+      },
+      "expect": {
+        "level": "none",
+        "reason": "fluent",
+        "decisions": [
+          {
+            "target_kp": "",
+            "mode": "recast",
+            "reason_code": "FLUENT_KEEP_FLOW"
+          }
+        ]
+      }
+    },
+    {
+      "id": "R3",
+      "origin": "p2_self",
+      "note": "修正后复述，无错",
+      "input": {
+        "text": "很多苹果。",
+        "max_conf": 1,
+        "recent_error_flags": [],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": false,
+        "errors": [],
+        "hsk_level": 3,
+        "recurrence_map": {},
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {}
+      },
+      "expect": {
+        "level": "none",
+        "reason": "fluent",
+        "decisions": []
+      }
+    },
+    {
+      "id": "R4",
+      "origin": "p2_self",
+      "note": "餐厅场景，无错",
+      "input": {
+        "text": "我想要一杯茶。",
+        "max_conf": 1,
+        "recent_error_flags": [],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": false,
+        "errors": [],
+        "hsk_level": 3,
+        "recurrence_map": {},
+        "deep_dived_kps": [],
+        "scene_active": true,
+        "mastery_map": {}
+      },
+      "expect": {
+        "level": "none",
+        "reason": "fluent",
+        "decisions": []
+      }
+    },
+    {
+      "id": "S1",
+      "origin": "synthetic",
+      "note": "求助句同时带诊断错误，验证求助优先；真实主链求助跳过预扫，本例仅锁定时机优先级与 HELP_REQUESTED 规则",
+      "input": {
+        "text": "把字句的否定词放哪儿？怎么说？",
+        "max_conf": 0.4,
+        "recent_error_flags": [],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": true,
+        "errors": [
+          {
+            "fragment": "把",
+            "type": "语法",
+            "verdict": "error",
+            "confidence": 0.4,
+            "knowledge_point_id": "kp-ba-sentence",
+            "source": "construction_diagnostics",
+            "construction_diagnostics": {
+              "verdict": "error"
+            }
+          }
+        ],
+        "hsk_level": 3,
+        "recurrence_map": {},
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {}
+      },
+      "expect": {
+        "level": "block",
+        "reason": "help",
+        "decisions": [
+          {
+            "target_kp": "kp-ba-sentence",
+            "mode": "explicit_correction",
+            "reason_code": "HELP_REQUESTED"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S2",
+      "origin": "synthetic",
+      "note": "连错，复发1，掌握度高",
+      "input": {
+        "text": "继续练习。",
+        "max_conf": 0.9,
+        "recent_error_flags": [
+          true,
+          true,
+          true
+        ],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": false,
+        "errors": [
+          {
+            "fragment": "练习",
+            "type": "词汇",
+            "verdict": "error",
+            "confidence": 0.9,
+            "knowledge_point_id": "k",
+            "source": "recognizer"
+          }
+        ],
+        "hsk_level": 3,
+        "recurrence_map": {
+          "k": 1
+        },
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {
+          "k": 0.8
+        }
+      },
+      "expect": {
+        "level": "light",
+        "reason": "streak",
+        "decisions": [
+          {
+            "target_kp": "k",
+            "mode": "intonation_hint",
+            "reason_code": "SLIP_ON_MASTERED"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S3",
+      "origin": "synthetic",
+      "note": "连错，复发1，掌握度低",
+      "input": {
+        "text": "继续练习。",
+        "max_conf": 0.9,
+        "recent_error_flags": [
+          true,
+          true,
+          true
+        ],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": false,
+        "errors": [
+          {
+            "fragment": "练习",
+            "type": "词汇",
+            "verdict": "error",
+            "confidence": 0.9,
+            "knowledge_point_id": "k",
+            "source": "recognizer"
+          }
+        ],
+        "hsk_level": 3,
+        "recurrence_map": {
+          "k": 1
+        },
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {
+          "k": 0.2
+        }
+      },
+      "expect": {
+        "level": "light",
+        "reason": "streak",
+        "decisions": [
+          {
+            "target_kp": "k",
+            "mode": "intonation_hint",
+            "reason_code": "FIRST_PROMPT"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S4",
+      "origin": "synthetic",
+      "note": "复发2",
+      "input": {
+        "text": "继续练习。",
+        "max_conf": 0.9,
+        "recent_error_flags": [
+          true,
+          true,
+          true
+        ],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": false,
+        "errors": [
+          {
+            "fragment": "练习",
+            "type": "词汇",
+            "verdict": "error",
+            "confidence": 0.9,
+            "knowledge_point_id": "k",
+            "source": "recognizer"
+          }
+        ],
+        "hsk_level": 3,
+        "recurrence_map": {
+          "k": 2
+        },
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {
+          "k": 0.2
+        }
+      },
+      "expect": {
+        "level": "light",
+        "reason": "streak",
+        "decisions": [
+          {
+            "target_kp": "k",
+            "mode": "local_question",
+            "reason_code": "REPEAT_1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S5",
+      "origin": "synthetic",
+      "note": "复发3",
+      "input": {
+        "text": "继续练习。",
+        "max_conf": 0.9,
+        "recent_error_flags": [
+          true,
+          true,
+          true
+        ],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": false,
+        "errors": [
+          {
+            "fragment": "练习",
+            "type": "词汇",
+            "verdict": "error",
+            "confidence": 0.9,
+            "knowledge_point_id": "k",
+            "source": "recognizer"
+          }
+        ],
+        "hsk_level": 3,
+        "recurrence_map": {
+          "k": 3
+        },
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {
+          "k": 0.2
+        }
+      },
+      "expect": {
+        "level": "light",
+        "reason": "streak",
+        "decisions": [
+          {
+            "target_kp": "k",
+            "mode": "contrastive_hint",
+            "reason_code": "REPEAT_2"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S6",
+      "origin": "synthetic",
+      "note": "复发4",
+      "input": {
+        "text": "继续练习。",
+        "max_conf": 0.9,
+        "recent_error_flags": [
+          true,
+          true,
+          true
+        ],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": false,
+        "errors": [
+          {
+            "fragment": "练习",
+            "type": "词汇",
+            "verdict": "error",
+            "confidence": 0.9,
+            "knowledge_point_id": "k",
+            "source": "recognizer"
+          }
+        ],
+        "hsk_level": 3,
+        "recurrence_map": {
+          "k": 4
+        },
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {
+          "k": 0.2
+        }
+      },
+      "expect": {
+        "level": "light",
+        "reason": "streak",
+        "decisions": [
+          {
+            "target_kp": "k",
+            "mode": "explicit_correction",
+            "reason_code": "REPEAT_ESCALATE"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S7",
+      "origin": "synthetic",
+      "note": "HSK2复发1",
+      "input": {
+        "text": "继续练习。",
+        "max_conf": 0.9,
+        "recent_error_flags": [
+          true,
+          true,
+          true
+        ],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": false,
+        "errors": [
+          {
+            "fragment": "练习",
+            "type": "词汇",
+            "verdict": "error",
+            "confidence": 0.9,
+            "knowledge_point_id": "k",
+            "source": "recognizer"
+          }
+        ],
+        "hsk_level": 2,
+        "recurrence_map": {
+          "k": 1
+        },
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {
+          "k": 0.2
+        }
+      },
+      "expect": {
+        "level": "light",
+        "reason": "streak",
+        "decisions": [
+          {
+            "target_kp": "k",
+            "mode": "recast",
+            "reason_code": "LOW_LEVEL_MODELING"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S8",
+      "origin": "synthetic",
+      "note": "HSK2复发2",
+      "input": {
+        "text": "继续练习。",
+        "max_conf": 0.9,
+        "recent_error_flags": [
+          true,
+          true,
+          true
+        ],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": false,
+        "errors": [
+          {
+            "fragment": "练习",
+            "type": "词汇",
+            "verdict": "error",
+            "confidence": 0.9,
+            "knowledge_point_id": "k",
+            "source": "recognizer"
+          }
+        ],
+        "hsk_level": 2,
+        "recurrence_map": {
+          "k": 2
+        },
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {
+          "k": 0.2
+        }
+      },
+      "expect": {
+        "level": "light",
+        "reason": "streak",
+        "decisions": [
+          {
+            "target_kp": "k",
+            "mode": "explicit_correction",
+            "reason_code": "LOW_LEVEL_REPEAT"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S9",
+      "origin": "synthetic",
+      "note": "餐厅场景内低影响错误",
+      "input": {
+        "text": "我要茶。",
+        "max_conf": 0.9,
+        "recent_error_flags": [],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": false,
+        "errors": [
+          {
+            "fragment": "茶",
+            "type": "词汇",
+            "confidence": 0.9,
+            "knowledge_point_id": "k"
+          }
+        ],
+        "hsk_level": 3,
+        "recurrence_map": {},
+        "deep_dived_kps": [],
+        "scene_active": true,
+        "mastery_map": {
+          "k": 0.2
+        }
+      },
+      "expect": {
+        "level": "none",
+        "reason": "fluent",
+        "decisions": [
+          {
+            "target_kp": "k",
+            "mode": "recast",
+            "reason_code": "SCENE_LOW_IMPACT"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S10",
+      "origin": "synthetic",
+      "note": "同会话再次出现，已深攻，复发2",
+      "input": {
+        "text": "我把书看不完。",
+        "max_conf": 0.4,
+        "recent_error_flags": [],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": true,
+        "errors": [
+          {
+            "fragment": "把",
+            "type": "语法",
+            "verdict": "error",
+            "confidence": 0.4,
+            "knowledge_point_id": "kp-ba-sentence",
+            "source": "construction_diagnostics",
+            "construction_diagnostics": {
+              "verdict": "error"
+            }
+          }
+        ],
+        "hsk_level": 3,
+        "recurrence_map": {
+          "kp-ba-sentence": 2
+        },
+        "deep_dived_kps": [
+          "kp-ba-sentence"
+        ],
+        "scene_active": false,
+        "mastery_map": {
+          "kp-ba-sentence": 0.2
+        }
+      },
+      "expect": {
+        "level": "block",
+        "reason": "diagnosed",
+        "decisions": [
+          {
+            "target_kp": "kp-ba-sentence",
+            "mode": "local_question",
+            "reason_code": "REPEAT_1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S11",
+      "origin": "synthetic",
+      "note": "挫败加诊断错误，挫败优先",
+      "input": {
+        "text": "太难了，我学不会。",
+        "max_conf": 0.4,
+        "recent_error_flags": [],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": true,
+        "errors": [
+          {
+            "fragment": "把",
+            "type": "语法",
+            "verdict": "error",
+            "confidence": 0.4,
+            "knowledge_point_id": "kp-ba-sentence",
+            "source": "construction_diagnostics",
+            "construction_diagnostics": {
+              "verdict": "error"
+            }
+          }
+        ],
+        "hsk_level": 3,
+        "recurrence_map": {},
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {}
+      },
+      "expect": {
+        "level": "encourage",
+        "reason": "frustrated",
+        "decisions": []
+      }
+    },
+    {
+      "id": "S12",
+      "origin": "synthetic",
+      "note": "诊断判错但打断次数用满",
+      "input": {
+        "text": "我把书看不完。",
+        "max_conf": 0.4,
+        "recent_error_flags": [],
+        "interrupt_used": 3,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": true,
+        "errors": [
+          {
+            "fragment": "把",
+            "type": "语法",
+            "verdict": "error",
+            "confidence": 0.4,
+            "knowledge_point_id": "kp-ba-sentence",
+            "source": "construction_diagnostics",
+            "construction_diagnostics": {
+              "verdict": "error"
+            }
+          }
+        ],
+        "hsk_level": 3,
+        "recurrence_map": {},
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {}
+      },
+      "expect": {
+        "level": "none",
+        "reason": "cap",
+        "decisions": [
+          {
+            "target_kp": "kp-ba-sentence",
+            "mode": "recast",
+            "reason_code": "FLUENT_KEEP_FLOW"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S13",
+      "origin": "synthetic",
+      "note": "非诊断错误低置信",
+      "input": {
+        "text": "我想买苹果很多。",
+        "max_conf": 0.45,
+        "recent_error_flags": [],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": false,
+        "errors": [
+          {
+            "fragment": "苹果很多",
+            "type": "语序",
+            "verdict": "error",
+            "confidence": 0.45,
+            "knowledge_point_id": "k",
+            "source": "recognizer"
+          }
+        ],
+        "hsk_level": 3,
+        "recurrence_map": {},
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {
+          "k": 0.2
+        }
+      },
+      "expect": {
+        "level": "block",
+        "reason": "unclear",
+        "decisions": [
+          {
+            "target_kp": "k",
+            "mode": "explicit_correction",
+            "reason_code": "DEEP_DIVE"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S14",
+      "origin": "synthetic",
+      "note": "诊断错误加0.5非诊断错误，诊断优先",
+      "input": {
+        "text": "我把书看不完。",
+        "max_conf": 0.5,
+        "recent_error_flags": [],
+        "interrupt_used": 0,
+        "cap": 3,
+        "last_level": "none",
+        "diagnosed": true,
+        "errors": [
+          {
+            "fragment": "把",
+            "type": "语法",
+            "verdict": "error",
+            "confidence": 0.4,
+            "knowledge_point_id": "kp-ba-sentence",
+            "source": "construction_diagnostics",
+            "construction_diagnostics": {
+              "verdict": "error"
+            }
+          },
+          {
+            "fragment": "苹果很多",
+            "type": "语序",
+            "verdict": "error",
+            "confidence": 0.5,
+            "knowledge_point_id": "k",
+            "source": "recognizer"
+          }
+        ],
+        "hsk_level": 3,
+        "recurrence_map": {},
+        "deep_dived_kps": [],
+        "scene_active": false,
+        "mastery_map": {
+          "k": 0.2
+        }
+      },
+      "expect": {
+        "level": "block",
+        "reason": "diagnosed",
+        "decisions": [
+          {
+            "target_kp": "kp-ba-sentence",
+            "mode": "explicit_correction",
+            "reason_code": "DEEP_DIVE"
+          },
+          {
+            "target_kp": "k",
+            "mode": "intonation_hint",
+            "reason_code": "FIRST_PROMPT"
+          }
+        ]
+      }
+    }
+  ]
+}
+

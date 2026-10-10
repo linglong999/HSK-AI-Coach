@@ -223,6 +223,41 @@ class SkipScanTest(DialogRunBase):
         self.assertNotEqual(out["intervention"]["reason"], "material")
 
 
+class DiagnosedInterventionTest(DialogRunBase):
+    def test_mixed_diagnosis_confidence_and_signal_reach_tracker(self):
+        from unittest.mock import patch
+        for extra, confidence in (([], 1.0),
+                                  ([{"fragment": "词", "confidence": 0.5}], 0.5)):
+            with self.subTest(confidence=confidence):
+                self.tracker = InterventionTracker()
+                scan = {"errors": [{"source": "construction_diagnostics",
+                                    "verdict": "error", "confidence": 0.4,
+                                    "fragment": "把"}] + extra,
+                        "uncertain": []}
+                with patch.object(self.tracker, "observe", wraps=self.tracker.observe) as observed:
+                    status, out = self._run(
+                        _ctx(text="我把这本书不能看完。"), identify=FakeIdentify(result=scan))
+                self.assertEqual(status, 200)
+                self.assertEqual(out["intervention"]["reason"], "diagnosed")
+                self.assertEqual(observed.call_args.kwargs["max_conf"], confidence)
+                self.assertTrue(observed.call_args.kwargs["diagnosed"])
+                self.assertTrue(observed.call_args.kwargs["error_flag"])
+
+    def test_construction_diagnosis_is_not_unclear(self):
+        scan = {"errors": [{
+            "fragment": "把", "correction": "不能把",
+            "type": "语法", "confidence": 0.4,
+            "knowledge_point_id": "kp-ba-sentence",
+            "source": "construction_diagnostics", "verdict": "error",
+            "construction_diagnostics": {"verdict": "error"},
+        }], "uncertain": [], "degraded": []}
+        status, out = self._run(
+            _ctx(text="我把这本书不能看完。"), identify=FakeIdentify(result=scan))
+        self.assertEqual(status, 200)
+        self.assertEqual(out["intervention"]["level"], "block")
+        self.assertEqual(out["intervention"]["reason"], "diagnosed")
+
+
 class LevelAndCapTest(DialogRunBase):
     def test_profile_level_propagates(self):
         self.mem.update_profile(user_level="HSK5")

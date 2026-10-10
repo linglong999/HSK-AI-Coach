@@ -109,7 +109,8 @@ def decide_intervention(text: str,
                         recent_error_flags: Optional[List[bool]] = None,
                         interrupt_used: int = 0,
                         cap: int = DEFAULT_CAP,
-                        last_level: str = "none") -> Tuple[str, str]:
+                        last_level: str = "none",
+                        diagnosed: bool = False) -> Tuple[str, str]:
     """介入分档（纯函数）。返回 (level, reason)。
     level: none|light|block|encourage；reason: fluent|help|empty|unclear|streak|upgrade|cap|frustrated
     - 打断上限优先：已用满 → 静默（none/cap）
@@ -132,6 +133,8 @@ def decide_intervention(text: str,
         # P0.16 情绪感知：求助已优先返回（上面），此处 ensured 非求助句；
         # 挫败优先于 unclear/streak——情绪信号该被鼓励接住，而非被当成内容错误处理。
         return ("encourage", "frustrated")
+    if diagnosed:
+        return ("block", "diagnosed")
     if unclear:
         return ("block", "unclear")
     if empty or streak:
@@ -153,7 +156,8 @@ class InterventionTracker:
 
     def observe(self, text: str, max_conf: float = 1.0,
                 error_flag: Optional[bool] = None,
-                cap: int = DEFAULT_CAP) -> Tuple[str, str]:
+                cap: int = DEFAULT_CAP,
+                diagnosed: bool = False) -> Tuple[str, str]:
         """一轮产出句的介入判定（含状态更新）。
         error_flag：本轮预扫是否发现偏误；None=未预扫（求助句/材料），不入窗口。"""
         if error_flag is not None:
@@ -161,7 +165,7 @@ class InterventionTracker:
         level, reason = decide_intervention(
             text, max_conf=max_conf, recent_error_flags=self.flags,
             interrupt_used=self.interrupt_used, cap=cap,
-            last_level=self.last_level)
+            last_level=self.last_level, diagnosed=diagnosed)
         if level in ("light", "block"):
             self.interrupt_used += 1
         self.last_level = level
@@ -206,11 +210,13 @@ _LEVEL_LABEL = {
 _REASON_LABEL = {
     "zh": {"fluent": "流利产出", "help": "主动求助", "empty": "输出犹豫",
            "unclear": "含义不清", "streak": "连续出错", "upgrade": "持续卡壳·升级",
-           "cap": "已达打断上限", "material": "学习材料", "frustrated": "情绪挫败"},
+           "cap": "已达打断上限", "material": "学习材料", "frustrated": "情绪挫败",
+           "diagnosed": "构造诊断判错"},
     "en": {"fluent": "fluent output", "help": "asked for help", "empty": "hesitating",
            "unclear": "unclear meaning", "streak": "repeated errors",
            "upgrade": "still stuck after light touch", "cap": "interrupt cap reached",
-           "material": "learning material", "frustrated": "frustrated"},
+           "material": "learning material", "frustrated": "frustrated",
+           "diagnosed": "construction check failed"},
 }
 
 
@@ -277,6 +283,9 @@ def build_intervention_directive(level: str, reason: str, native_lang: str = "",
             "block": ("学习者主动求助：请直接回应其问题并讲清楚"
                       "（可按需用 lookup_knowledge_point / retrieve_corpus / explain_error）。"
                       if reason == "help" else
+                      "本轮规则诊断已确定这里有结构错误：请直接指出问题所在，按 [FeedbackStrategy] 的形态处理；"
+                      "如为明确纠正，给出正确说法与规则，再引导学习者复述。"
+                      if reason == "diagnosed" else
                       "学习者本轮含义不清或持续卡壳：请直接介入讲解——指出问题、给出正确说法"
                       "（若疑似母语迁移影响，说明可能原因，不下定论）。")
                      + ("识别已在后台完成，结果见下，无需再调 identify_errors。" if scanned else ""),
@@ -318,6 +327,11 @@ def build_intervention_directive(level: str, reason: str, native_lang: str = "",
                       "and clearly (use lookup_knowledge_point / retrieve_corpus / "
                       "explain_error as needed)."
                       if reason == "help" else
+                      "A construction check has confirmed a structural error this turn: "
+                      "point it out directly and follow the [FeedbackStrategy] form; "
+                      "for an explicit correction, give the correct wording and rule, "
+                      "then guide the learner to restate it."
+                      if reason == "diagnosed" else
                       "The learner's meaning is unclear or they keep getting stuck: "
                       "step in and explain — point out the problem and give the "
                       "correct way to say it (if L1 transfer is suspected, mention "
