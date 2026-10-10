@@ -64,6 +64,20 @@ from config import settings as _cfg_settings  # B7 S5：读邀请白名单（测
 _ops_logger = logging.getLogger("uvicorn.error")
 
 
+def _memory_client_factory(root):
+    from engine.dialog_service import ProviderResolver, _provider_cfg
+    from engine.llm.client import LLMClient
+    provider, error = ProviderResolver(root).resolve("")
+    if error or provider is None:
+        return None
+
+    class ConfiguredClient:
+        def chat_json_strict(self, **kwargs):
+            return LLMClient().chat_json_strict(**kwargs, config=_provider_cfg(provider))
+
+    return ConfiguredClient()
+
+
 # 前端壳静态目录：serve.py 位于 engine/，前端壳在项目根前端/ 或 web/
 _INDEX_DIR = os.path.join(_PROJECT_ROOT, "web")
 
@@ -526,6 +540,69 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
                     results.append({"kp_id": kp_id, "status": "error", "msg": "review_failed"})
         return _json({"results": results, "count": len(results)})
 
+    @app.post("/api/memory/opening")
+    def api_memory_opening(request: Request):
+        payload, err = _read_json_body(request)
+        if err is not None or not isinstance(payload, dict):
+            return _json(err or {"error": "invalid json body"}, 400)
+        conversation_id = payload.get("conversation_id")
+        if not isinstance(conversation_id, str) or not conversation_id.strip():
+            return _json({"error": "conversation_id 必填"}, 400)
+        learner = str(payload.get("learner") or "").strip() or _router.learner_id
+        from engine.memory.long_term import LongTermMemory
+        from engine.memory.opening import build_opening
+        with _lock:
+            mem = _svc.get_memory(learner)
+            profile = mem.get_profile()
+            ltm = LongTermMemory(learner, root=_memory_root)
+            try:
+                out = build_opening(mem, ltm, conversation_id.strip(),
+                                    enabled=profile.get("memory_enabled", True),
+                                    client_factory=lambda: _memory_client_factory(_memory_root),
+                                    native_lang=profile.get("native_lang", ""))
+            finally:
+                ltm._conn.close()
+        return _json(out)
+
+    @app.get("/api/memory")
+    def api_memory(request: Request):
+        from engine.memory.long_term import LongTermMemory, LongTermMemoryError
+        learner = str(request.query_params.get("learner") or "").strip() or _router.learner_id
+        with _lock:
+            ltm = LongTermMemory(learner, root=_memory_root)
+            try:
+                items = ltm.list_items(request.query_params.get("status"))
+                return _json({"items": [{key: item[key] for key in (
+                    "memory_id", "kind", "status", "content", "created_at", "confirmed_at")}
+                    for item in items]})
+            except LongTermMemoryError as exc:
+                return _json({"error": str(exc)}, 400)
+            finally:
+                ltm._conn.close()
+
+    @app.post("/api/memory/confirm")
+    @app.post("/api/memory/reject")
+    @app.post("/api/memory/forget")
+    def api_memory_transition(request: Request):
+        from engine.memory.long_term import LongTermMemory, LongTermMemoryError
+        payload, err = _read_json_body(request)
+        if err is not None or not isinstance(payload, dict):
+            return _json(err or {"error": "invalid json body"}, 400)
+        memory_id = payload.get("memory_id")
+        if not isinstance(memory_id, str) or not memory_id.strip():
+            return _json({"error": "memory_id 必填"}, 400)
+        learner = str(payload.get("learner") or "").strip() or _router.learner_id
+        action = request.url.path.rsplit("/", 1)[-1]
+        with _lock:
+            ltm = LongTermMemory(learner, root=_memory_root)
+            try:
+                getattr(ltm, action)(memory_id, actor="learner")
+                return _json({"memory_id": memory_id, "status": ltm.get(memory_id)["status"]})
+            except LongTermMemoryError as exc:
+                return _json({"error": str(exc)}, 400)
+            finally:
+                ltm._conn.close()
+
     @app.get("/api/profile")
     def api_profile(request: Request):
         """只读画像 + 会话列表（0.19 前端 v2：AI 学习报告 / 侧栏数据源）。
@@ -541,6 +618,7 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
             mem = _svc.get_memory(learner_id)
             wb = _svc.get_writeback(learner_id)
             profile = mem.get_profile()
+            profile.setdefault("memory_enabled", True)
             try:
                 facts = build_profile_facts(_router.graph, wb.ledger)
             except Exception:  # noqa: BLE001
@@ -624,14 +702,20 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
         raw_l1 = payload.get("learner_l1")
         raw_uilang = payload.get("ui_lang") or payload.get("native_lang")
         raw_onboard = payload.get("onboarding_done")
+        has_memory = "memory_enabled" in payload
+        if has_memory and not isinstance(payload["memory_enabled"], bool):
+            return _json({"error": "memory_enabled 应为 bool"}, 400)
         if (raw is None and raw_level is None and raw_l1 is None
-                and raw_uilang is None and raw_onboard is None):
+                and raw_uilang is None and raw_onboard is None and not has_memory):
             return _json({"error": "无可更新字段"
                                   "（persona/user_level/learner_l1/ui_lang/onboarding_done）",
                          "code": "nothing_to_update"}, 400)
         with _lock:
             mem = _svc.get_memory(learner_id)
             result = {"ok": True}
+            if has_memory:
+                mem.update_profile(memory_enabled=payload["memory_enabled"])
+                result["memory_enabled"] = payload["memory_enabled"]
             if raw is not None:
                 if not isinstance(raw, dict):
                     return _json({"error": "persona 应为对象",

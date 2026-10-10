@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   title       TEXT NOT NULL DEFAULT '',
   status      TEXT NOT NULL DEFAULT 'active',
   pinned      INTEGER NOT NULL DEFAULT 0,
+  scene_id    TEXT NOT NULL DEFAULT '',
+  memory_scanned_at INTEGER,
   PRIMARY KEY (learner_id, session_id)
 );
 
@@ -139,6 +141,12 @@ def connect(root: str = "data") -> sqlite3.Connection:
     conn.execute("PRAGMA busy_timeout=10000")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.executescript(_SCHEMA)
+    session_columns = {row[1] for row in conn.execute(
+        "PRAGMA table_info(sessions)").fetchall()}
+    if "scene_id" not in session_columns:
+        conn.execute("ALTER TABLE sessions ADD COLUMN scene_id TEXT NOT NULL DEFAULT ''")
+    if "memory_scanned_at" not in session_columns:
+        conn.execute("ALTER TABLE sessions ADD COLUMN memory_scanned_at INTEGER")
     study_columns = {row[1] for row in conn.execute(
         "PRAGMA table_info(study_sessions)").fetchall()}
     if "learner_id" not in study_columns:

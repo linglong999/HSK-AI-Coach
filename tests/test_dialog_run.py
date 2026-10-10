@@ -364,5 +364,56 @@ class B2LightNoDeepTest(DialogRunBase):
         self.assertNotIn("深攻 1 点", directive)
 
 
+class MemoryIntegrationTest(DialogRunBase):
+    def _ltm(self):
+        from engine.memory.long_term import LongTermMemory
+        ltm = LongTermMemory("u-run", root=self.tmp)
+        self.addCleanup(ltm._conn.close)
+        return ltm
+
+    def test_only_confirmed_first_round_then_empty(self):
+        ltm = self._ltm()
+        for state in ("confirmed", "candidate", "rejected", "forgotten"):
+            mid = ltm.add_candidate("life_event", {"summary": state + "_experience"}, {})
+            if state != "candidate":
+                getattr(ltm, "confirm" if state == "confirmed" else "reject" if state == "rejected" else "forget")(mid, "learner")
+        self.assertEqual(self._run()[0], 200)
+        first = self.planner.calls[0][1]["memory_brief"]
+        self.assertIn("confirmed_experience", first)
+        for state in ("candidate", "rejected", "forgotten"):
+            self.assertNotIn(state + "_experience", first)
+        self.assertEqual(self._run()[0], 200)
+        self.assertEqual(self.planner.calls[1][1]["memory_brief"], "")
+        confirmed = ltm.list_items("confirmed")[0]
+        self.assertEqual(confirmed["recall_count"], 1)
+
+    def test_memory_disabled_never_recalls(self):
+        from unittest.mock import patch
+        self.mem.update_profile(memory_enabled=False)
+        with patch("engine.memory.long_term.LongTermMemory.recall", side_effect=AssertionError("must not recall")) as recall:
+            self.assertEqual(self._run()[0], 200)
+            recall.assert_not_called()
+        self.assertEqual(self.planner.calls[0][1]["memory_brief"], "")
+
+    def test_recall_failure_is_degraded_not_fatal(self):
+        from unittest.mock import patch
+        with patch("engine.memory.long_term.LongTermMemory.recall", side_effect=RuntimeError("offline")):
+            status, out = self._run()
+        self.assertEqual(status, 200)
+        self.assertEqual(self.planner.calls[0][1]["memory_brief"], "")
+        self.assertIn({"stage": "memory_recall", "reason": "recall_failed", "fatal": False}, out["degraded"])
+        self.assertEqual(out["text"], REPLY)
+
+    def test_scene_id_writeback_and_failure_nonfatal(self):
+        from unittest.mock import patch
+        from engine.scenarios import load_scenarios
+        sid = load_scenarios()[0]["scene_id"]
+        self.assertEqual(self._run(_ctx(scene_id=sid))[0], 200)
+        self.assertEqual(self.mem.previous_session("other")["scene_id"], sid)
+        with patch.object(self.mem, "touch", side_effect=RuntimeError("write failed")):
+            self.assertEqual(self._run(_ctx(scene_id=sid))[0], 200)
+        self.assertEqual(len(self.mem.get_history("default")), 4)
+
+
 if __name__ == "__main__":
     unittest.main()

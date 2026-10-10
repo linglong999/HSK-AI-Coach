@@ -62,7 +62,7 @@ class DialogRun:
         try:
             history = self._mem.to_llm_history(ctx["conversation_id"])
             directives = self._assemble_directives(
-                ctx["native_lang"], ctx["learner_l1"], ctx["scene_id"])
+                ctx["native_lang"], ctx["learner_l1"], ctx["scene_id"], history=history)
 
             def build_input_payload():
                 from engine.study import reference
@@ -98,6 +98,7 @@ class DialogRun:
                 user_level=directives["level_label"],
                 scene_brief=directives["scene_brief"],
                 persona_brief=directives["persona_brief"],
+                memory_brief=directives["memory_brief"],
                 style_directive=directives["style_directive"],
                 intervention_directive=pre["intervention_directive"])
             # B3 接入点：PreScanIntervene 后、WritebackLedger 前聚合一次（识别结果已出、
@@ -108,6 +109,12 @@ class DialogRun:
             wb_out = self._writeback_round(
                 res, pre, ctx["user_input"], ctx["conversation_id"],
                 history, provider, ctx["native_lang"], b3=self._b3)
+            wb_out["notices"].extend(directives["notices"])
+            if ctx.get("scene_id"):
+                try:
+                    self._mem.touch(ctx["conversation_id"], scene_id=ctx["scene_id"], bump=False)
+                except Exception:  # noqa: BLE001 场景写回不阻断主链
+                    pass
             trace = res.get("trace") or []
 
             def build_writeback_payload():
@@ -327,7 +334,7 @@ class DialogRun:
 
     # ---------- 阶段方法 ----------
 
-    def _assemble_directives(self, native_lang, learner_l1, scene_id):
+    def _assemble_directives(self, native_lang, learner_l1, scene_id, history=None):
         """阶段 · AssembleDirectives：画像/persona/风格/场景/等级收集成 planner
         prompt 参数（各策略模块保持独立，由本阶段统一组装，不强行统一接口）。
         含 0.25 起点分层：画像等级归一并同步 Router（同步失败不阻断）。"""
@@ -379,7 +386,22 @@ class DialogRun:
                     scene_brief = build_scene_brief(_scene, native_lang)
             except Exception:  # noqa: BLE001 场景加载失败 → 退化为自由对话
                 scene_brief = ""
+        memory_brief = ""
+        notices = []
+        if not history and profile_block.get("memory_enabled", True):
+            try:
+                from engine.memory.long_term import LongTermMemory
+                from engine.memory.opening import compile_memory_brief
+                ltm = LongTermMemory(self._mem.learner_id, root=self._mem.root)
+                try:
+                    memory_brief = compile_memory_brief(ltm.recall("life_event", limit=5), native_lang)
+                finally:
+                    ltm._conn.close()
+            except Exception:  # noqa: BLE001 记忆召回不阻断对话
+                notices.append({"stage": "memory_recall", "reason": "recall_failed", "fatal": False})
         return {
+            "memory_brief": memory_brief,
+            "notices": notices,
             "profile_summary": profile_summary,
             "persona_brief": persona_brief,
             "style_directive": style_directive,

@@ -76,7 +76,7 @@ class LearnerMemory:
 
     def touch(self, session_id: str, title: Optional[str] = None,
               status: Optional[str] = None, pinned: Optional[bool] = None,
-              bump: bool = True) -> None:
+              bump: bool = True, scene_id: Optional[str] = None) -> None:
         """更新会话元信息（title/status/pinned/updated_at），不追加消息。
         bump=False：置顶/重命名等管理操作不改变 updated_at（排序只反映对话活跃度）。"""
         sid = self._safe(session_id)
@@ -93,6 +93,8 @@ class LearnerMemory:
             sets.append("status=?"); args.append(str(status))
         if pinned is not None:
             sets.append("pinned=?"); args.append(1 if pinned else 0)
+        if scene_id is not None:
+            sets.append("scene_id=?"); args.append(str(scene_id)[:80])
         if bump:
             sets.append("updated_at=?"); args.append(now)
         if sets:
@@ -100,6 +102,22 @@ class LearnerMemory:
             self._conn.execute(
                 f"UPDATE sessions SET {', '.join(sets)}"  # noqa: S608 白名单字段
                 " WHERE learner_id=? AND session_id=?", args)
+        self._conn.commit()
+
+    def previous_session(self, exclude_session_id: str) -> Optional[dict]:
+        row = self._conn.execute(
+            "SELECT s.session_id, s.scene_id, s.title, s.updated_at, s.memory_scanned_at"
+            " FROM sessions s WHERE s.learner_id=? AND s.session_id<>?"
+            " AND EXISTS (SELECT 1 FROM messages m WHERE m.learner_id=s.learner_id"
+            " AND m.session_id=s.session_id AND m.role='user')"
+            " ORDER BY s.updated_at DESC, s.session_id ASC LIMIT 1",
+            (self.learner_id, self._safe(exclude_session_id))).fetchone()
+        return dict(row) if row is not None else None
+
+    def mark_memory_scanned(self, session_id: str) -> None:
+        self._conn.execute(
+            "UPDATE sessions SET memory_scanned_at=? WHERE learner_id=? AND session_id=?",
+            (int(time.time()), self.learner_id, self._safe(session_id)))
         self._conn.commit()
 
     def delete_session(self, session_id: str) -> bool:

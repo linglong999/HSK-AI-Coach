@@ -208,5 +208,20 @@ class FallbackTest(unittest.TestCase):
         self.assertIn("text", r)
 
 
+class MemorySystemTest(unittest.TestCase):
+    def test_memory_between_persona_and_style(self):
+        captured = []
+        def llm(messages):
+            captured.append(messages[0]["content"])
+            return '[{"type":"text","content":"好的"}]'
+        planner = Planner(build_registry(), llm_call=llm)
+        planner.run("你好", persona_brief="[Persona] tutor",
+                    memory_brief="[Memory] 北京", style_directive="[Style] concise")
+        system = captured[0]
+        self.assertLess(system.index("[Persona]"), system.index("[Memory]"))
+        self.assertLess(system.index("[Memory]"), system.index("[Style]"))
+        self.assertNotIn("[Memory]", planner._build_system())
+
+
 if __name__ == "__main__":
     unittest.main()

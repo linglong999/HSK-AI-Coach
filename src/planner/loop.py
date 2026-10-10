@@ -177,7 +177,8 @@ class Planner:
             scene_brief: str = "",
             persona_brief: str = "",
             style_directive: str = "",
-            intervention_directive: str = "") -> Dict[str, Any]:
+            intervention_directive: str = "",
+            memory_brief: str = "") -> Dict[str, Any]:
         """主循环。返回含 text / used_skills / steps / fallback 的结果。
         profile_summary（M8）：常错点/惯犯摘要，非空时拼进 system 供个性化教学；
         由上层 serve 从 build_profile_summary(graph, ledger) 计算，planner 不自取。
@@ -194,6 +195,7 @@ class Planner:
         system = self._build_system(profile_summary or "", native_lang=native_lang,
                                     scene_brief=scene_brief,
                                     persona_brief=persona_brief,
+                                    memory_brief=memory_brief,
                                     style_directive=style_directive,
                                     intervention_directive=intervention_directive)
         messages: List[Dict] = [{"role": "system", "content": system}]
@@ -337,7 +339,8 @@ class Planner:
                       scene_brief: str = "",
                       persona_brief: str = "",
                       style_directive: str = "",
-                      intervention_directive: str = "") -> str:
+                      intervention_directive: str = "",
+                      memory_brief: str = "") -> str:
         is_en = bool(native_lang and native_lang.lower() != "zh")
         rules = GLOBAL_RULES_EN if is_en else GLOBAL_RULES
         compact = "\n".join(
@@ -352,6 +355,8 @@ class Planner:
         if persona_brief:
             # 0.22 方向3：个性化段（风格/称呼/人设/自定义指令），与画像/场景并列
             system += f"\n\n{persona_brief}"
+        if memory_brief:
+            system += f"\n\n{memory_brief}"
         if style_directive:
             # P0.16：tutor 措辞规范（[Style] 去 AI 味）——无条件注入（D1=A），
             # 与 [Persona] 人设层正交，默认 persona 也生效
