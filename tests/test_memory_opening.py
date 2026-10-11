@@ -154,7 +154,9 @@ def test_old_sessions_schema_migration_preserves_data(tmp_path):
     columns = {row[1]: row for row in migrated.execute("PRAGMA table_info(sessions)")}
     assert columns["scene_id"][2:5] == ("TEXT", 1, "''")
     assert columns["memory_scanned_at"][2] == "INTEGER"
-    assert tuple(migrated.execute("SELECT * FROM sessions").fetchone()) == ("old", "prev", 1, 2, "旧标题", "active", 1, "", None)
+    assert tuple(migrated.execute("SELECT learner_id,session_id,created_at,updated_at,title,status,pinned,scene_id,memory_scanned_at FROM sessions").fetchone()) == ("old", "prev", 1, 2, "旧标题", "active", 1, "", None)
+    assert migrated.execute("SELECT incognito FROM sessions").fetchone()[0] == 0
+    assert columns["incognito"][2:5] == ("INTEGER", 1, "0")
     migrated.close()
 
 
@@ -201,3 +203,49 @@ def test_purge_real_memory_and_scene(tmp_path):
     mem._conn.close()
     ltm._conn.close()
     tracker._conn.close()
+
+
+def test_incognito_previous_session_excluded(memories):
+    mem, _ = memories
+    mem.append("private", "user", "我上周去了长城")
+    mem.touch("private", scene_id=load_scenarios()[0]["scene_id"], incognito=True, bump=False)
+    factory = Mock(return_value=FakeClient())
+    assert mem.previous_session("new") is None
+    assert opening(memories, factory) == {"enabled": True, "resume": None, "candidates": [], "notices": []}
+    factory.assert_not_called()
+    assert mem._conn.execute("SELECT memory_scanned_at FROM sessions WHERE session_id='private'").fetchone()[0] is None
+    mem.append("normal", "user", "这个怎么说？")
+    mem._conn.execute("UPDATE sessions SET updated_at=100 WHERE session_id='private'")
+    mem._conn.execute("UPDATE sessions SET updated_at=10 WHERE session_id='normal'")
+    mem._conn.commit()
+    assert mem.previous_session("new")["session_id"] == "normal"
+
+
+def test_incognito_session_meta_isolation_and_no_bump(memories, tmp_path):
+    mem, _ = memories
+    assert mem.session_meta("missing") is None
+    assert not mem.has_session("missing")
+    mem.touch("same", scene_id="restaurant", incognito=True, bump=False)
+    mem._conn.execute("UPDATE sessions SET updated_at=12")
+    mem._conn.commit()
+    mem.touch("same", incognito=True, bump=False)
+    assert mem.session_meta("same") == {"scene_id": "restaurant", "incognito": True}
+    row = mem.list_sessions()[0]
+    assert row["updated_at"] == 12 and row["incognito"] is True and row["scene_id"] == "restaurant"
+    other = LearnerMemory("other", root=str(tmp_path))
+    assert other.session_meta("same") is None
+    other.touch("same")
+    assert other.session_meta("same") == {"scene_id": "", "incognito": False}
+    assert mem.session_meta("same")["incognito"] is True
+    other._conn.close()
+
+
+def test_p42_schema_incognito_migration_idempotent(tmp_path):
+    conn = sqlite3.connect(tmp_path / "coach.db")
+    conn.execute("CREATE TABLE sessions (learner_id TEXT,session_id TEXT,created_at INTEGER,updated_at INTEGER,title TEXT,status TEXT,pinned INTEGER,scene_id TEXT,memory_scanned_at INTEGER,PRIMARY KEY(learner_id,session_id))")
+    conn.execute("INSERT INTO sessions VALUES ('old','c',1,2,'title','active',0,'restaurant',3)")
+    conn.commit(); conn.close()
+    for _ in range(2):
+        migrated = store.ensure_store(str(tmp_path))
+        assert tuple(migrated.execute("SELECT * FROM sessions").fetchone()) == ('old', 'c', 1, 2, 'title', 'active', 0, 'restaurant', 3, 0)
+        migrated.close()

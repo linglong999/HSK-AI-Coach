@@ -830,3 +830,21 @@ textarea,input,select{font-family:inherit}
 .metrics-view .it .k{font-size:11px;color:rgb(var(--tx3))}
 .metrics-view .it .v{font-size:17px;font-weight:700;color:rgb(var(--tx))}
 .metrics-view .note{font-size:12px;color:rgb(var(--tx3));margin-top:12px;line-height:1.6}
+
+/* P4.3：记忆、场景与简版无痕，内容仅文本渲染。 */
+.opening-card,.scene-picker,.memory-settings{margin:16px 0;padding:16px;border:1px solid rgb(var(--line));border-radius:12px;background:rgb(var(--panel))}
+.memory-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 0;border-bottom:1px dashed rgb(var(--line))}
+.memory-row>span{flex:1;min-width:160px;overflow-wrap:anywhere}
+.memory-date{display:block;color:rgb(var(--tx3));margin-top:4px}
+.memory-status{min-height:1.6em;margin-top:12px;color:rgb(var(--tx2))}
+.scene-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.scene-card{display:flex;flex-direction:column;gap:8px;text-align:left;color:rgb(var(--tx));background:rgb(var(--panel2));border:1px solid rgb(var(--line));border-radius:10px;padding:14px;cursor:pointer}
+.scene-card span{font-size:12px;color:rgb(var(--tx2))}
+.incognito-chat .chat{border:2px solid rgb(var(--tx));border-radius:12px}
+.incognito-label{padding:12px;border-bottom:1px solid rgb(var(--line))}
+.incognito-label small{display:block;margin-top:6px;color:rgb(var(--tx2))}
+.scene-label{font-weight:600}
+.modal-nav li>button{font:inherit;color:inherit;background:none;border:0;width:100%;text-align:left;cursor:pointer;padding:4px 0}
+.opening-card button:focus-visible,.scene-card:focus-visible,.memory-settings button:focus-visible,.memory-settings input:focus-visible,.modal-nav button:focus-visible{outline:3px solid rgb(var(--tx));outline-offset:3px}
+.opening-card button:disabled,.scene-card:disabled,.memory-settings button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:600px){.scene-grid{grid-template-columns:1fr}.memory-row>span{flex-basis:100%}.opening-card,.scene-picker{padding:12px}}

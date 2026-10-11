@@ -123,3 +123,70 @@ def test_provider_adapter_uses_default_config(tmp_path):
         assert chat.call_args.kwargs == {"system": "system", "user": "user", "config": provider}
     with patch("engine.dialog_service.ProviderResolver.resolve", return_value=(None, (400, {}))):
         assert _memory_client_factory(str(tmp_path)) is None
+
+
+def test_conversation_incognito_scene_meta(api):
+    client, mem, _ = api
+    assert client.get('/api/conversation?id=missing').json() == {
+        'conversation_id': 'missing', 'messages': [], 'scene_id': '', 'incognito': False}
+    mem.append('c', 'user', '你好')
+    mem.touch('c', incognito=True, scene_id='restaurant', bump=False)
+    out = client.get('/api/conversation?id=c').json()
+    assert out['scene_id'] == 'restaurant' and out['incognito'] is True
+    assert out['messages'] == [{'role': 'user', 'content': '你好'}]
+    foreign = client.get('/api/conversation?id=c&learner=other').json()
+    assert foreign['scene_id'] == '' and foreign['incognito'] is False and foreign['messages'] == []
+    session = client.get('/api/profile').json()['sessions'][0]
+    assert session['scene_id'] == 'restaurant' and session['incognito'] is True
+
+
+@pytest.mark.parametrize('value', ['true', None, 1, 0, [], {}])
+def test_dialog_incognito_strict_bool_rejected_before_write(api, value):
+    client, mem, _ = api
+    response = client.post('/api/dialog', json={'text': '你好', 'incognito': value})
+    assert response.status_code == 400
+    assert response.json()['error'] == 'incognito 应为 bool'
+    assert mem.list_sessions() == []
+
+
+@pytest.mark.parametrize('value', [False, True])
+def test_dialog_incognito_bool_accepted(api, value):
+    client, mem, _ = api
+    assert client.post('/api/dialog', json={'text': '你好', 'incognito': value}).status_code == 200
+    assert mem.session_meta('default')['incognito'] is value
+
+
+def test_forget_all_counts_tombstones_and_learner_isolation(api):
+    client, _, ltm = api
+    foreign = LongTermMemory('other', root=ltm.root)
+    foreign_id = foreign.add_candidate('life_event', {'summary': 'other private'}, {})
+    before = foreign.get(foreign_id)
+    for state in ('candidate', 'confirmed', 'rejected', 'forgotten'):
+        mid = ltm.add_candidate('life_event', {'summary': state}, {'conversation_id': 'old'})
+        if state != 'candidate':
+            getattr(ltm, {'confirmed': 'confirm', 'rejected': 'reject', 'forgotten': 'forget'}[state])(mid, 'learner')
+    out = client.post('/api/memory/forget_all', json={})
+    assert out.status_code == 200
+    assert foreign.get(foreign_id) == before
+    assert out.json() == {'forgotten': 3}
+    for state in ('confirmed', 'candidate'):
+        assert client.get('/api/memory?status=' + state).json()['items'] == []
+    tombstones = client.get('/api/memory').json()['items']
+    assert len(tombstones) == 4
+    assert all(item['status'] == 'forgotten' and item['content'] == {} for item in tombstones)
+    assert all(item['source'] == {} and item['last_actor'] == 'learner' for item in ltm.list_items())
+    assert foreign.get(foreign_id) == before
+    assert client.post('/api/memory/forget_all', json={}).json() == {'forgotten': 0}
+    assert client.post('/api/memory/forget_all', json={'learner': 'other'}).json() == {'forgotten': 1}
+    foreign._conn.close()
+
+
+def test_forget_all_bad_body_and_failure(api):
+    from engine.memory.long_term import LongTermMemoryError
+    client, _, ltm = api
+    assert client.post('/api/memory/forget_all', json=[]).status_code == 400
+    ltm.add_candidate('life_event', {'summary': 'one'}, {})
+    with patch('engine.memory.long_term.LongTermMemory.forget', side_effect=LongTermMemoryError('failed')):
+        response = client.post('/api/memory/forget_all', json={})
+    assert response.status_code == 400 and response.json() == {'error': 'failed'}
+    assert ltm.list_items('candidate')[0]['content'] == {'summary': 'one'}

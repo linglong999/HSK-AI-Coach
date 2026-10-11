@@ -564,6 +564,27 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
                 ltm._conn.close()
         return _json(out)
 
+    @app.post("/api/memory/forget_all")
+    def api_memory_forget_all(request: Request):
+        from engine.memory.long_term import LongTermMemory, LongTermMemoryError
+        payload, err = _read_json_body(request)
+        if err is not None or not isinstance(payload, dict):
+            return _json(err or {"error": "invalid json body"}, 400)
+        learner = str(payload.get("learner") or "").strip() or _router.learner_id
+        with _lock:
+            ltm = LongTermMemory(learner, root=_memory_root)
+            try:
+                forgotten = 0
+                for item in ltm.list_items():
+                    if item["status"] != "forgotten":
+                        ltm.forget(item["memory_id"], actor="learner")
+                        forgotten += 1
+                return _json({"forgotten": forgotten})
+            except LongTermMemoryError as exc:
+                return _json({"error": str(exc)}, 400)
+            finally:
+                ltm._conn.close()
+
     @app.get("/api/memory")
     def api_memory(request: Request):
         from engine.memory.long_term import LongTermMemory, LongTermMemoryError
@@ -667,6 +688,7 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
         with _lock:
             mem = _svc.get_memory(learner_id)
             msgs = mem.get_history(conversation_id, window=200)
+            meta = mem.session_meta(conversation_id) or {"scene_id": "", "incognito": False}
         visible = []
         for m in msgs:
             if m.get("role") not in ("user", "assistant"):
@@ -685,6 +707,7 @@ def create_app(router: "Router", index_dir: str, generation=None, dialog_llm=Non
         return _json({
             "conversation_id": conversation_id,
             "messages": visible,
+            **meta,
         })
 
     @app.post("/api/profile")

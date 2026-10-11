@@ -12,11 +12,14 @@ export interface Session {
   pinned?: boolean
   updated_at?: string
   _pending?: boolean
+  scene_id?: string
+  incognito?: boolean
 }
 export interface Profile {
   persona?: string
   user_level?: string
   learner_l1?: string
+  memory_enabled?: boolean
 }
 export interface ConvMsg { role: string; content: string; [k: string]: any }
 
@@ -25,7 +28,9 @@ interface SessionCtx {
   profile: Profile
   conversationId: string
   refresh: () => Promise<void>
-  newSession: () => void
+  newSession: (opts?: { incognito?: boolean }) => void
+  memoryVersion: number
+  notifyMemoryChanged: () => void
   switchSession: (id: string) => Promise<void>
   renameSession: (id: string, title: string) => Promise<void>
   togglePin: (s: Session) => Promise<void>
@@ -57,6 +62,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // 会话权威在服务端；conversationId 由 URL 深链优先，其次本壳当前会话
   const [sessions, setSessions] = useState<Session[]>([])
   const [profile, setProfile] = useState<Profile>({})
+  const [memoryVersion, setMemoryVersion] = useState(0)
+  const notifyMemoryChanged = useCallback(() => setMemoryVersion((v) => v + 1), [])
   const [conversationId, setConversationId] = useState<string>(() => urlConversationParam() || newConvId())
 
   const refresh = useCallback(async () => {
@@ -76,8 +83,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await refresh()
   }, [refresh])
 
-  const newSession = useCallback(() => {
-    const id = 'web-' + Date.now().toString(36)
+  const newSession = useCallback((opts?: { incognito?: boolean }) => {
+    const id = 'web-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8)
+    if (opts?.incognito) sessionStorage.setItem('incognito:' + id, 'true')
     void switchSession(id)
   }, [switchSession])
 
@@ -97,14 +105,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     } catch (e: any) {
       if (e?.code !== 'session_not_found') throw e
     }
+    sessionStorage.removeItem('incognito:' + id)
     if (id === conversationId) { const n = 'web-' + Date.now().toString(36); void switchSession(n) }
     else await refresh()
   }, [conversationId, refresh, switchSession])
 
   const value = useMemo<SessionCtx>(() => ({
     sessions, profile, conversationId,
+    memoryVersion, notifyMemoryChanged,
     refresh, newSession, switchSession, renameSession, togglePin, deleteSession,
-  }), [sessions, profile, conversationId, refresh, newSession, switchSession, renameSession, togglePin, deleteSession])
+  }), [sessions, profile, conversationId, memoryVersion, notifyMemoryChanged, refresh, newSession, switchSession, renameSession, togglePin, deleteSession])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

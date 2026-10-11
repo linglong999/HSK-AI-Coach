@@ -415,5 +415,42 @@ class MemoryIntegrationTest(DialogRunBase):
         self.assertEqual(len(self.mem.get_history("default")), 4)
 
 
+class IncognitoRunTest(DialogRunBase):
+    def test_incognito_first_round_no_recall(self):
+        from unittest.mock import patch
+        with patch("engine.memory.long_term.LongTermMemory.recall") as recall:
+            self.assertEqual(self._run(_ctx(incognito=True))[0], 200)
+            recall.assert_not_called()
+        self.assertEqual(self.planner.calls[0][1]["memory_brief"], "")
+        self.assertIs(self.mem.session_meta("default")["incognito"], True)
+        self.assertEqual(len(self.mem.get_history("default")), 2)
+
+    def test_stored_incognito_empty_history_no_recall(self):
+        from unittest.mock import patch
+        self.mem.touch("default", incognito=True, bump=False)
+        with patch("engine.memory.long_term.LongTermMemory.recall") as recall:
+            self.assertEqual(self._run(_ctx(incognito=False))[0], 200)
+            recall.assert_not_called()
+        self.assertEqual(self.planner.calls[0][1]["memory_brief"], "")
+        self.assertIs(self.mem.session_meta("default")["incognito"], True)
+        self.assertEqual(self._run()[0], 200)
+        self.assertIs(self.mem.session_meta("default")["incognito"], True)
+
+    def test_normal_second_round_true_not_persisted(self):
+        self.assertEqual(self._run()[0], 200)
+        self.assertIs(self.mem.session_meta("default")["incognito"], False)
+        self.assertEqual(self._run(_ctx(incognito=True))[0], 200)
+        self.assertIs(self.mem.session_meta("default")["incognito"], False)
+        self.assertEqual(self.planner.calls[1][1]["memory_brief"], "")
+
+    def test_incognito_write_failure_saves_no_messages(self):
+        from unittest.mock import patch
+        with patch.object(self.mem, "touch", side_effect=RuntimeError("privacy write failed")):
+            with self.assertRaisesRegex(RuntimeError, "privacy write failed"):
+                self._run(_ctx(incognito=True))
+        self.assertEqual(self.mem.get_history("default"), [])
+        self.assertEqual(self.planner.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -51,7 +51,8 @@ export default function Sidebar({ view, onNav, onOpenSettings }: Props) {
   // 当前会话若不在列表（如深链新会话未落盘），补一个占位项
   const items: Session[] = [...sessions]
   if (conversationId && !items.some((s) => s.id === conversationId)) {
-    items.unshift({ id: conversationId, title: '', message_count: 0, _pending: true })
+    items.unshift({ id: conversationId, title: '', message_count: 0, _pending: true,
+      incognito: sessionStorage.getItem('incognito:' + conversationId) === 'true' })
   }
 
   const openCtx = (e: React.MouseEvent, s: Session) => {
@@ -100,6 +101,7 @@ export default function Sidebar({ view, onNav, onOpenSettings }: Props) {
         {/* 会话 */}
         <div className="hd"><span>{t('sessions')}</span><span className="sep" /><span className="ct">{sessions.length ? String(sessions.length) : ''}</span></div>
         <button className="sbtn add" onClick={() => { onNav('dialog'); newSession() }}>{t('newSession')}</button>
+        <button type="button" className="sbtn" onClick={() => { onNav('dialog'); newSession({ incognito: true }) }}>{t('memoryIncognitoNew')}</button>
         {items.slice(0, 30).map((s) => {
           const isCur = s.id === conversationId
           return (
@@ -113,6 +115,7 @@ export default function Sidebar({ view, onNav, onOpenSettings }: Props) {
               title={`${s.title || s.id}${s.updated_at ? ' · ' + timeShort(s.updated_at) : ''}`}
             >
               <span className="ic">{s.pinned ? '📌' : isCur ? '●' : '○'}</span>
+              {s.incognito && <span role="img" aria-label={t('memoryIncognito')}>◌</span>}
               {editing === s.id ? (
                 <input
                   ref={renRef}

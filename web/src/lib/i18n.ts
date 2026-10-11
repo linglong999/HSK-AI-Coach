@@ -429,6 +429,35 @@ const en: Record<string, string> = {
   metricsFail: 'Metric endpoint unavailable: ', metricsServerHint: 'Confirm the server is running (python -m engine.serve) and reach it via HTTP (e.g. http://localhost:8615/).',
 }
 
+Object.assign(zh, {
+  memoryOn: '开启', memoryOff: '关闭',
+  tabMemory: '我的记忆', memoryOpening: '开场', memoryResume: '上次在「{title}」练习，要接着练吗？',
+  memoryContinue: '接着练', memoryDecline: '不用', memoryRemember: '记住', memoryForget: '遗忘',
+  memoryOpeningNote: '只有你点了“记住”的内容，教练以后才会提起。可在 设置 → 我的记忆 管理。',
+  memorySwitch: '记忆', memorySwitchNote: '开启后，教练会在新对话开头询问是否记住你分享的经历；只有你确认过的内容才会被使用。',
+  memoryConfirmed: '已记住', memoryPending: '待确认', memoryEmpty: '还没有记住任何内容。', memoryPendingEmpty: '没有待确认的内容。',
+  memoryForgetAll: '全部遗忘', memoryForgetAllConfirm: '确定遗忘全部记忆吗？此操作不可撤销。',
+  memoryLoading: '正在读取记忆…', memoryLoadFailed: '记忆读取失败。', memoryRetry: '重试',
+  memorySaved: '已记住。', memoryRejected: '已忽略。', memoryForgotten: '已遗忘。', memoryAllForgotten: '已遗忘全部记忆。', memorySettingSaved: '记忆设置已保存。',
+  memoryIncognitoNew: '无痕对话', memoryIncognito: '无痕', memoryIncognitoLabel: '无痕 · 这段对话不会被记住',
+  memoryIncognitoNote: '仅关闭经历记忆；对话记录和学习数据仍会保留。', memorySceneUnavailable: '场景暂不可用，请稍后再试。',
+  memoryRestoreFailed: '会话恢复失败，请刷新后重试。',
+})
+Object.assign(en, {
+  memoryOn: 'On', memoryOff: 'Off',
+  tabMemory: 'My memories', memoryOpening: 'Opening', memoryResume: 'Last time you practiced “{title}”. Continue?',
+  memoryContinue: 'Continue', memoryDecline: 'No thanks', memoryRemember: 'Remember', memoryForget: 'Forget',
+  memoryOpeningNote: 'The tutor will only mention memories you choose to remember. Manage them in Settings → My memories.',
+  memorySwitch: 'Memory', memorySwitchNote: 'When enabled, the tutor asks at the start of a new conversation whether to remember experiences you shared; only confirmed memories are used.',
+  memoryConfirmed: 'Remembered', memoryPending: 'Pending confirmation', memoryEmpty: 'Nothing remembered yet.', memoryPendingEmpty: 'No pending memories.',
+  memoryForgetAll: 'Forget all', memoryForgetAllConfirm: 'Forget all memories? This cannot be undone.',
+  memoryLoading: 'Loading memories…', memoryLoadFailed: 'Could not load memories.', memoryRetry: 'Retry',
+  memorySaved: 'Remembered.', memoryRejected: 'Dismissed.', memoryForgotten: 'Forgotten.', memoryAllForgotten: 'All memories forgotten.', memorySettingSaved: 'Memory setting saved.',
+  memoryIncognitoNew: 'Incognito conversation', memoryIncognito: 'Incognito', memoryIncognitoLabel: 'Incognito · This conversation will not be remembered',
+  memoryIncognitoNote: 'Personal-experience memory only; conversation history and learning data are still saved.', memorySceneUnavailable: 'Scenario unavailable. Please try again later.',
+  memoryRestoreFailed: 'Could not restore this conversation. Refresh and retry.',
+})
+
 export type Lang = 'zh' | 'en'
 export const DEFAULT_LANG: Lang = 'zh'
 

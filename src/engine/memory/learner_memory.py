@@ -76,7 +76,8 @@ class LearnerMemory:
 
     def touch(self, session_id: str, title: Optional[str] = None,
               status: Optional[str] = None, pinned: Optional[bool] = None,
-              bump: bool = True, scene_id: Optional[str] = None) -> None:
+              bump: bool = True, scene_id: Optional[str] = None,
+              incognito: Optional[bool] = None) -> None:
         """更新会话元信息（title/status/pinned/updated_at），不追加消息。
         bump=False：置顶/重命名等管理操作不改变 updated_at（排序只反映对话活跃度）。"""
         sid = self._safe(session_id)
@@ -95,6 +96,8 @@ class LearnerMemory:
             sets.append("pinned=?"); args.append(1 if pinned else 0)
         if scene_id is not None:
             sets.append("scene_id=?"); args.append(str(scene_id)[:80])
+        if incognito is not None:
+            sets.append("incognito=?"); args.append(1 if incognito else 0)
         if bump:
             sets.append("updated_at=?"); args.append(now)
         if sets:
@@ -107,12 +110,18 @@ class LearnerMemory:
     def previous_session(self, exclude_session_id: str) -> Optional[dict]:
         row = self._conn.execute(
             "SELECT s.session_id, s.scene_id, s.title, s.updated_at, s.memory_scanned_at"
-            " FROM sessions s WHERE s.learner_id=? AND s.session_id<>?"
+            " FROM sessions s WHERE s.learner_id=? AND s.session_id<>? AND s.incognito=0"
             " AND EXISTS (SELECT 1 FROM messages m WHERE m.learner_id=s.learner_id"
             " AND m.session_id=s.session_id AND m.role='user')"
             " ORDER BY s.updated_at DESC, s.session_id ASC LIMIT 1",
             (self.learner_id, self._safe(exclude_session_id))).fetchone()
         return dict(row) if row is not None else None
+
+    def session_meta(self, session_id: str) -> Optional[dict]:
+        row = self._conn.execute(
+            "SELECT scene_id, incognito FROM sessions WHERE learner_id=? AND session_id=?",
+            (self.learner_id, self._safe(session_id))).fetchone()
+        return {"scene_id": row["scene_id"], "incognito": bool(row["incognito"])} if row else None
 
     def mark_memory_scanned(self, session_id: str) -> None:
         self._conn.execute(
@@ -240,7 +249,7 @@ class LearnerMemory:
         """该 learner 全部会话元信息（不含 messages，防载荷膨胀）。"""
         rows = self._conn.execute(
             "SELECT s.session_id, s.title, s.status, s.pinned,"
-            "       s.created_at, s.updated_at,"
+            "       s.created_at, s.updated_at, s.scene_id, s.incognito,"
             "       (SELECT COUNT(*) FROM messages m"
             "         WHERE m.learner_id=s.learner_id"
             "           AND m.session_id=s.session_id) AS message_count"
@@ -253,6 +262,8 @@ class LearnerMemory:
             "updated_at": int(r["updated_at"] or 0),
             "message_count": int(r["message_count"] or 0),
             "pinned": bool(r["pinned"]),
+            "scene_id": r["scene_id"],
+            "incognito": bool(r["incognito"]),
         } for r in rows]
 
     # ---------------- 内部 ----------------

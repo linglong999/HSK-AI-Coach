@@ -335,6 +335,9 @@ class DialogService:
         user_input = str((payload.get("text") or "")).strip()
         if not user_input:
             return None, (400, {"error": "empty text"})
+        incognito = payload.get("incognito", False)
+        if not isinstance(incognito, bool):
+            return None, (400, {"error": "incognito 应为 bool"})
         learner_id = str((payload.get("learner_id") or "")).strip() or \
             self._router.learner_id
         conversation_id = str((payload.get("conversation_id") or "")).strip() or "default"
@@ -361,6 +364,7 @@ class DialogService:
             "native_lang": ui_lang,  # 局部别名：下游调用兼容旧字段
             "learner_l1": learner_l1,
             "scene_id": str((payload.get("scene_id") or "")).strip(),
+            "incognito": incognito,
             "study_session_id": sid,
             # B3：学习者本轮元认知自评档（certain/half/uncertain，可选，非本回合默 None）
             "meta_self_level": (str(payload.get("meta_self_level") or "").strip()

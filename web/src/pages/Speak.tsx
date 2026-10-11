@@ -12,6 +12,8 @@ import { takePendingMessage } from '../lib/outbox'
 import QuotaBar from '../components/QuotaBar'
 import TypingText from '../components/TypingText'
 import AnnotatedSentence from '../components/AnnotatedSentence'
+import OpeningCard, { type Opening, type MemoryItem } from '../components/OpeningCard'
+import ScenePicker, { sceneTitle, type Scene } from '../components/ScenePicker'
 import {
   IdentifyCard, ExplainCard, VerifyCard, LookupCard, ReviewCard,
   UnitCard, SearchCard, RetrieveCard, ParseCard, Annotated, BranchTools, type CardCtx,
@@ -120,7 +122,18 @@ function AssistantText({ text, ctx, onProgress }: { text: string; ctx: CardCtx; 
 }
 
 export default function Speak({ openSettings }: { openSettings?: (tab?: string) => void }) {
-  const { conversationId: convId, refresh } = useSessions()
+  const { conversationId: convId, refresh, profile, memoryVersion } = useSessions()
+  const [sceneId, setSceneId] = useState('')
+  const [incognito, setIncognito] = useState(false)
+  const [ready, setReady] = useState(false)
+  const [scenes, setScenes] = useState<Scene[]>([])
+  const [opening, setOpening] = useState<Opening | null>(null)
+  const openingRequests = useRef(new Map<string, Promise<Opening>>())
+  const sessionRef = useRef({ id: convId, ready: false, sceneId: '', incognito: false, started: false })
+  const currentId = useRef(convId)
+  currentId.current = convId
+  const sendLock = useRef(false)
+  const sendIdentity = useRef(0)
   const [lines, setLines] = useState<Line[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -149,7 +162,20 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
     api<{ providers?: any[] }>('/api/providers')
       .then((d) => setProvCount(Array.isArray(d.providers) ? d.providers.length : 0))
       .catch(() => setProvCount(0))
+    let alive = true
+    api<{ scenes: Scene[] }>('/api/scenarios').then((d) => { if (alive) setScenes(d.scenes || []) }).catch(() => {})
+    return () => { alive = false }
   }, [])
+
+  useEffect(() => {
+    let alive = true
+    if (memoryVersion && opening) {
+      api<{ items: MemoryItem[] }>('/api/memory?status=candidate').then((d) => {
+        if (alive && currentId.current === convId) setOpening((prev) => prev ? { ...prev, candidates: d.items } : prev)
+      }).catch(() => {})
+    }
+    return () => { alive = false }
+  }, [memoryVersion, convId]) // 变更通知只刷新列表，不重新请求 opening
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [lines])
 
@@ -170,14 +196,25 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
   // Doc 阅读材料 outbox 在恢复完成后消费，避免恢复 effect 覆盖刚 append 的用户气泡（badge 丢失）
   useEffect(() => {
     let alive = true
+    acRef.current?.abort(); sendIdentity.current++; sendLock.current = false
+    setBusy(false); setReady(false); setOpening(null); setSceneId('')
+    const localIncognito = sessionStorage.getItem('incognito:' + convId) === 'true'
+    setIncognito(localIncognito)
+    sessionRef.current = { id: convId, ready: false, sceneId: '', incognito: localIncognito, started: false }
     setLines([]); setErr(''); setBanner(null); setShowFb(false)
     const fbKey = 'askedFeedback:' + convId
     if (!sessionStorage.getItem(fbKey)) setShowFb(true)
     ;(async () => {
       try {
-        await api('/api/graph').then(setGraph).catch(() => {})
-        const c = await api<{ messages?: Array<{ role?: string; content?: string; text?: string; why?: any[]; cards?: any[]; identified?: { errors?: any[]; uncertain?: any[] } }> }>('/api/conversation?id=' + encodeURIComponent(convId))
+        const c = await api<{ scene_id: string; incognito: boolean; messages?: Array<{ role?: string; content?: string; text?: string; why?: any[]; cards?: any[]; identified?: { errors?: any[]; uncertain?: any[] } }> }>('/api/conversation?id=' + encodeURIComponent(convId))
+        if (!alive || currentId.current !== convId) return
         const msgs = c?.messages || []
+        const restoredIncognito = c.incognito || (!msgs.length && localIncognito)
+        const restoredScene = c.scene_id || ''
+        if (restoredIncognito) sessionStorage.setItem('incognito:' + convId, 'true')
+        else sessionStorage.removeItem('incognito:' + convId)
+        setIncognito(restoredIncognito); setSceneId(restoredScene); setReady(true)
+        sessionRef.current = { id: convId, ready: true, sceneId: restoredScene, incognito: restoredIncognito, started: !!msgs.length }
         if (alive && msgs.length) {
           const restored: Line[] = []
           const consumed = new Set<number>()
@@ -206,16 +243,37 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
           msgs.forEach((m, i) => { if (m.role === 'user' && !consumed.has(i)) restored.push({ role: 'user', text: String(m.content ?? m.text ?? '') }) })
           setLines(restored)
         }
-      } catch { /* 恢复失败不阻塞 */ }
-      const p = takePendingMessage()
-      if (alive && p?.text) void send(p.text, p.badge)
+        const p = takePendingMessage()
+        if (p?.text) void send(p.text, p.badge, { sceneId: restoredScene, incognito: restoredIncognito })
+        if (!msgs.length && !restoredIncognito && !p?.text) {
+          let request = openingRequests.current.get(convId)
+          if (!request) {
+            request = api<Opening>('/api/memory/opening', { conversation_id: convId })
+            openingRequests.current.set(convId, request)
+          }
+          request.then(async (data) => {
+            if (!alive || currentId.current !== convId) return
+            // 复用opening请求，但候选状态可能已在设置页改变；读取最新投影，不再触发提取。
+            if (data.enabled) {
+              const latest = await api<{ items: MemoryItem[] }>('/api/memory?status=candidate')
+              data = { ...data, candidates: latest.items }
+            }
+            if (alive && currentId.current === convId) setOpening(data)
+          }).catch(() => { if (alive && currentId.current === convId) showToast(t('opFailed')) })
+        }
+      } catch { if (alive && currentId.current === convId) setErr(t('memoryRestoreFailed')) }
     })()
-    return () => { alive = false }
+    return () => { alive = false; acRef.current?.abort(); sendIdentity.current++ }
   }, [convId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const send = async (prefill?: string, badge?: string) => {
+  const send = async (prefill?: string, badge?: string, context?: { sceneId: string; incognito: boolean }) => {
     const text = (prefill ?? input).trim()
-    if (!text || busy) return
+    const session = sessionRef.current
+    if (!text || sendLock.current || !session.ready || session.id !== convId || currentId.current !== convId) return
+    sendLock.current = true
+    session.started = true
+    const identity = ++sendIdentity.current
+    const valid = () => currentId.current === convId && sendIdentity.current === identity
     setInput('')
     setErr('')
     setBanner(null)
@@ -227,10 +285,11 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
 
     acRef.current = streamDialog(
       '/api/dialog',
-      { text, conversation_id: convId },
+      { text, conversation_id: convId, scene_id: context?.sceneId ?? session.sceneId, incognito: context?.incognito ?? session.incognito },
       {
-        onIntercept: (d) => setBanner(d.msg || `能量提示：剩余 ${d.energy_left}`),
+        onIntercept: (d) => { if (valid()) setBanner(d.msg || `能量提示：剩余 ${d.energy_left}`) },
         onMessage: (card) => {
+          if (!valid()) return
           const name = card?.payload?.name || ''
           // A 面：identify 卡 → 朱笔批注（卡片独立下发，不重复走 trace）
           if (!recogPushedRef.current && name === 'identify_errors' && lastSentRef.current) {
@@ -251,11 +310,14 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
           }
         },
         onError: (d) => {
+          if (!valid()) return
           setErr(d.msg || (d.error ? JSON.stringify(d.error) : '请求失败'))
           if (d.intercept) setBanner(d.intercept.msg)
           setBusy(false)
+          sendLock.current = false
         },
         onDone: (d) => {
+          if (!valid()) return
           const t = textOf(d)
           if (t) {
             setLines((ls) => [...ls, {
@@ -265,19 +327,30 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
           }
           if (d?.intercept) setBanner(d.intercept.msg)
           setBusy(false)
+          sendLock.current = false
           if (!fbPrompted && !sessionStorage.getItem('askedFeedback:' + convId)) {
             fbPrompted = true
             sessionStorage.setItem('askedFeedback:' + convId, '1')
             setShowFb(true)
           }
-          void api('/api/graph').then(setGraph).catch(() => {})
+          void api('/api/graph').then((g) => { if (valid()) setGraph(g as Graph) }).catch(() => {})
           void refresh()
         },
       },
     )
   }
 
-  const stop = () => { acRef.current?.abort(); setBusy(false) }
+  const stop = () => { acRef.current?.abort(); sendIdentity.current++; sendLock.current = false; setBusy(false) }
+
+  const startScene = (id: string) => {
+    if (!sessionRef.current.ready || sessionRef.current.started || sendLock.current) return
+    const scene = scenes.find((s) => s.scene_id === id)
+    if (!scene?.seed) { showToast(t('memorySceneUnavailable')); return }
+    setSceneId(id)
+    sessionRef.current.sceneId = id
+    void send(scene.seed, undefined, { sceneId: id, incognito: sessionRef.current.incognito })
+  }
+  const activeScene = scenes.find((s) => s.scene_id === sceneId)
 
   const fbSubmit = useCallback((score: number) => {
     api('/api/feedback', { conversation_id: convId, score }).catch(() => showToast(t('opFailed')))
@@ -285,16 +358,23 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
   }, [convId, showToast])
 
   return (
-    <div className="speak">
+    <div className={`speak${incognito ? ' incognito-chat' : ''}`}>
       <QuotaBar sessionId={convId} />
       <div className="chat">
         <CfgBar providers={provCount} onConfigure={() => openSettings?.('llm')} />
+        {incognito && <div className="incognito-label"><strong>{t('memoryIncognitoLabel')}</strong><small>{t('memoryIncognitoNote')}</small></div>}
+        {activeScene && <p className="scene-label">{t('scenePickActive')} {sceneTitle(activeScene)}</p>}
         <p className="muted">在一个场景里和你聊几句，教练逐句给反馈。</p>
         {banner && <div className="banner">{banner}</div>}
         {err && <div className="panel warn">{err}</div>}
-        {lines.length === 0 && !busy && (
-          <button className="btn" onClick={() => void send()}>来一次吧（说“你好”）</button>
+        {ready && lines.length === 0 && !busy && (
+          <button className="btn" onClick={() => void send('你好')}>来一次吧（说“你好”）</button>
         )}
+        {ready && !lines.length && !sceneId && <ScenePicker scenes={scenes} disabled={busy || sessionRef.current.started} onPick={(scene) => startScene(scene.scene_id)} />}
+        {ready && !incognito && profile.memory_enabled !== false && opening && <OpeningCard key={convId}
+          data={opening} disabled={busy || sessionRef.current.started} onResume={startScene} onManage={() => openSettings?.('memory')}
+          toast={(msg) => { if (currentId.current === convId) showToast(msg) }}
+          onChange={(update) => { if (currentId.current === convId) setOpening((prev) => prev ? update(prev) : prev) }} />}
         {lines.map((l, i) => (
           <div key={i} className={`line ${l.role === 'user' ? 'user' : l.role === 'recog' ? 'recog' : l.role === 'trace' ? 'assistant' : 'assistant'}`}>
             {l.role === 'recog' ? (
@@ -322,11 +402,11 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void send() }}
           placeholder={busy ? '教练在回复…' : '试着说一句中文'}
-          disabled={busy}
+          disabled={busy || !ready}
         />
         {busy
           ? <button className="btn" onClick={stop}>停止</button>
-          : <button className="btn primary" onClick={() => void send()} disabled={busy}>发送</button>}
+          : <button className="btn primary" onClick={() => void send()} disabled={busy || !ready}>发送</button>}
       </div>
       {toastMsg && <div className="toast show">{toastMsg}</div>}
     </div>

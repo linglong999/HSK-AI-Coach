@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   pinned      INTEGER NOT NULL DEFAULT 0,
   scene_id    TEXT NOT NULL DEFAULT '',
   memory_scanned_at INTEGER,
+  incognito   INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (learner_id, session_id)
 );
 
@@ -147,6 +148,8 @@ def connect(root: str = "data") -> sqlite3.Connection:
         conn.execute("ALTER TABLE sessions ADD COLUMN scene_id TEXT NOT NULL DEFAULT ''")
     if "memory_scanned_at" not in session_columns:
         conn.execute("ALTER TABLE sessions ADD COLUMN memory_scanned_at INTEGER")
+    if "incognito" not in session_columns:
+        conn.execute("ALTER TABLE sessions ADD COLUMN incognito INTEGER NOT NULL DEFAULT 0")
     study_columns = {row[1] for row in conn.execute(
         "PRAGMA table_info(study_sessions)").fetchall()}
     if "learner_id" not in study_columns:

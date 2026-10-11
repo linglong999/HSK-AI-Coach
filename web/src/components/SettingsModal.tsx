@@ -1,13 +1,16 @@
 // components/SettingsModal.tsx · 设置弹窗（复刻老壳 6 标签：语言/主题/模型密钥/persona/快捷键/关于）
-import { useCallback, useEffect, useState } from 'react'
-import { t, setLang as setI18nLang } from '../lib/i18n'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { lang, t, setLang as setI18nLang } from '../lib/i18n'
 import { api } from '../lib/api'
+import { useSessions } from '../lib/session'
+import { memoryText, type MemoryItem } from './OpeningCard'
 
 const TABS: { id: string; label: string }[] = [
   { id: 'lang', label: t('tabLang') },
   { id: 'theme', label: t('tabTheme') },
   { id: 'llm', label: t('tabLLM') },
   { id: 'persona', label: t('tabPersona') },
+  { id: 'memory', label: t('tabMemory') },
   { id: 'keys', label: t('tabKeys') },
   { id: 'about', label: t('tabAbout') },
 ]
@@ -50,12 +53,12 @@ export default function SettingsModal({ tab, onClose }: Props) {
   return (
     <div className="overlay show" onClick={onClose} role="dialog" aria-modal="true">
       <div className="modal" style={{ width: 'min(860px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
-        <span className="close" onClick={onClose} aria-label="close">✕</span>
+        <button type="button" className="close" onClick={onClose} aria-label={t('cfgClose')}>✕</button>
         <nav className="modal-nav">
           <h4>设置</h4>
           <ul style={{ margin: 0, padding: 0 }}>
             {TABS.map((tb) => (
-              <li key={tb.id} className={tb.id === cur ? 'active' : ''} onClick={() => { setCur(tb.id); }}>{tb.label}</li>
+              <li key={tb.id} className={tb.id === cur ? 'active' : ''}><button type="button" onClick={() => setCur(tb.id)}>{t(tb.id === 'llm' ? 'tabLLM' : 'tab' + tb.id[0].toUpperCase() + tb.id.slice(1))}</button></li>
             ))}
           </ul>
         </nav>
@@ -64,6 +67,7 @@ export default function SettingsModal({ tab, onClose }: Props) {
           {cur === 'theme' && <ThemeTab />}
           {cur === 'llm' && <LLMTab />}
           {cur === 'persona' && <PersonaTab />}
+          {cur === 'memory' && <MemoryTab />}
           {cur === 'keys' && <KeysTab />}
           {cur === 'about' && <AboutTab />}
           <div className="frow" style={{ marginTop: 18, paddingTop: 14, borderTop: '1px dashed rgb(var(--line))' }}>
@@ -73,6 +77,72 @@ export default function SettingsModal({ tab, onClose }: Props) {
       </div>
     </div>
   )
+}
+
+function MemoryTab() {
+  const { refresh, memoryVersion, notifyMemoryChanged } = useSessions()
+  const [confirmed, setConfirmed] = useState<MemoryItem[] | null>(null)
+  const [candidates, setCandidates] = useState<MemoryItem[] | null>(null)
+  const [enabled, setEnabled] = useState<boolean | null>(null)
+  const [loadError, setLoadError] = useState(false)
+  const [status, setStatus] = useState('')
+  const [busy, setBusy] = useState(false)
+  const lock = useRef(false)
+  const alive = useRef(true)
+  const generation = useRef(0)
+  useEffect(() => { alive.current = true; return () => { alive.current = false; generation.current++ } }, [])
+  const load = useCallback(async () => {
+    const id = ++generation.current
+    const results = await Promise.allSettled([
+      api<{ profile: { memory_enabled?: boolean } }>('/api/profile'),
+      api<{ items: MemoryItem[] }>('/api/memory?status=confirmed'),
+      api<{ items: MemoryItem[] }>('/api/memory?status=candidate'),
+    ])
+    if (!alive.current || id !== generation.current) return
+    const [profile, remembered, pending] = results
+    setLoadError(results.some((r) => r.status === 'rejected'))
+    if (profile.status === 'fulfilled') setEnabled(profile.value.profile.memory_enabled ?? true)
+    if (remembered.status === 'fulfilled') setConfirmed(remembered.value.items)
+    if (pending.status === 'fulfilled') setCandidates(pending.value.items)
+  }, [])
+  useEffect(() => { void load() }, [load, memoryVersion])
+  const perform = async (path: string, body: object, success: string, profileChange = false) => {
+    if (lock.current) return
+    lock.current = true; setBusy(true); setStatus('')
+    let ok = false
+    try {
+      await api(path, body)
+      ok = true
+      if (profileChange) await refresh()
+    } catch { /* 可能部分成功，仍需重读；不能显示全部成功 */ }
+    finally {
+      notifyMemoryChanged()
+      await load()
+      if (alive.current) { setStatus(t(ok ? success : 'opFailed')); setBusy(false) }
+      lock.current = false
+    }
+  }
+  const rows = (items: MemoryItem[], pending: boolean) => items.map((item) => <div className="memory-row" key={item.memory_id}>
+    <span>{memoryText(item)}{!pending && item.confirmed_at != null && <small className="memory-date">{new Date(item.confirmed_at * 1000).toLocaleDateString(lang() === 'zh' ? 'zh-CN' : 'en-US')}</small>}</span>
+    {pending ? <>
+      <button type="button" className="btn" disabled={busy} onClick={() => void perform('/api/memory/confirm', { memory_id: item.memory_id }, 'memorySaved')}>{t('memoryRemember')}</button>
+      <button type="button" className="btn" disabled={busy} onClick={() => void perform('/api/memory/reject', { memory_id: item.memory_id }, 'memoryRejected')}>{t('memoryDecline')}</button>
+    </> : <button type="button" className="btn" disabled={busy} onClick={() => void perform('/api/memory/forget', { memory_id: item.memory_id }, 'memoryForgotten')}>{t('memoryForget')}</button>}
+  </div>)
+  return <section className="memory-settings">
+    <h3>{t('tabMemory')}</h3>
+    <button type="button" className="btn" role="switch" aria-label={t('memorySwitch')} aria-checked={enabled ?? false} disabled={enabled === null || busy} onClick={() => void perform('/api/profile', { memory_enabled: !enabled }, 'memorySettingSaved', true)}>{t('memorySwitch')} · {t(enabled ? 'memoryOn' : 'memoryOff')}</button>
+    <p className="sub">{t('memorySwitchNote')}</p>
+    {loadError && <p className="warn">{t('memoryLoadFailed')} <button type="button" className="btn" disabled={busy} onClick={() => void load()}>{t('memoryRetry')}</button></p>}
+    <h4>{t('memoryConfirmed')}</h4>
+    {confirmed === null ? <p>{t('memoryLoading')}</p> : confirmed.length ? rows(confirmed, false) : <p>{t('memoryEmpty')}</p>}
+    <h4>{t('memoryPending')}</h4>
+    {candidates === null ? <p>{t('memoryLoading')}</p> : candidates.length ? rows(candidates, true) : <p>{t('memoryPendingEmpty')}</p>}
+    <button type="button" className="btn" disabled={busy || confirmed === null || candidates === null} onClick={() => {
+      if (window.confirm(t('memoryForgetAllConfirm'))) void perform('/api/memory/forget_all', {}, 'memoryAllForgotten')
+    }}>{t('memoryForgetAll')}</button>
+    <div className="memory-status" role="status" aria-live="polite">{status}</div>
+  </section>
 }
 
 function LangTab() {

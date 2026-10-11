@@ -61,8 +61,15 @@ class DialogRun:
         stage = "pre_scan"
         try:
             history = self._mem.to_llm_history(ctx["conversation_id"])
+            meta = self._mem.session_meta(ctx["conversation_id"]) or {}
+            requested_incognito = ctx.get("incognito", False)
+            effective_incognito = bool(meta.get("incognito") or requested_incognito)
+            if not history and requested_incognito:
+                # 隐私标记先于消息写入；失败时沿既有异常链退出，不能保存成普通会话。
+                self._mem.touch(ctx["conversation_id"], incognito=True, bump=False)
             directives = self._assemble_directives(
-                ctx["native_lang"], ctx["learner_l1"], ctx["scene_id"], history=history)
+                ctx["native_lang"], ctx["learner_l1"], ctx["scene_id"], history=history,
+                incognito=effective_incognito)
 
             def build_input_payload():
                 from engine.study import reference
@@ -334,7 +341,8 @@ class DialogRun:
 
     # ---------- 阶段方法 ----------
 
-    def _assemble_directives(self, native_lang, learner_l1, scene_id, history=None):
+    def _assemble_directives(self, native_lang, learner_l1, scene_id, history=None,
+                             incognito=False):
         """阶段 · AssembleDirectives：画像/persona/风格/场景/等级收集成 planner
         prompt 参数（各策略模块保持独立，由本阶段统一组装，不强行统一接口）。
         含 0.25 起点分层：画像等级归一并同步 Router（同步失败不阻断）。"""
@@ -388,7 +396,7 @@ class DialogRun:
                 scene_brief = ""
         memory_brief = ""
         notices = []
-        if not history and profile_block.get("memory_enabled", True):
+        if not incognito and not history and profile_block.get("memory_enabled", True):
             try:
                 from engine.memory.long_term import LongTermMemory
                 from engine.memory.opening import compile_memory_brief
