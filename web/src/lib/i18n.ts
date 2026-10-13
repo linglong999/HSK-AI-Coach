@@ -430,6 +430,11 @@ const en: Record<string, string> = {
 }
 
 Object.assign(zh, {
+  speakEnergy: '能量提示：剩余 {n}', speakRequestFailed: '请求失败',
+  speakIntro: '在一个场景里和你聊几句，教练逐句给反馈。',
+  speakHelloButton: '来一次吧（说“你好”）', speakHelloSend: '你好',
+  speakYou: '你', speakTutor: '教练', speakReplying: '教练在回复…',
+  speakPlaceholder: '试着说一句中文', speakStop: '停止', speakSend: '发送',
   memoryOn: '开启', memoryOff: '关闭',
   tabMemory: '我的记忆', memoryOpening: '开场', memoryResume: '上次在「{title}」练习，要接着练吗？',
   memoryContinue: '接着练', memoryDecline: '不用', memoryRemember: '记住', memoryForget: '遗忘',
@@ -444,6 +449,11 @@ Object.assign(zh, {
   memoryRestoreFailed: '会话恢复失败，请刷新后重试。',
 })
 Object.assign(en, {
+  speakEnergy: 'Energy reminder: {n} remaining', speakRequestFailed: 'Request failed',
+  speakIntro: 'Practice a scenario with the tutor and get feedback on each sentence.',
+  speakHelloButton: 'Give it a try (say “你好”)', speakHelloSend: '你好',
+  speakYou: 'You', speakTutor: 'Tutor', speakReplying: 'The tutor is replying…',
+  speakPlaceholder: 'Try a sentence in Chinese', speakStop: 'Stop', speakSend: 'Send',
   memoryOn: 'On', memoryOff: 'Off',
   tabMemory: 'My memories', memoryOpening: 'Opening', memoryResume: 'Last time you practiced “{title}”. Continue?',
   memoryContinue: 'Continue', memoryDecline: 'No thanks', memoryRemember: 'Remember', memoryForget: 'Forget',

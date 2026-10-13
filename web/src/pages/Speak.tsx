@@ -7,7 +7,7 @@ import { streamDialog } from '../lib/sse'
 import { api } from '../lib/api'
 import { useSessions } from '../lib/session'
 import { type Graph } from '../lib/graph'
-import { t } from '../lib/i18n'
+import { t, tf } from '../lib/i18n'
 import { takePendingMessage } from '../lib/outbox'
 import QuotaBar from '../components/QuotaBar'
 import TypingText from '../components/TypingText'
@@ -287,7 +287,7 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
       '/api/dialog',
       { text, conversation_id: convId, scene_id: context?.sceneId ?? session.sceneId, incognito: context?.incognito ?? session.incognito },
       {
-        onIntercept: (d) => { if (valid()) setBanner(d.msg || `能量提示：剩余 ${d.energy_left}`) },
+        onIntercept: (d) => { if (valid()) setBanner(d.msg || tf('speakEnergy', { n: d.energy_left })) },
         onMessage: (card) => {
           if (!valid()) return
           const name = card?.payload?.name || ''
@@ -311,7 +311,7 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
         },
         onError: (d) => {
           if (!valid()) return
-          setErr(d.msg || (d.error ? JSON.stringify(d.error) : '请求失败'))
+          setErr(d.msg || (d.error ? JSON.stringify(d.error) : t('speakRequestFailed')))
           if (d.intercept) setBanner(d.intercept.msg)
           setBusy(false)
           sendLock.current = false
@@ -364,11 +364,11 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
         <CfgBar providers={provCount} onConfigure={() => openSettings?.('llm')} />
         {incognito && <div className="incognito-label"><strong>{t('memoryIncognitoLabel')}</strong><small>{t('memoryIncognitoNote')}</small></div>}
         {activeScene && <p className="scene-label">{t('scenePickActive')} {sceneTitle(activeScene)}</p>}
-        <p className="muted">在一个场景里和你聊几句，教练逐句给反馈。</p>
+        <p className="muted">{t('speakIntro')}</p>
         {banner && <div className="banner">{banner}</div>}
         {err && <div className="panel warn">{err}</div>}
         {ready && lines.length === 0 && !busy && (
-          <button className="btn" onClick={() => void send('你好')}>来一次吧（说“你好”）</button>
+          <button className="btn" onClick={() => void send(t('speakHelloSend'))}>{t('speakHelloButton')}</button>
         )}
         {ready && !lines.length && !sceneId && <ScenePicker scenes={scenes} disabled={busy || sessionRef.current.started} onPick={(scene) => startScene(scene.scene_id)} />}
         {ready && !incognito && profile.memory_enabled !== false && opening && <OpeningCard key={convId}
@@ -383,7 +383,7 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
               <TraceCard name={l.name} res={l.res} ctx={cardCtx} />
             ) : (
               <>
-                <span className="who">{l.role === 'user' ? '你' : '教练'}</span>
+                <span className="who">{t(l.role === 'user' ? 'speakYou' : 'speakTutor')}</span>
                 {l.role === 'assistant'
                   ? <AssistantText text={l.text} ctx={cardCtx} onProgress={() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' })} />
                   : <span className="txt">{l.text}{l.badge ? <span className="badge">{l.badge}</span> : null}</span>}
@@ -401,12 +401,12 @@ export default function Speak({ openSettings }: { openSettings?: (tab?: string) 
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void send() }}
-          placeholder={busy ? '教练在回复…' : '试着说一句中文'}
+          placeholder={t(busy ? 'speakReplying' : 'speakPlaceholder')}
           disabled={busy || !ready}
         />
         {busy
-          ? <button className="btn" onClick={stop}>停止</button>
-          : <button className="btn primary" onClick={() => void send()} disabled={busy || !ready}>发送</button>}
+          ? <button className="btn" onClick={stop}>{t('speakStop')}</button>
+          : <button className="btn primary" onClick={() => void send()} disabled={busy || !ready}>{t('speakSend')}</button>}
       </div>
       {toastMsg && <div className="toast show">{toastMsg}</div>}
     </div>
