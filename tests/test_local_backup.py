@@ -53,6 +53,24 @@ def test_backup_verify_restore_without_overwrite():
             restore_backup(bundle, restored)
 
 
+def test_repeated_verify_and_restore_leave_bundle_without_sqlite_helpers():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        source = _source(root)
+        bundle = root / "snapshot"
+        manifest = create_backup(source, bundle)
+        expected = {item["name"] for item in manifest["files"]} | {"backup_manifest.json"}
+        assert {path.name for path in bundle.iterdir()} == expected
+        verify_backup(bundle)
+        assert {path.name for path in bundle.iterdir()} == expected
+        verify_backup(bundle)
+        assert {path.name for path in bundle.iterdir()} == expected
+        restored = root / "restored"
+        restore_backup(bundle, restored)
+        assert {path.name for path in bundle.iterdir()} == expected
+        assert not any(path.name.endswith(("-wal", "-shm")) for path in bundle.iterdir())
+
+
 def test_tamper_rejected_before_restore():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)

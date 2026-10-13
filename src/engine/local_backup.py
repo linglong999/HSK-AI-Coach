@@ -111,7 +111,7 @@ def verify_backup(bundle: str | Path) -> dict:
         raise ValueError("备份目录含清单之外的文件")
     if "coach.db" in names:
         try:
-            with closing(sqlite3.connect((root / "coach.db").as_uri() + "?mode=ro", uri=True)) as conn:
+            with closing(sqlite3.connect((root / "coach.db").as_uri() + "?mode=ro&immutable=1", uri=True)) as conn:
                 integrity = conn.execute("PRAGMA integrity_check").fetchone()
             if not integrity or integrity[0] != "ok":
                 raise ValueError("SQLite 备份完整性检查失败")
