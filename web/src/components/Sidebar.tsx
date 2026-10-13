@@ -22,7 +22,10 @@ function timeShort(iso?: string): string {
 
 export default function Sidebar({ view, onNav, onOpenSettings }: Props) {
   const { sessions, conversationId, newSession, switchSession, togglePin, renameSession, deleteSession } = useSessions()
-  const [closed, setClosed] = useState(false)
+  const [closed, setClosed] = useState(() => window.matchMedia('(max-width:920px)').matches)
+  const closeOnNarrow = () => {
+    if (window.matchMedia('(max-width:920px)').matches) setClosed(true)
+  }
   // 右键菜单
   const [menu, setMenu] = useState<{ x: number; y: number; s: Session } | null>(null)
   const [armed, setArmed] = useState<string | null>(null)
@@ -47,6 +50,15 @@ export default function Sidebar({ view, onNav, onOpenSettings }: Props) {
       window.removeEventListener('resize', close)
     }
   }, [menu])
+
+  useEffect(() => {
+    if (menu || closed) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && window.matchMedia('(max-width:920px)').matches) setClosed(true)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [closed, menu])
 
   // 当前会话若不在列表（如深链新会话未落盘），补一个占位项
   const items: Session[] = [...sessions]
@@ -79,6 +91,7 @@ export default function Sidebar({ view, onNav, onOpenSettings }: Props) {
   }
 
   return (
+    <>
     <div className={`side${closed ? ' closed' : ''}`}>
       <div className="side-top">
         <span className="logo">汉语 <b>AI 教练</b></span>
@@ -100,8 +113,8 @@ export default function Sidebar({ view, onNav, onOpenSettings }: Props) {
 
         {/* 会话 */}
         <div className="hd"><span>{t('sessions')}</span><span className="sep" /><span className="ct">{sessions.length ? String(sessions.length) : ''}</span></div>
-        <button className="sbtn add" onClick={() => { onNav('dialog'); newSession() }}>{t('newSession')}</button>
-        <button type="button" className="sbtn" onClick={() => { onNav('dialog'); newSession({ incognito: true }) }}>{t('memoryIncognitoNew')}</button>
+        <button className="sbtn add" onClick={() => { onNav('dialog'); newSession(); closeOnNarrow() }}>{t('newSession')}</button>
+        <button type="button" className="sbtn" onClick={() => { onNav('dialog'); newSession({ incognito: true }); closeOnNarrow() }}>{t('memoryIncognitoNew')}</button>
         {items.slice(0, 30).map((s) => {
           const isCur = s.id === conversationId
           return (
@@ -110,7 +123,7 @@ export default function Sidebar({ view, onNav, onOpenSettings }: Props) {
               type="button"
               data-id={s.id}
               className={`sbtn${isCur ? ' cur' : ''}`}
-              onClick={() => { onNav('dialog'); void switchSession(s.id) }}
+              onClick={() => { onNav('dialog'); void switchSession(s.id); closeOnNarrow() }}
               onContextMenu={(e) => openCtx(e, s)}
               title={`${s.title || s.id}${s.updated_at ? ' · ' + timeShort(s.updated_at) : ''}`}
             >
@@ -144,16 +157,16 @@ export default function Sidebar({ view, onNav, onOpenSettings }: Props) {
 
         {/* 学习动线 */}
         <div className="hd"><span>{t('learnPath')}</span><span className="sep" /></div>
-        <button type="button" className={`sbtn${view === 'map' ? ' cur' : ''}`} onClick={() => onNav('map')}><span className="ic">◈</span>{t('cogMap')}</button>
-        <button type="button" className={`sbtn${view === 'review' ? ' cur' : ''}`} onClick={() => onNav('review')}><span className="ic">▶</span>{t('startReview')}</button>
-        <button type="button" className={`sbtn${view === 'report' ? ' cur' : ''}`} onClick={() => onNav('report')}><span className="ic">◎</span>{t('aiReport')}</button>
-        <button type="button" className={`sbtn${view === 'doc' ? ' cur' : ''}`} onClick={() => onNav('doc')}><span className="ic">▤</span>{t('readingMat')}</button>
+        <button type="button" className={`sbtn${view === 'map' ? ' cur' : ''}`} onClick={() => { onNav('map'); closeOnNarrow() }}><span className="ic">◈</span>{t('cogMap')}</button>
+        <button type="button" className={`sbtn${view === 'review' ? ' cur' : ''}`} onClick={() => { onNav('review'); closeOnNarrow() }}><span className="ic">▶</span>{t('startReview')}</button>
+        <button type="button" className={`sbtn${view === 'report' ? ' cur' : ''}`} onClick={() => { onNav('report'); closeOnNarrow() }}><span className="ic">◎</span>{t('aiReport')}</button>
+        <button type="button" className={`sbtn${view === 'doc' ? ' cur' : ''}`} onClick={() => { onNav('doc'); closeOnNarrow() }}><span className="ic">▤</span>{t('readingMat')}</button>
 
         {/* 系统 */}
         <div className="hd"><span>{t('settings')}</span><span className="sep" /></div>
-        <button type="button" className="sbtn" onClick={onOpenSettings}><span className="ic">⚙</span>{t('settings')}</button>
-        <button type="button" className={`sbtn${view === 'help' ? ' cur' : ''}`} onClick={() => onNav('help')}><span className="ic">?</span>{t('howto')}</button>
-        <button type="button" className={`sbtn${view === 'metrics' ? ' cur' : ''}`} onClick={() => onNav('metrics')}><span className="ic">◎</span>{t('metricsEntry')}</button>
+        <button type="button" className="sbtn" onClick={() => { onOpenSettings(); closeOnNarrow() }}><span className="ic">⚙</span>{t('settings')}</button>
+        <button type="button" className={`sbtn${view === 'help' ? ' cur' : ''}`} onClick={() => { onNav('help'); closeOnNarrow() }}><span className="ic">?</span>{t('howto')}</button>
+        <button type="button" className={`sbtn${view === 'metrics' ? ' cur' : ''}`} onClick={() => { onNav('metrics'); closeOnNarrow() }}><span className="ic">◎</span>{t('metricsEntry')}</button>
       </div>
 
       <div className="side-bot">
@@ -176,6 +189,8 @@ export default function Sidebar({ view, onNav, onOpenSettings }: Props) {
         </div>
       )}
     </div>
+    {closed && <button className="side-open show" aria-label={t('expandSide')} onClick={() => setClosed(false)}>»</button>}
+    </>
   )
 }
 
