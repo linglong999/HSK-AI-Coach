@@ -28,6 +28,31 @@ python -m engine.local_backup restore backup-copy restored-data
 
 备份只含 `data/` 顶层普通文件；`coach.db` 通过 SQLite backup API 生成一致副本，`-wal`/`-shm` 临时文件不复制，子目录和 `.env` 不包含在内。`inspect` 只统计纳入/排除数量，不打印文件名或内容；清单中的 `excluded_paths` 和 `complete_for_source` 记录实际遗漏。**若 `complete_for_source=false`，此备份不是完整目录迁移包**；先单独判断子目录/排除项是否为需保留的数据，不能直接删除源目录。清单记录 SHA-256 哈希；恢复只允许写入不存在的新目录，复制到暂存目录后再次校验哈希和 SQLite，不覆盖当前 `data/`。恢复后先核对内容，再由操作者决定是否切换数据目录。备份包含学习记录，**不是加密归档**，请放在受保护位置。Windows DPAPI Key 在同一 Windows 用户/系统环境可解密；跨设备须重新填写供应商 Key。
 
+### 记忆的查看、删除与备份
+
+**查看和遗忘**：学习者可以在 设置 → 我的记忆 查看已记住和待确认的内容，可以逐条遗忘，也可以全部遗忘。操作者用命令行：
+
+```bash
+python -m engine.memory.long_term list --learner-id <id> [--status confirmed]
+python -m engine.memory.long_term forget --learner-id <id> --memory-id <mem-...>
+python -m engine.memory.long_term forget-all --learner-id <id>
+```
+
+遗忘会清空这条记忆的内容和来源，只保留 memory_id 和一个状态为 `forgotten` 的墓碑。从此以后，召回和开场都不会再用到它。数据库连接开着 `secure_delete`，被清掉的原文字节会在库文件里被覆盖。
+
+**旧备份里的记忆**：遗忘只作用于当前的 `data/`。遗忘**之前**做的备份里还留着原文。处理方法任选一种：
+1. 删除遗忘之前的旧备份；或者
+2. 用旧备份恢复之后、启动服务之前，把当前库里的遗忘记录重放到恢复出来的库上：
+
+```bash
+python -m engine.local_backup restore backup-copy restored-data
+python -m engine.memory.long_term reapply-forgets --learner-id <id> --from data --root restored-data
+```
+
+`--from` 只读、不写；命令输出里，`reapplied` 是重新遗忘的条数，`missing` 是墓碑在备份里不存在的条数。重放完成之前，不能把恢复出来的目录交给服务使用。
+
+**边界**：`python -m engine.study purge` 是物理删除，不留墓碑，所以没法重放。试用者分区一旦 purge，旧备份必须按试用协议人工核对后删除。记忆功能可以在 设置 → 我的记忆 里关掉；关掉不等于遗忘，已经记住的内容还在，只是不会再被提取和召回。
+
 ### 本机运行诊断与费用边界
 
 每个 `/api/*` 响应带 `X-Request-ID`。`GET /api/ops/summary` 提供当前进程按固定路由模板聚合的请求量、HTTP 5xx 失败率和最近最多 256 次响应耗时 p95；不记录查询参数、正文或 API Key。CLI 默认关闭 uvicorn 原始访问日志，以免查询串进入日志，改输出含请求 ID、路由模板、状态码和耗时的结构化记录。指标重启归零；SSE 耗时只计到响应头，不含完整对话流，不能当作端到端延迟。日志仍应只保存在本机受控目录，且第三方代理的访问日志须单独审查。

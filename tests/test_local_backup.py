@@ -11,6 +11,7 @@ import pytest
 
 from engine.local_backup import create_backup, inspect_source, restore_backup, verify_backup
 from engine import providers
+from engine.memory.long_term import LongTermMemory
 
 
 def _source(root: Path) -> Path:
@@ -134,3 +135,55 @@ def test_isolated_rotation_delete_and_restore_drill():
         restored = root / "restored-data"
         restore_backup(bundle, restored)
         assert providers.load_store(str(restored))["providers"][0]["api_key"] == "dummy-key"
+
+
+def test_backup_contains_no_forgotten_memory_marker(tmp_path):
+    root = Path(tmp_path)
+    source = root / "data"
+    marker = "BACKUP-P45-" + ("Q" * 189)
+    memory = LongTermMemory("owner", root=str(source))
+    memory_id = memory.add_candidate("life_event", {"summary": marker}, {"conversation_id": "c", "extractor": "test", "event_key": "e"})
+    memory.confirm(memory_id, "learner")
+    assert len(marker) == 200
+    assert any(marker.encode() in path.read_bytes() for path in source.glob("coach.db*"))
+    memory.forget(memory_id, "learner")
+    with sqlite3.connect(source / "coach.db") as conn:
+        assert conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()[0] == 0
+    bundle = root / "backup"
+    create_backup(source, bundle)
+    assert all(marker.encode() not in path.read_bytes() for path in bundle.iterdir() if path.is_file())
+    memory._conn.close()
+
+
+def test_restore_old_backup_then_reapply_forgets(tmp_path, capsys):
+    from engine.memory.long_term import _main
+    import hashlib
+    current, restored = tmp_path / "current", tmp_path / "restored"
+    owner = LongTermMemory("owner", root=str(current), id_factory=lambda: "old-memory")
+    other = LongTermMemory("other", root=str(current), id_factory=lambda: "other-memory")
+    try:
+        mid = owner.add_candidate("life_event", {"summary": "old experience"}, {})
+        oid = other.add_candidate("life_event", {"summary": "other experience"}, {})
+        owner.confirm(mid, "learner"); other.confirm(oid, "learner")
+        create_backup(current, tmp_path / "backup-a")
+        owner.forget(mid, "learner")
+        assert tuple(owner._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()) == (0, 0, 0)
+        before = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+                  for p in current.glob("coach.db*") if not p.name.endswith("-shm")}
+        restore_backup(tmp_path / "backup-a", restored)
+        target = LongTermMemory("owner", root=str(restored))
+        foreign = LongTermMemory("other", root=str(restored))
+        try:
+            assert target.get(mid)["status"] == "confirmed"
+            assert _main(["reapply-forgets", "--learner-id", "owner", "--from", str(current), "--root", str(restored)]) == 0
+            assert json.loads(capsys.readouterr().out) == {"learner_id": "owner", "reapplied": 1, "missing": 0}
+            assert target.get(mid)["status"] == "forgotten"
+            assert target.get(mid)["content"] == target.get(mid)["source"] == {}
+            assert target.recall("life_event") == []
+            assert foreign.get(oid)["status"] == "confirmed"
+            assert {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in current.glob("coach.db*") if not p.name.endswith("-shm")} == before
+        finally:
+            target._conn.close(); foreign._conn.close()
+    finally:
+        owner._conn.close(); other._conn.close()

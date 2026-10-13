@@ -5,6 +5,10 @@ import hashlib
 import json
 import re
 import secrets
+import os
+import sqlite3
+from pathlib import Path
+from contextlib import closing
 import time
 from typing import Callable, Optional
 
@@ -203,26 +207,79 @@ class LongTermMemory:
 
 def _main(argv=None):
     parser = argparse.ArgumentParser(description="长期经历记忆")
-    parser.add_argument("command", choices=("list", "forget"))
+    parser.add_argument("command", choices=("list", "forget", "forget-all", "reapply-forgets"))
     parser.add_argument("--learner-id", required=True)
     parser.add_argument("--memory-id", default="")
     parser.add_argument("--status", default=None)
     parser.add_argument("--root", default="data")
+    parser.add_argument("--from", dest="from_root", default="")
     args = parser.parse_args(argv)
+    memory = None
     try:
+        if args.command == "reapply-forgets":
+            if not args.from_root:
+                raise LongTermMemoryError("reapply-forgets 需要 --from")
+            source = Path(args.from_root).resolve(strict=False)
+            target = Path(args.root).resolve(strict=False)
+            if source == target:
+                raise LongTermMemoryError("--from 与 --root 必须是不同路径")
+            source_db = source / store.DB_NAME
+            target_db = target / store.DB_NAME
+            if not source_db.is_file() or not target_db.is_file():
+                raise LongTermMemoryError("源库或恢复库不存在")
+            if os.path.samefile(source_db, target_db):
+                raise LongTermMemoryError("--from 与 --root 必须是不同数据库")
+            with closing(sqlite3.connect(target_db.as_uri() + "?mode=ro", uri=True)) as conn:
+                conn.execute("SELECT memory_id, status FROM memory_items LIMIT 0")
+            try:
+                with closing(sqlite3.connect(source_db.as_uri() + "?mode=ro", uri=True)) as conn:
+                    conn.row_factory = sqlite3.Row
+                    rows = conn.execute(
+                        "SELECT memory_id FROM memory_items WHERE learner_id=? AND status='forgotten'",
+                        (args.learner_id,)).fetchall()
+                    forgotten_ids = [str(row["memory_id"]) for row in rows]
+            except (OSError, sqlite3.Error) as exc:
+                raise LongTermMemoryError("源库不可读") from exc
+            memory = LongTermMemory(args.learner_id, root=str(target))
+            reapplied = 0
+            missing = 0
+            for memory_id in forgotten_ids:
+                item = memory.get(memory_id)
+                if item is None:
+                    missing += 1
+                elif item["status"] != "forgotten":
+                    memory.forget(memory_id, "operator")
+                    reapplied += 1
+            print(json.dumps({"learner_id": args.learner_id, "reapplied": reapplied,
+                              "missing": missing}, ensure_ascii=False))
+            return 0
+
         memory = LongTermMemory(args.learner_id, root=args.root)
         if args.command == "list":
             items = memory.list_items(args.status)
             print(json.dumps({"learner_id": args.learner_id, "count": len(items), "items": items}, ensure_ascii=False))
-        else:
+        elif args.command == "forget":
             if not args.memory_id:
                 raise LongTermMemoryError("forget 需要 --memory-id")
             memory.forget(args.memory_id, "operator")
             print(json.dumps({"memory_id": args.memory_id, "status": "forgotten"}, ensure_ascii=False))
+        else:
+            forgotten = 0
+            for item in memory.list_items():
+                if item["status"] != "forgotten":
+                    memory.forget(item["memory_id"], "operator")
+                    forgotten += 1
+            print(json.dumps({"learner_id": args.learner_id, "forgotten": forgotten}, ensure_ascii=False))
         return 0
+    except (OSError, sqlite3.Error):
+        parser._print_message("数据库或路径操作失败\n", __import__("sys").stderr)
+        return 2
     except LongTermMemoryError as exc:
         parser._print_message(f"{exc}\n", __import__("sys").stderr)
         return 2
+    finally:
+        if memory is not None:
+            memory._conn.close()
 
 
 if __name__ == "__main__":
