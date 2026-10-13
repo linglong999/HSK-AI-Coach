@@ -69,3 +69,8 @@ CI（`.github/workflows/ci.yml`）有两道独立门禁：pytest 与 determinist
 - **遗留问题**：审查中发现但不属于本卡范围的问题，记在卡片末尾的「遗留问题」里，作为下一张卡的来源。
 - **契约和计划**的回写（`实施计划-v3.md`、`DECISIONS.md`、`datasets/docs/`）由 Claude 负责。
 - 工作区里不是自己产生的未提交改动，一律不要修改、回退、暂存或提交；提交只在用户要求时进行，并且只 `git add` 具体文件。
+
+
+## 创作素材记录
+
+本人在做个人 IP。本项目接入了素材记录，规则见 `AGENTS.md` 末尾的「创作素材记录（.journal/）」一节，Claude 同样遵守。素材目录：`D:\HuaweiMoveData\Users\曹玲珑\Desktop\HSK\.journal\`（在仓库外层，不提交）。
