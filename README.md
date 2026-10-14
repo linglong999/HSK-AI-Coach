@@ -95,6 +95,13 @@ HTTP 服务由 FastAPI + uvicorn 提供；生产前端构建产物来自 `web/` 
 
 历史识别报告使用 36 句自建黄金集（偏误 17 + clean 19），记录混池 F1 **0.970**、精确率 **1.000**、召回率 **0.941**；该结果来自旧版 `datasets/eval/eval_results.json` 离线重算，分集样本数与置信区间见 [`datasets/eval/eval_transparency.md`](datasets/eval/eval_transparency.md)。本次没有重跑真实模型识别评测，因此不把历史数字标为当前模型性能。标注是作者 self-review，未经二语教师仲裁。
 
+**2026-10 后续迭代**新增了五类提示策略、经学习者确认的经历记忆和无痕对话，证据有三类：
+- 自动化测试；
+- 18 条规则回放，其中真实 4 条、合成 14 条，作者逐条复核；
+- 作者本人的自用试跑和手测。
+
+这些证据都**不包括**真实留学生试用、教师评审或学习增益实验。系统为什么介入、怎么介入、怎么记录，见[教学法说明](reports/2026-09-30-教学法说明.md)，每条结论都标注了证据类型。
+
 文件讲解、复述验证、自由对话等历史实验数字与过程记录见 [`datasets/eval/多轮实验记录_3.6.md`](datasets/eval/多轮实验记录_3.6.md)；供应商、模型和样本口径尚未统一复核，不在 README 作为当前成绩发布。各类证据的命令和可证明范围见 [`EVALUATION.md`](EVALUATION.md)。
 
 ## 🏗️ 架构
@@ -127,7 +134,7 @@ HSK-AI-Coach/
 ├── engine/
 │   ├── recognizer / explainer / verifier    三引擎
 │   ├── transfer.py           L1 母语迁移归因（假设仅供讲解，不入图谱）
-│   ├── scheduler/fsrs.py     自实现简化 FSRS 间隔重复
+│   ├── scheduler/fsrs_adapter.py  FSRS 间隔重复（适配 fsrs==6.3.2）
 │   ├── ocr.py / rag.py       OCR 识字（RapidOCR，例外依赖）+ 检索增强
 │   ├── metrics.py            效果度量（续学率/通关率/满意度）
 │   ├── visitor_gate.py       游客额度闸门 + providers.py + serve.py
@@ -146,6 +153,7 @@ HSK-AI-Coach/
 
 ## 📄 设计文档与过程记录
 每一步设计过程和取舍都留了档，可作评审证据：
+- 教学法说明（介入时机、五类提示、复述确认、经历记忆、证据边界）→ [`reports/2026-09-30-教学法说明.md`](reports/2026-09-30-教学法说明.md)
 - 0.22 习得伙伴转向设计稿（L1 迁移 / 场景对话 / 介入时机+个性化）→ [`datasets/docs/archive/0.22-习得伙伴转向-设计稿.md`](datasets/docs/archive/0.22-习得伙伴转向-设计稿.md)
 - 对话契约总纲 / 纠错契约 v1（前后端 JSON 接缝）→ `datasets/docs/0.17-统一能力契约与架构总纲.md`、`datasets/docs/archive/JSON-接缝契约-v1.md`
 - M1–M9 接入清单 → `datasets/docs/archive/0.18-M1-M9-接入清单.md`
